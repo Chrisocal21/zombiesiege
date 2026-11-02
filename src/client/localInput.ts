@@ -7,6 +7,8 @@ export interface LocalInput {
   // Mouse turning that has happened but has not been sent in a message yet.
   // The camera adds it on so looking around never waits for the next tick.
   pendingLook(): { yaw: number; pitch: number };
+  // Scales mouse turning, so aiming feels the same at the zoomed-in view.
+  setLookScale(scale: number): void;
   isLocked(): boolean;
 }
 
@@ -15,6 +17,8 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   let yaw = 0;
   let pitch = 0;
   let firing = false;
+  let aiming = false;
+  let lookScale = 1;
   // A click is remembered until the next message goes out, even if the button
   // is released before then, so quick clicks are never dropped.
   let clickQueued = false;
@@ -24,7 +28,9 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   window.addEventListener('blur', () => {
     keys.clear();
     firing = false;
+    aiming = false;
   });
+  window.addEventListener('contextmenu', (event) => event.preventDefault());
 
   const isLocked = () => document.pointerLockElement === element;
 
@@ -36,27 +42,34 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     request?.catch(() => element.requestPointerLock());
   });
   document.addEventListener('pointerlockchange', () => {
-    if (!isLocked()) firing = false;
+    if (isLocked()) return;
+    firing = false;
+    aiming = false;
   });
 
   window.addEventListener('mousemove', (event) => {
     if (!isLocked()) return;
-    yaw -= event.movementX * config.player.lookSensitivity;
-    pitch -= event.movementY * config.player.lookSensitivity;
+    yaw -= event.movementX * config.player.lookSensitivity * lookScale;
+    pitch -= event.movementY * config.player.lookSensitivity * lookScale;
   });
   window.addEventListener('mousedown', (event) => {
     if (isLocked() && event.button === 0) {
       firing = true;
       clickQueued = true;
     }
+    if (isLocked() && event.button === 2) aiming = true;
   });
   window.addEventListener('mouseup', (event) => {
     if (event.button === 0) firing = false;
+    if (event.button === 2) aiming = false;
   });
 
   return {
     isLocked,
     pendingLook: () => ({ yaw, pitch }),
+    setLookScale(scale) {
+      lookScale = scale;
+    },
     poll(playerId) {
       const message: InputMessage = {
         playerId,
@@ -66,6 +79,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         lookPitch: pitch,
         fire: firing || clickQueued,
         reload: keys.has('KeyR'),
+        aim: aiming,
       };
       yaw = 0;
       pitch = 0;

@@ -4,8 +4,18 @@ export const config = {
   playerCount: 1,
   ticksPerSecond: 120,
 
+  view: {
+    fieldOfView: 75,
+    aimFieldOfView: 55,
+    // How strong the lens warp is. 0 is a flat picture.
+    fisheye: 0.12,
+  },
+
   player: {
     moveSpeed: 6,
+    // Fraction of normal speed while aiming down the sights.
+    aimMoveMultiplier: 0.6,
+    aimSeconds: 0.14,
     // Meters per second gained per second. 60 reaches full speed in 0.1 seconds.
     acceleration: 60,
     lookSensitivity: 0.002,
@@ -21,7 +31,7 @@ export const config = {
     reloadSeconds: 1.9,
     range: 50,
     // Only the look of the bullet in flight. Damage still lands the instant you fire.
-    bulletSpeed: 90,
+    bulletSpeed: 140,
   },
 
   zombie: {

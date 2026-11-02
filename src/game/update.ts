@@ -14,6 +14,8 @@ export function step(state: GameState, inputs: InputMessage[], dt: number, level
     if (!player) continue;
 
     look(player, input);
+    // You can't look down the sights mid-reload.
+    player.aiming = input.aim && player.reloadLeft === 0;
     move(player, input, dt, level);
     weapon(state, player, input, dt, level);
   }
@@ -35,8 +37,9 @@ function move(player: Player, input: InputMessage, dt: number, level: Level): vo
     const right = input.moveRight / Math.max(length, 1);
     const sin = Math.sin(player.yaw);
     const cos = Math.cos(player.yaw);
-    targetX = (-sin * forward + cos * right) * config.player.moveSpeed;
-    targetZ = (-cos * forward + -sin * right) * config.player.moveSpeed;
+    const speed = config.player.moveSpeed * (player.aiming ? config.player.aimMoveMultiplier : 1);
+    targetX = (-sin * forward + cos * right) * speed;
+    targetZ = (-cos * forward + -sin * right) * speed;
   }
 
   // Speed up and slow down over a short time instead of jumping.

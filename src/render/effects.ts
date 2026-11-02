@@ -3,17 +3,45 @@ import { config } from '../config';
 import type { Player } from '../game/state';
 import type { Viewmodel } from './viewmodel';
 
-const SPARK_COUNT = 6;
-const SPARK_SECONDS = 0.3;
-const SPARK_SPEED = 3;
+const SPARK_COUNT = 7;
+const SPARK_SECONDS = 0.22;
+const SPARK_SPEED = 3.5;
 const SPARK_GRAVITY = 9;
+const TRAIL_LENGTH = 0.7;
+
+// A jacketed round, as a half outline spun around its length. Base at the bottom, nose up.
+const BULLET_OUTLINE: [number, number][] = [
+  [0, -0.021],
+  [0.0105, -0.021],
+  [0.0115, -0.008],
+  [0.0112, 0.004],
+  [0.009, 0.013],
+  [0.0045, 0.02],
+  [0, 0.022],
+];
 
 interface Bullet {
-  mesh: THREE.Mesh;
+  group: THREE.Group;
+  trail: THREE.Mesh;
+  travelled: number;
   direction: THREE.Vector3;
   end: THREE.Vector3;
   remaining: number;
   hit: boolean;
+}
+
+// A thin cone behind the bullet, brightest at the bullet and fading to nothing.
+function trailGeometry(): THREE.BufferGeometry {
+  const geometry = new THREE.CylinderGeometry(0.009, 0.0015, 1, 8, 1, true);
+  geometry.translate(0, -0.5, 0);
+  const positions = geometry.attributes.position;
+  const colors = new Float32Array(positions.count * 3);
+  for (let i = 0; i < positions.count; i++) {
+    const glow = 1 + positions.getY(i);
+    colors.set([glow, glow * 0.62, glow * 0.3], i * 3);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
 }
 
 interface Spark {
@@ -33,10 +61,22 @@ export function createEffects(
   camera: THREE.PerspectiveCamera,
   viewmodel: Viewmodel,
 ): Effects {
-  const bulletGeometry = new THREE.BoxGeometry(0.03, 0.03, 0.14);
-  const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffe9a0 });
-  const sparkGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+  const bulletGeometry = new THREE.LatheGeometry(
+    BULLET_OUTLINE.map(([radius, height]) => new THREE.Vector2(radius, height)),
+    14,
+  );
+  const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xd9925a });
+  const glowGeometry = trailGeometry();
+  const glowMaterial = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const sparkGeometry = new THREE.BoxGeometry(0.025, 0.025, 0.025);
   const sparkMaterial = new THREE.MeshBasicMaterial({ color: 0xffd27a });
+  const up = new THREE.Vector3(0, 1, 0);
 
   const bullets: Bullet[] = [];
   const sparks: Spark[] = [];
@@ -45,13 +85,18 @@ export function createEffects(
   const muzzle = new THREE.Vector3();
 
   function fireBullet(end: THREE.Vector3, hit: boolean): void {
-    const mesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
-    mesh.position.copy(muzzle);
-    mesh.lookAt(end);
-    scene.add(mesh);
     const direction = end.clone().sub(muzzle);
     const remaining = direction.length();
-    bullets.push({ mesh, direction: direction.normalize(), end, remaining, hit });
+    direction.normalize();
+    const group = new THREE.Group();
+    group.position.copy(muzzle);
+    group.quaternion.setFromUnitVectors(up, direction);
+    const trail = new THREE.Mesh(glowGeometry, glowMaterial);
+    trail.frustumCulled = false;
+    trail.scale.y = 0.001;
+    group.add(new THREE.Mesh(bulletGeometry, bulletMaterial), trail);
+    scene.add(group);
+    bullets.push({ group, trail, travelled: 0, direction, end, remaining, hit });
   }
 
   function burst(at: THREE.Vector3): void {
@@ -88,11 +133,13 @@ export function createEffects(
         const travel = config.pistol.bulletSpeed * frameSeconds;
         if (travel >= bullet.remaining) {
           if (bullet.hit) burst(bullet.end);
-          scene.remove(bullet.mesh);
+          scene.remove(bullet.group);
           bullets.splice(i, 1);
         } else {
-          bullet.mesh.position.addScaledVector(bullet.direction, travel);
+          bullet.group.position.addScaledVector(bullet.direction, travel);
           bullet.remaining -= travel;
+          bullet.travelled += travel;
+          bullet.trail.scale.y = Math.min(bullet.travelled, TRAIL_LENGTH);
         }
       }
 

@@ -11,6 +11,8 @@ export interface Player {
   // Yaw 0 faces -z. Positive yaw turns left.
   yaw: number;
   pitch: number;
+  // True while looking down the sights.
+  aiming: boolean;
   ammo: number;
   // Seconds until the next shot is allowed.
   cooldown: number;
@@ -40,6 +42,7 @@ export function createGameState(level: Level): GameState {
       vz: 0,
       yaw: 0,
       pitch: 0,
+      aiming: false,
       ammo: config.pistol.magazineSize,
       cooldown: 0,
       reloadLeft: 0,

@@ -31,16 +31,19 @@ export function createHud(): Hud {
         context.fillText('Click to play', width / 2, height / 2);
         context.font = '16px sans-serif';
         context.fillText(
-          'WASD move, mouse look, click shoot, R reload, Esc release',
+          'WASD move, mouse look, left click shoot, hold right click aim, R reload, Esc release',
           width / 2,
           height / 2 + 36,
         );
         return;
       }
 
-      context.fillStyle = '#e6e9ef';
-      context.fillRect(width / 2 - 1, height / 2 - 8, 2, 16);
-      context.fillRect(width / 2 - 8, height / 2 - 1, 16, 2);
+      // The gun's own sights take over from the crosshair while aiming.
+      if (!player.aiming) {
+        context.fillStyle = '#e6e9ef';
+        context.fillRect(width / 2 - 1, height / 2 - 8, 2, 16);
+        context.fillRect(width / 2 - 8, height / 2 - 1, 16, 2);
+      }
 
       context.font = '28px sans-serif';
       context.textAlign = 'right';

@@ -12,6 +12,10 @@ const SCALE = 1.7;
 // The gun is angled slightly in toward the crosshair.
 const REST_YAW = 0.1;
 const REST_PITCH = 0.03;
+// Aimed, the sights sit dead on the camera's center line. The pitch levels the rear dots
+// with the front dot, and the height puts that line through the eye.
+const AIM_POSITION = new THREE.Vector3(0, -0.1229, -0.52);
+const AIM_PITCH = 0.0157;
 const FLASH_SECONDS = 0.05;
 const FLASH_SIZE = 0.13;
 const SLIDE_TRAVEL = 0.032;
@@ -22,6 +26,8 @@ const MAGAZINE_READY = new THREE.Vector3(0, -0.085, 0);
 
 export interface Viewmodel {
   update(player: Player, pose: CameraPose, frameSeconds: number): void;
+  // How far up to the eye the gun is: 0 is at the hip, 1 is fully aimed.
+  aimAmount(): number;
   // Where the bullet leaves the gun, in the camera's own space.
   getMuzzle(out: THREE.Vector3): THREE.Vector3;
 }
@@ -402,6 +408,9 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   let slideKick = 0;
   let triggerPull = 0;
   let wasReloading = false;
+  let aimProgress = 0;
+  let aim = 0;
+  const basePosition = new THREE.Vector3();
   let bobPhase = 0;
   let time = 0;
   let swayYaw = 0;
@@ -491,18 +500,27 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       const slideLocked = player.ammo === 0 && !(reloading && progress > 0.85);
       slide.position.z = SLIDE_TRAVEL * Math.max(slideKick, slideLocked ? 1 : 0);
 
+      // Raising the gun to the eye. It also steadies the bob, sway, and recoil.
+      const aimStep = frameSeconds / config.player.aimSeconds;
+      aimProgress = clamp(aimProgress + (player.aiming ? aimStep : -aimStep), 0, 1);
+      aim = smooth(aimProgress);
+      const loose = 1 - aim * 0.8;
+      basePosition.copy(REST_POSITION).lerp(AIM_POSITION, aim);
+
       root.position.set(
-        REST_POSITION.x + bobX - tilt * 0.03,
-        REST_POSITION.y + bobY + breathing + tilt * 0.03 + seat * 0.012,
-        REST_POSITION.z + kick * 0.045,
+        basePosition.x + bobX * loose - tilt * 0.03,
+        basePosition.y + (bobY + breathing) * loose + tilt * 0.03 + seat * 0.012,
+        basePosition.z + kick * 0.045 * (1 - aim * 0.5),
       );
       root.rotation.set(
-        REST_PITCH + swayPitch + kick * 0.09 + tilt * 0.3,
-        REST_YAW + swayYaw,
+        REST_PITCH + (AIM_PITCH - REST_PITCH) * aim + swayPitch * loose + kick * 0.09 * (1 - aim * 0.6) + tilt * 0.3,
+        REST_YAW * (1 - aim) + swayYaw * loose,
         -tilt * 0.35,
       );
       root.updateMatrixWorld(true);
     },
+
+    aimAmount: () => aim,
 
     getMuzzle(out) {
       return muzzle.getWorldPosition(out);

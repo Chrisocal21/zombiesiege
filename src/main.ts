@@ -52,6 +52,8 @@ view.renderer.setAnimationLoop((now) => {
   };
   syncCamera(view.camera, pose);
   viewmodel.update(player, pose, frameSeconds);
+  view.setAim(viewmodel.aimAmount());
+  input.setLookScale(view.camera.fov / config.view.fieldOfView);
   effects.update(player, frameSeconds);
   view.render();
   hud.draw(input.isLocked(), player);

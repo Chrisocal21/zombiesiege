@@ -11,4 +11,5 @@ export interface InputMessage {
   // True while the button is held.
   fire: boolean;
   reload: boolean;
+  aim: boolean;
 }
