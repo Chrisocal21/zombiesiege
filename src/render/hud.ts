@@ -31,7 +31,7 @@ export function createHud(): Hud {
         context.fillText('Click to play', width / 2, height / 2);
         context.font = '16px sans-serif';
         context.fillText(
-          'WASD move, mouse look, left click shoot, hold right click aim, R reload, Esc release',
+          'WASD move, mouse look, left click shoot, hold right click aim, Q and E lean while aiming, R reload',
           width / 2,
           height / 2 + 36,
         );

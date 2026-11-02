@@ -35,6 +35,8 @@ Decisions made during the build, and every open question.
 | Nov 1, 2026 | Slight fisheye lens on the finished picture, strength in `src/config.ts`. It leaves the center of the screen accurate | Chris asked for it |
 | Nov 1, 2026 | Hold right click to aim down the sights: the sight line sits on screen center, the view zooms from 75 to 55 degrees, the crosshair hides, walking drops to 60% speed, and aiming is blocked during a reload. Accuracy is the same as from the hip for now | Chris asked for aiming; the numbers and rules are the coding Claude's |
 | Nov 1, 2026 | Bullet is now a small copper round with a short fading streak at 140 m/s, drawn oversized so it can be seen. Still visual only; damage lands instantly | Chris asked for it |
+| Nov 1, 2026 | Lean on Q and E while aiming: the head moves 0.35 m out and the picture tilts, a wall stops it short, and shots start from the leaned head so you can fire round a corner. The gun stays fixed on screen while the world tilts | Chris asked for it; distance and speed are the coding Claude's numbers |
+| Nov 1, 2026 | Crouching, jumping, climbing, ladders, and back-to-wall peeking are planned as Feature 1.4 in Phase 1. Not built yet | Chris asked for them |
 | Nov 1, 2026 | The weapon is drawn in a separate pass on top of the world so it never pokes through walls, with reflections so the metal reads as metal. Gloves are tan and the sleeve olive so the hand separates from the dark gun at night | Coding Claude |
 | Nov 1, 2026 | Weapon animation: walk bob, breathing, lag when turning, recoil with the slide kicking back, slide locked back when empty, and a reload where the magazine drops out and a new one slides in | Coding Claude |
 | Nov 1, 2026 | Responsiveness pass after Chris's feedback: game ticks raised from 60 to 120 per second, clicks are remembered until the next tick so none are dropped, shot spacing cut from 0.25 to 0.15 seconds, raw mouse input requested | Chris asked for it |
@@ -47,4 +49,6 @@ Decisions made during the build, and every open question.
 - Final name
 - Exact checkpoint spot in the Level 0 room
 - State sync method for Phase 2: full snapshots or only changes
+- Whether back-to-wall peeking needs its own cover mode, or lean is enough
+- Which objects can be climbed and how ladders are marked in the level file
 - How the second weapon for dual wielding is obtained: floor pickups, wall stations, or something else

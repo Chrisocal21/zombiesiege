@@ -12,4 +12,6 @@ export interface InputMessage {
   fire: boolean;
   reload: boolean;
   aim: boolean;
+  // -1 to lean left, 1 to lean right. Only has an effect while aiming.
+  lean: number;
 }

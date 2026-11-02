@@ -4,7 +4,7 @@
 
 ## Zombie Siege
 
-**Overall progress:** 19% (8/42)
+**Overall progress:** 19% (9/48)
 **Last updated:** November 1, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
@@ -40,7 +40,7 @@
 
 ### Phase 1 — Solo Level 0 Complete
 
-**Phase progress:** 0% (0/8)
+**Phase progress:** 7% (1/14)
 
 #### Feature 1.1 — Lives and Survival
 **Progress:** 0% (0/3)
@@ -58,6 +58,15 @@
 **Progress:** 0% (0/2)
 - [ ] Gunshot, groan, and hit clips (CC0)
 - [ ] Each clip's license logged in ASSET_LICENSES.md
+
+#### Feature 1.4 — Movement and Cover
+**Progress:** 17% (1/6)
+- [x] Lean left and right while aiming (Q and E), stopped by walls
+- [ ] Crouching
+- [ ] Jumping
+- [ ] Climbing onto boxes and other objects
+- [ ] Ladders
+- [ ] Back-to-wall cover: peek round the edge and shoot
 
 ---
 
@@ -125,6 +134,7 @@
 | Nov 1, 2026 | Game state, input messages, walking with wall and crate collision, mouselook, canvas HUD | 17% |
 | Nov 1, 2026 | Pistol: shooting, reloading, ammo on the HUD, gun in view with flash and tracer | 20% |
 | Nov 1, 2026 | Weapon visuals: real hand model, redrawn pistol, shadows. Dual wielding added to Phase 3 | 19% |
+| Nov 1, 2026 | Aim down sights, fisheye, bullet look, trigger and reload animation. Lean (Q and E) built. Five more movement and cover tasks added to Phase 1 | 19% |
 
 ---
 

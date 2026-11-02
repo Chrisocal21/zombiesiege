@@ -80,6 +80,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         fire: firing || clickQueued,
         reload: keys.has('KeyR'),
         aim: aiming,
+        lean: (keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0),
       };
       yaw = 0;
       pitch = 0;

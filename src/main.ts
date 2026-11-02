@@ -44,11 +44,14 @@ view.renderer.setAnimationLoop((now) => {
   // Turning is drawn from the latest tick plus the mouse movement not yet sent.
   const blend = leftover / tickSeconds;
   const look = input.pendingLook();
+  const yaw = player.yaw + look.yaw;
   const pose = {
-    x: previousX + (player.x - previousX) * blend,
-    z: previousZ + (player.z - previousZ) * blend,
-    yaw: player.yaw + look.yaw,
+    // The head sits out to the side of the body when leaning.
+    x: previousX + (player.x - previousX) * blend + Math.cos(yaw) * player.leanOffset,
+    z: previousZ + (player.z - previousZ) * blend - Math.sin(yaw) * player.leanOffset,
+    yaw,
     pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, player.pitch + look.pitch)),
+    roll: -(player.leanOffset / config.player.leanDistance) * config.view.leanRoll,
   };
   syncCamera(view.camera, pose);
   viewmodel.update(player, pose, frameSeconds);

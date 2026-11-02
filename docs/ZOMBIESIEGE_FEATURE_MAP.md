@@ -119,6 +119,7 @@ Hold out against waves of zombies in a dark, foggy, blocky world. Kill zombies f
 - Auto-regen health and a points counter
 - Level cleared after wave 5, win screen, menu
 - Basic sound effects
+- [stated] Movement and cover: lean left and right while aiming (Q and E), crouching, jumping, climbing onto boxes and other objects, ladders, and standing with your back to a wall and peeking round the edge to shoot
 
 ---
 

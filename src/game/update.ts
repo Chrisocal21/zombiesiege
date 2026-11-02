@@ -16,6 +16,7 @@ export function step(state: GameState, inputs: InputMessage[], dt: number, level
     look(player, input);
     // You can't look down the sights mid-reload.
     player.aiming = input.aim && player.reloadLeft === 0;
+    lean(player, input, dt, level);
     move(player, input, dt, level);
     weapon(state, player, input, dt, level);
   }
@@ -25,6 +26,26 @@ export function step(state: GameState, inputs: InputMessage[], dt: number, level
 function look(player: Player, input: InputMessage): void {
   player.yaw += input.lookYaw;
   player.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, player.pitch + input.lookPitch));
+}
+
+// A wall closer than this to the head stops the lean, so the view never goes inside it.
+const LEAN_WALL_MARGIN = 0.2;
+
+// Leaning only works while aiming. The head moves out to the side, unless something is in the way.
+function lean(player: Player, input: InputMessage, dt: number, level: Level): void {
+  const target = player.aiming ? input.lean : 0;
+  const maxStep = dt / config.player.leanSeconds;
+  player.lean += Math.max(-maxStep, Math.min(maxStep, target - player.lean));
+
+  const side = Math.sign(player.lean);
+  let reach = Math.abs(player.lean) * config.player.leanDistance;
+  if (reach > 0) {
+    const origin = { x: player.x, y: config.player.eyeHeight, z: player.z };
+    const direction = { x: Math.cos(player.yaw) * side, y: 0, z: -Math.sin(player.yaw) * side };
+    const wall = raycastBoxes(level, origin, direction, reach + LEAN_WALL_MARGIN);
+    if (wall !== null) reach = Math.min(reach, Math.max(0, wall - LEAN_WALL_MARGIN));
+  }
+  player.leanOffset = side * reach;
 }
 
 function move(player: Player, input: InputMessage, dt: number, level: Level): void {
@@ -106,7 +127,12 @@ function weapon(
     y: Math.sin(player.pitch),
     z: -Math.cos(player.yaw) * cosPitch,
   };
-  const origin = { x: player.x, y: config.player.eyeHeight, z: player.z };
+  // The shot starts from the head, so leaning round a corner lets you shoot round it.
+  const origin = {
+    x: player.x + Math.cos(player.yaw) * player.leanOffset,
+    y: config.player.eyeHeight,
+    z: player.z - Math.sin(player.yaw) * player.leanOffset,
+  };
   const hitDistance = raycastBoxes(level, origin, direction, pistol.range);
   const distance = hitDistance ?? pistol.range;
 

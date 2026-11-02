@@ -9,6 +9,8 @@ export const config = {
     aimFieldOfView: 55,
     // How strong the lens warp is. 0 is a flat picture.
     fisheye: 0.12,
+    // How far the picture tilts at a full lean, in radians.
+    leanRoll: 0.2,
   },
 
   player: {
@@ -16,6 +18,9 @@ export const config = {
     // Fraction of normal speed while aiming down the sights.
     aimMoveMultiplier: 0.6,
     aimSeconds: 0.14,
+    // How far the head moves out to the side at a full lean, and how long the lean takes.
+    leanDistance: 0.35,
+    leanSeconds: 0.15,
     // Meters per second gained per second. 60 reaches full speed in 0.1 seconds.
     acceleration: 60,
     lookSensitivity: 0.002,

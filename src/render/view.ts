@@ -44,12 +44,14 @@ export interface CameraPose {
   z: number;
   yaw: number;
   pitch: number;
+  // Tilt to the side, in radians, used when leaning.
+  roll: number;
 }
 
 // Puts the camera at a pose worked out from the game state. The renderer only reads the state.
 export function syncCamera(camera: THREE.PerspectiveCamera, pose: CameraPose): void {
   camera.position.set(pose.x, config.player.eyeHeight, pose.z);
-  camera.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+  camera.rotation.set(pose.pitch, pose.yaw, pose.roll, 'YXZ');
 }
 
 export function createView(level: Level): View {

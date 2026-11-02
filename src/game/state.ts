@@ -13,6 +13,11 @@ export interface Player {
   pitch: number;
   // True while looking down the sights.
   aiming: boolean;
+  // -1 to 1, easing toward the lean being asked for.
+  lean: number;
+  // How far the head is actually out to the side in meters, negative for left. A wall can
+  // stop it short of the full lean.
+  leanOffset: number;
   ammo: number;
   // Seconds until the next shot is allowed.
   cooldown: number;
@@ -43,6 +48,8 @@ export function createGameState(level: Level): GameState {
       yaw: 0,
       pitch: 0,
       aiming: false,
+      lean: 0,
+      leanOffset: 0,
       ammo: config.pistol.magazineSize,
       cooldown: 0,
       reloadLeft: 0,
