@@ -11,7 +11,9 @@
 | Is the HUD drawn on the canvas, as Supplyline does? | Matches Chris's no-HTML rule for UI | Yes; coding Claude to confirm the cost |
 | State sync: full snapshots or only changes? | Shapes the Phase 2 networking build | Coding Claude's call, explained simply to Chris |
 | Can zombies reach a player standing high up? | Right now a player on a crate or the container roof is out of reach, so camping up there wins every wave. Options: zombies climb ladders and crates too, or the high spots get a limit | Let zombies climb crates and ladders in Phase 3; keep high spots safe for now, and see if it spoils Level 0 |
-| Can zombies tear the boards down, as in COD? | Right now boards are permanent for the whole level, so the door choice is final. Tearing them down would make boards something to defend and repair | Keep permanent for Level 0, see how the choice feels |
+| Do zombies chase the players in the street? | Right now the street is empty, so closing the gate is only a short run. A few chasing zombies would make the gate urgent | Add a handful that start far down the road and walk at you |
+| How many levels, and what is each floor? | The tower climbs to the roof and a helicopter airlift. Level 0 is the garage. The floors in between, and how a level ends (a stairwell, a lift), are not planned | Plan in Phase 3 once Level 0 has been played |
+| How does buying work between waves? | The rest between waves is now 25 seconds for it. Wall stations are planned for Phase 3 | Decide with Phase 3 |
 | Is the cover mode as wanted? | Built as F to stick to a wall or barrier, slide along it, and lean without aiming. Low barriers make you duck on your own | Play it, then adjust |
 | How do you get the second weapon for dual wielding? | Chris said "pick up"; the plan so far is wall stations that cost points. Fixed spots, zombie drops, and stations each play differently | Decide in Phase 3; zombie drops were set aside for the first aid kit as unfair |
 
@@ -53,6 +55,7 @@
 | Sound? | Basic CC0 effects | Nov 1, 2026 |
 | Build approach? | Planning files first, then scaffold in VS Code | Nov 1, 2026 |
 | What is "back against a wall and peek with the gun"? | A cover mode on F, plus the lean | Nov 1, 2026 |
+| Boards: temporary or permanent? | Permanent, one bundle per door and two bundles, so the choice is a strategy | Nov 1, 2026 |
 | What can be climbed, and how? | Jump facing a ledge up to 2.25 m above your feet and you pull up onto it; ladders are listed in the level file | Nov 1, 2026 |
 
 ---

@@ -4,7 +4,7 @@
 
 ## Zombie Siege
 
-**Overall progress:** 38% (19/50)
+**Overall progress:** 42% (23/55)
 **Last updated:** November 1, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
@@ -40,7 +40,7 @@
 
 ### Phase 1 — Solo Level 0 Complete
 
-**Phase progress:** 56% (9/16)
+**Phase progress:** 65% (13/20)
 
 #### Feature 1.1 — Lives and Survival
 **Progress:** 33% (1/3)
@@ -69,9 +69,16 @@
 - [x] Back-to-wall cover: peek round the edge and shoot
 
 #### Feature 1.5 — Doorways and Boards
-**Progress:** 100% (2/2)
+**Progress:** 100% (3/3)
+- [x] Start in the street, run down a ramp, and close the metal gate; closing it starts the 30 second countdown
 - [x] Zombies come out of four doorways in the walls
-- [x] Two bundles of boards on the floor; board up two of the four doors in the 30 second opening, forcing the waves through the other two
+- [x] Two bundles of boards on the floor; board up two of the four doors in the 30 second countdown, forcing the waves through the other two
+
+#### Feature 1.6 — Menu and HUD
+**Progress:** 100% (3/3)
+- [x] Title screen and pause menu
+- [x] Controls screen where every key and mouse button can be rebound, and a settings screen
+- [x] Studio-quality HUD: compass, radar, health, ammo, prompts, hit markers, damage direction, banners
 
 ---
 
@@ -103,9 +110,10 @@
 
 ### Phase 3 — Level 1 and Spending
 
-**Phase progress:** 0% (0/6)
+**Phase progress:** 0% (0/7)
 
 - [ ] Level 1 map with multiple areas
+- [ ] Climb the tower: each level is a floor higher, ending on the roof with a helicopter airlift
 - [ ] Doors that cost points
 - [ ] Weapon stations
 - [ ] More weapons and limited ammo
@@ -142,6 +150,7 @@
 | Nov 1, 2026 | Aim down sights, fisheye, bullet look, trigger and reload animation. Lean (Q and E) built. Five more movement and cover tasks added to Phase 1 | 19% |
 | Nov 1, 2026 | Crouch, jump, ledge climbing, ladders and cover built. Zombies, waves and health regeneration built. Level 0 rebuilt with textured materials, lamps, props and a night sky | 35% |
 | Nov 1, 2026 | Four doorways with dark alcoves behind them, two bundles of boards to find, 30 second opening to board up two doors, P to freeze the zombies for testing | 38% |
+| Nov 1, 2026 | Level 0 rebuilt as a parking garage under a tower, with a street, ramp and gate; waves rest 25 seconds; title and pause menu with rebindable keys and settings; new HUD | 42% |
 
 ---
 

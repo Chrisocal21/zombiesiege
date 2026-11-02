@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { settings } from '../client/settings';
 import { config } from '../config';
 import type { GameState } from '../game/state';
 import type { Level } from '../levels/types';
@@ -15,7 +16,8 @@ export interface View {
   renderer: THREE.WebGLRenderer;
   // Zooms the world view: 0 is the normal view, 1 is fully aimed.
   setAim(amount: number): void;
-  render(): void;
+  // Draws the world, then the weapon on top unless asked to leave it out (the title screen).
+  render(showWeapon?: boolean): void;
   // Call once per frame with the running time in seconds and the game state.
   animate(time: number, state: GameState): void;
 }
@@ -168,16 +170,21 @@ export function createView(level: Level): View {
     renderer,
     animate: (time, state) => world.update(time, state),
     setAim(amount) {
-      const { fieldOfView, aimFieldOfView } = config.view;
+      // The aimed view keeps the same proportion to the chosen field of view.
+      const fieldOfView = settings.fieldOfView;
+      const aimFieldOfView = fieldOfView * (config.view.aimFieldOfView / config.view.fieldOfView);
       camera.fov = fieldOfView + (aimFieldOfView - fieldOfView) * amount;
       camera.updateProjectionMatrix();
     },
-    render() {
+    render(showWeapon = true) {
+      lensMaterial.uniforms.strength.value = settings.fisheye;
       renderer.setRenderTarget(frame);
       renderer.clear();
       renderer.render(scene, camera);
-      renderer.clearDepth();
-      renderer.render(viewScene, viewCamera);
+      if (showWeapon) {
+        renderer.clearDepth();
+        renderer.render(viewScene, viewCamera);
+      }
       renderer.setRenderTarget(null);
       renderer.render(lensScene, lensCamera);
     },

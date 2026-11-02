@@ -83,8 +83,8 @@ export function buildVehicle(box: LevelBox): THREE.Group {
     // The cabin: dark glass, with a painted roof and pillars.
     const cabinBottom = lowerBottom + lowerHeight - 0.02;
     const cabinHeight = height - cabinBottom;
-    const cabinLength = length * 0.52;
-    const cabinZ = length * 0.06;
+    const cabinLength = length * 0.44;
+    const cabinZ = length * 0.1;
     add(body, new THREE.Mesh(round(width * 0.84, cabinHeight, cabinLength, 0.1), GLASS), 0, cabinBottom + cabinHeight / 2, cabinZ, false);
     add(body, new THREE.Mesh(round(width * 0.82, 0.07, cabinLength * 0.86, 0.03), paint), 0, height - 0.03, cabinZ);
     for (const side of [-1, 1]) {

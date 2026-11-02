@@ -21,7 +21,7 @@ Hold out against waves of zombies in a dark, foggy, blocky world. Kill zombies f
 
 | Item | Level 0 |
 | --- | --- |
-| Map | One small room, built from a level data file |
+| Map | A parking garage and loading dock under a tower, reached from the street by a ramp and a metal gate, built from a level data file |
 | Players | 1 (2 in Phase 2) |
 | Weapon | One pistol, unlimited ammo, reload |
 | Zombies | One type, chases the nearest player |
@@ -119,6 +119,10 @@ Hold out against waves of zombies in a dark, foggy, blocky world. Kill zombies f
 - Auto-regen health and a points counter
 - Level cleared after wave 5, win screen, menu
 - Basic sound effects
+- [stated] Level flow: the players start in the street, run across it and down a ramp into the garage, and close the metal gate behind them. Closing the gate starts the 30 second countdown to choose which doors to block, and wave 1 follows. The boards are permanent, so the door choice is a strategy
+- [stated] Between waves is a rest of 20 to 30 seconds, long enough for buying weapons and moving on once those exist
+- [stated] Each level is a floor higher up the tower, ending on the roof where the players are airlifted out by helicopter
+- [stated] A studio-quality HUD and menus: title screen, pause menu, rebindable keys, settings
 - [stated] Doorways and boards: zombies come out of four doorways. Two bundles of boards lie on the floor to be found, and in the opening 30 seconds the player boards up two of the four doors, so the waves have to use the other two
 - [stated] Movement and cover: lean left and right while aiming (Q and E), crouching, jumping, climbing onto boxes and other objects, ladders, and standing with your back to a wall and peeking round the edge to shoot
 
