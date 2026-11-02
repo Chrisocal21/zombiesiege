@@ -4,6 +4,9 @@ import type { InputMessage } from '../game/inputs';
 export interface LocalInput {
   // Turns what the keyboard and mouse did since the last call into one message.
   poll(playerId: number): InputMessage;
+  // Mouse turning that has happened but has not been sent in a message yet.
+  // The camera adds it on so looking around never waits for the next tick.
+  pendingLook(): { yaw: number; pitch: number };
   isLocked(): boolean;
 }
 
@@ -12,6 +15,9 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   let yaw = 0;
   let pitch = 0;
   let firing = false;
+  // A click is remembered until the next message goes out, even if the button
+  // is released before then, so quick clicks are never dropped.
+  let clickQueued = false;
 
   window.addEventListener('keydown', (event) => keys.add(event.code));
   window.addEventListener('keyup', (event) => keys.delete(event.code));
@@ -23,7 +29,11 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   const isLocked = () => document.pointerLockElement === element;
 
   element.addEventListener('click', () => {
-    if (!isLocked()) element.requestPointerLock();
+    if (isLocked()) return;
+    // Raw mouse movement skips the operating system's mouse acceleration.
+    // Not every browser allows it, so fall back to the normal lock.
+    const request = element.requestPointerLock({ unadjustedMovement: true });
+    request?.catch(() => element.requestPointerLock());
   });
   document.addEventListener('pointerlockchange', () => {
     if (!isLocked()) firing = false;
@@ -35,7 +45,10 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     pitch -= event.movementY * config.player.lookSensitivity;
   });
   window.addEventListener('mousedown', (event) => {
-    if (isLocked() && event.button === 0) firing = true;
+    if (isLocked() && event.button === 0) {
+      firing = true;
+      clickQueued = true;
+    }
   });
   window.addEventListener('mouseup', (event) => {
     if (event.button === 0) firing = false;
@@ -43,6 +56,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
 
   return {
     isLocked,
+    pendingLook: () => ({ yaw, pitch }),
     poll(playerId) {
       const message: InputMessage = {
         playerId,
@@ -50,11 +64,12 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         moveRight: (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0),
         lookYaw: yaw,
         lookPitch: pitch,
-        fire: firing,
+        fire: firing || clickQueued,
         reload: keys.has('KeyR'),
       };
       yaw = 0;
       pitch = 0;
+      clickQueued = false;
       return message;
     },
   };

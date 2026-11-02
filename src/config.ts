@@ -2,10 +2,12 @@
 // Distances are meters, times are seconds, speeds are meters per second.
 export const config = {
   playerCount: 1,
-  ticksPerSecond: 60,
+  ticksPerSecond: 120,
 
   player: {
     moveSpeed: 6,
+    // Meters per second gained per second. 60 reaches full speed in 0.1 seconds.
+    acceleration: 60,
     lookSensitivity: 0.002,
     eyeHeight: 1.6,
     radius: 0.4,
@@ -14,7 +16,7 @@ export const config = {
 
   pistol: {
     damage: 25,
-    secondsBetweenShots: 0.25,
+    secondsBetweenShots: 0.15,
     magazineSize: 12,
     reloadSeconds: 1.5,
     range: 50,

@@ -5,7 +5,7 @@ import { raycastBoxes } from './hitscan';
 import type { InputMessage } from './inputs';
 import type { GameState, Player } from './state';
 
-const MAX_PITCH = Math.PI / 2 - 0.05;
+export const MAX_PITCH = Math.PI / 2 - 0.05;
 
 // Advances the game by one tick. Rules only, nothing here knows about Three.js.
 export function step(state: GameState, inputs: InputMessage[], dt: number, level: Level): void {
@@ -26,21 +26,42 @@ function look(player: Player, input: InputMessage): void {
 }
 
 function move(player: Player, input: InputMessage, dt: number, level: Level): void {
+  let targetX = 0;
+  let targetZ = 0;
   const length = Math.hypot(input.moveForward, input.moveRight);
-  if (length === 0) return;
+  if (length > 0) {
+    // Dividing by length keeps diagonal movement from being faster.
+    const forward = input.moveForward / Math.max(length, 1);
+    const right = input.moveRight / Math.max(length, 1);
+    const sin = Math.sin(player.yaw);
+    const cos = Math.cos(player.yaw);
+    targetX = (-sin * forward + cos * right) * config.player.moveSpeed;
+    targetZ = (-cos * forward + -sin * right) * config.player.moveSpeed;
+  }
 
-  // Dividing by length keeps diagonal movement from being faster.
-  const forward = input.moveForward / Math.max(length, 1);
-  const right = input.moveRight / Math.max(length, 1);
-  const speed = config.player.moveSpeed * dt;
-  const sin = Math.sin(player.yaw);
-  const cos = Math.cos(player.yaw);
+  // Speed up and slow down over a short time instead of jumping.
+  const dx = targetX - player.vx;
+  const dz = targetZ - player.vz;
+  const gap = Math.hypot(dx, dz);
+  const maxChange = config.player.acceleration * dt;
+  if (gap <= maxChange) {
+    player.vx = targetX;
+    player.vz = targetZ;
+  } else {
+    player.vx += (dx / gap) * maxChange;
+    player.vz += (dz / gap) * maxChange;
+  }
+
+  if (player.vx === 0 && player.vz === 0) return;
   const moved = resolveCircle(
     level,
-    player.x + (-sin * forward + cos * right) * speed,
-    player.z + (-cos * forward + -sin * right) * speed,
+    player.x + player.vx * dt,
+    player.z + player.vz * dt,
     config.player.radius,
   );
+  // Whatever a wall stopped is taken out of the speed, so you slide along it.
+  player.vx = (moved.x - player.x) / dt;
+  player.vz = (moved.z - player.z) / dt;
   player.x = moved.x;
   player.z = moved.z;
 }

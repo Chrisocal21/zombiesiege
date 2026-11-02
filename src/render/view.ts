@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { config } from '../config';
-import type { Player } from '../game/state';
 import type { Level } from '../levels/types';
 
 const NIGHT = 0x0b0e14;
@@ -11,10 +10,17 @@ export interface View {
   renderer: THREE.WebGLRenderer;
 }
 
-// Puts the camera where the player is. The renderer only reads the game state.
-export function syncCamera(camera: THREE.PerspectiveCamera, player: Player): void {
-  camera.position.set(player.x, config.player.eyeHeight, player.z);
-  camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+export interface CameraPose {
+  x: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+}
+
+// Puts the camera at a pose worked out from the game state. The renderer only reads the state.
+export function syncCamera(camera: THREE.PerspectiveCamera, pose: CameraPose): void {
+  camera.position.set(pose.x, config.player.eyeHeight, pose.z);
+  camera.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
 }
 
 export function createView(level: Level): View {

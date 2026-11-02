@@ -5,6 +5,9 @@ export interface Player {
   id: number;
   x: number;
   z: number;
+  // Meters per second.
+  vx: number;
+  vz: number;
   // Yaw 0 faces -z. Positive yaw turns left.
   yaw: number;
   pitch: number;
@@ -31,6 +34,8 @@ export function createGameState(level: Level): GameState {
       id,
       x: spawn.x,
       z: spawn.z,
+      vx: 0,
+      vz: 0,
       yaw: 0,
       pitch: 0,
       ammo: config.pistol.magazineSize,

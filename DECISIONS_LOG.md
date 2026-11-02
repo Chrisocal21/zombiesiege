@@ -22,6 +22,8 @@ Decisions made during the build, and every open question.
 | Nov 1, 2026 | Click the game to capture the mouse; Esc releases it | Coding Claude |
 | Nov 1, 2026 | Pistol fires while the mouse button is held, up to 4 shots per second; R reloads; pulling the trigger on an empty magazine reloads automatically | Coding Claude |
 | Nov 1, 2026 | Shots are instant hits along the aim line, not travelling bullets | Coding Claude |
+| Nov 1, 2026 | Responsiveness pass after Chris's feedback: game ticks raised from 60 to 120 per second, clicks are remembered until the next tick so none are dropped, shot spacing cut from 0.25 to 0.15 seconds, raw mouse input requested | Chris asked for it |
+| Nov 1, 2026 | Movement now speeds up and slows down over 0.1 seconds and slides along walls; the picture is drawn between the last two ticks, and mouse turning is drawn immediately without waiting for a tick | Chris asked for it |
 
 ---
 
