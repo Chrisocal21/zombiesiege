@@ -1,8 +1,8 @@
 import type { Level } from './types';
 
-const FLOOR = '#2a2d33';
-const WALL = '#3b3f47';
-const CRATE = '#5a4630';
+const FLOOR = '#3a3e46';
+const WALL = '#596070';
+const CRATE = '#8a6a44';
 
 // One small 20 by 20 room with two crates for cover.
 export const level0: Level = {
