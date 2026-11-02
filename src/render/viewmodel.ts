@@ -5,10 +5,10 @@ import type { Player } from '../game/state';
 import type { CameraPose } from './view';
 
 // Everything here is in meters. The gun points down -z, +x is right, +y is up.
-const REST_POSITION = new THREE.Vector3(0.15, -0.17, -0.66);
-const SCALE = 2;
+const REST_POSITION = new THREE.Vector3(0.2, -0.2, -0.62);
+const SCALE = 1.7;
 // The gun is angled slightly in toward the crosshair.
-const REST_YAW = 0.07;
+const REST_YAW = 0.1;
 const REST_PITCH = 0.03;
 const FLASH_SECONDS = 0.05;
 const SLIDE_TRAVEL = 0.032;
@@ -170,20 +170,19 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
   // The right hand, all rounded: a soft palm and heel, then three fingers that wrap round the
   // front of the grip and curl back along the left side, each with a knuckle joint.
-  softBox(grip, [0.026, 0.085, 0.045], 0.011, glove, [0.03, -0.05, 0.0]);
-  softBox(grip, [0.05, 0.07, 0.022], 0.01, glove, [0.012, -0.05, 0.036]);
-  ball(grip, 0.02, glove, [0.004, -0.012, 0.034], [1.15, 0.75, 1]);
-  ball(grip, 0.02, glove, [-0.022, -0.03, 0.026], [0.85, 1.25, 1.05]);
+  softBox(grip, [0.026, 0.078, 0.04], 0.01, glove, [0.028, -0.047, 0.0]);
+  softBox(grip, [0.046, 0.066, 0.02], 0.009, glove, [0.012, -0.047, 0.034]);
+  ball(grip, 0.015, glove, [-0.02, -0.026, 0.028], [0.8, 1.3, 1]);
   const fingers = [
-    { y: -0.03, radius: 0.0108 },
-    { y: -0.052, radius: 0.0105 },
-    { y: -0.073, radius: 0.0095 },
+    { y: -0.028, radius: 0.0092 },
+    { y: -0.0475, radius: 0.0092 },
+    { y: -0.066, radius: 0.0082 },
   ];
   for (const { y, radius } of fingers) {
     const frontZ = -0.025 - radius;
     capsule(grip, radius, 0.05, glove, [0.008, y, frontZ], 'x');
-    capsule(grip, radius, 0.02, glove, [-0.0265, y, frontZ + 0.014], 'z');
-    ball(grip, radius, glove, [-0.0265, y, frontZ]);
+    capsule(grip, radius, 0.016, glove, [-0.0255, y, frontZ + 0.012], 'z');
+    ball(grip, radius, glove, [-0.0255, y, frontZ]);
   }
   // Trigger finger along the frame, thumb on the other side.
   capsule(root, 0.0095, 0.05, glove, [0.026, 0.006, -0.045], 'z');
@@ -212,10 +211,9 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     mesh.position.z = z;
     arm.add(mesh);
   };
-  ball(arm, 0.03, glove, [0, 0, 0]);
-  tube(0.03, 0.034, 0.06, glove, 0.03);
-  tube(0.043, 0.043, 0.02, sleeveCuff, 0.07);
-  tube(0.04, 0.037, 0.32, sleeve, 0.24);
+  tube(0.026, 0.028, 0.03, glove, 0.015);
+  tube(0.036, 0.036, 0.016, sleeveCuff, 0.038);
+  tube(0.034, 0.036, 0.34, sleeve, 0.216);
 
   // Muzzle flash: a bright core with four spikes, shown for a moment after each shot.
   const flash = new THREE.Group();
