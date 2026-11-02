@@ -6,8 +6,8 @@ export interface Vec3 {
 }
 
 // What a box is made of. The renderer picks a material from this; the rules ignore it.
-// 'board', 'gate' and 'step' are solid but never drawn as boxes: boards and the gate are drawn
-// from the game state, and steps are the stair-stepped stand-in for a smooth ramp.
+// 'board', 'gate', 'lift' and 'step' are solid but never drawn as boxes: boards, the gate and the lift doors
+// are drawn from the game state, and steps are the stair-stepped stand-in for a smooth ramp.
 export type Surface =
   | 'floor'
   | 'wall'
@@ -23,6 +23,7 @@ export type Surface =
   | 'building'
   | 'board'
   | 'gate'
+  | 'lift'
   | 'step';
 
 export interface LevelBox {
@@ -81,6 +82,22 @@ export interface Ramp {
   rise: number;
 }
 
+// The elevator to the next floor. Its doors are a gap in the wall like any doorway, with a cab
+// behind it. The doors open once the floor is cleared, and the cab carries everyone up.
+export interface Elevator extends Door {
+  // How far into the cab, from the wall's center line, counts as being inside it, and how wide.
+  cabDepth: number;
+  cabWidth: number;
+}
+
+// A buying point on a wall. Walk up, press use, and pay points.
+export interface Station {
+  kind: 'ammo' | 'shotgun';
+  // The middle of the station on the wall face, and the direction it faces into the room.
+  position: Vec3;
+  normal: { x: number; z: number };
+}
+
 // A lamp: a glowing fitting with a real light in it.
 export interface LevelLight {
   position: Vec3;
@@ -97,6 +114,8 @@ export interface Level {
   lights: LevelLight[];
   doors: Door[];
   gate: Gate;
+  elevator: Elevator;
+  stations: Station[];
   ramp: Ramp;
   // Bundles of boards lying on the floor. Each one boards up a door.
   barricadeBars: Vec3[];

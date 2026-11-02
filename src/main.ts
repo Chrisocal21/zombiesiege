@@ -1,4 +1,5 @@
 import { loadBindings } from './client/bindings';
+import { createAudio } from './client/audio';
 import { createLocalInput } from './client/localInput';
 import { loadSettings, settings } from './client/settings';
 import { config } from './config';
@@ -26,6 +27,7 @@ const input = createLocalInput(view.renderer.domElement);
 const viewmodel = createViewmodel(view.viewScene);
 const effects = createEffects(view.scene, view.camera, viewmodel);
 const zombieViews = createZombieViews(view.scene);
+const audio = createAudio();
 
 const tickSeconds = 1 / config.ticksPerSecond;
 let reviewing = false;
@@ -60,6 +62,12 @@ const menu = createMenu({
     leftover = 0;
     enterGame();
   },
+  toTitle() {
+    state = createGameState(level);
+    previous = startPose();
+    leftover = 0;
+    menu.open('main');
+  },
 });
 const hud = createHud(level, menu);
 
@@ -82,6 +90,16 @@ view.renderer.setAnimationLoop((now) => {
       step(state, [input.poll(0)], tickSeconds);
       leftover -= tickSeconds;
     }
+  }
+  // The run is over: show the victory screen and let go of the mouse.
+  if (state.waves.phase === 'won' && !menu.isOpen()) {
+    menu.open('victory', {
+      floors: state.floor + 1,
+      points: state.points[0] ?? 0,
+      lives: state.lives,
+      seconds: state.tick / config.ticksPerSecond,
+    });
+    document.exitPointerLock();
   }
   // A restart replaces the player object, so it is looked up fresh every frame.
   const player = state.players[0];
@@ -141,6 +159,7 @@ view.renderer.setAnimationLoop((now) => {
   input.setLookScale(view.camera.fov / settings.fieldOfView);
   effects.update(player, paused ? 0 : frameSeconds, state.level);
   zombieViews.update(state, paused ? 0 : frameSeconds);
+  audio.update(state, player, paused || onTitle, frameSeconds);
   view.render(!onTitle);
   if (outfitPreview) view.renderOutfitPreview();
   hud.draw(state, player, now / 1000);

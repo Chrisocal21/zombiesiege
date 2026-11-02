@@ -36,6 +36,8 @@ export const config = {
     height: 1.8,
     radius: 0.4,
     maxHealth: 100,
+    // Going down costs one. With none left the floor starts over from wave 1.
+    lives: 3,
     // Health comes back after this many seconds without being hit.
     regenDelaySeconds: 5,
     regenPerSecond: 15,
@@ -56,6 +58,9 @@ export const config = {
     damage: 25,
     secondsBetweenShots: 0.15,
     magazineSize: 12,
+    // Spare rounds carried beyond the magazine at the start, and the most that can be carried.
+    reserveStart: 48,
+    reserveMax: 96,
     reloadSeconds: 1.9,
     range: 50,
     // Only the look of the bullet in flight. Damage still lands the instant you fire.
@@ -75,6 +80,57 @@ export const config = {
     gateSeconds: 2.5,
     // How far inside the room a zombie walks before it goes after you.
     entryDistance: 1.8,
+  },
+
+  points: {
+    // Earned for every bullet that hits a zombie, and for the bullet that kills it.
+    perHit: 10,
+    perKill: 60,
+    // A headshot kills outright and pays more than any other kill.
+    perHeadshot: 150,
+  },
+
+  // The sawed-off shotgun, bought at a wall station. Damage is per pellet.
+  shotgun: {
+    damage: 22,
+    pellets: 8,
+    // Half-angle of the cone the pellets scatter in, in radians.
+    spread: 0.075,
+    secondsBetweenShots: 0.9,
+    magazineSize: 2,
+    reserveStart: 12,
+    reserveMax: 24,
+    reloadSeconds: 2.3,
+    range: 20,
+    bulletSpeed: 140,
+  },
+
+  stations: {
+    // How close to a wall station you must be to use it.
+    range: 1.8,
+    // Points for a full resupply of spare rounds.
+    ammoCost: 100,
+    // Points for the sawed-off shotgun, and for filling its shells once owned.
+    shotgunCost: 500,
+    shellCost: 200,
+  },
+
+  tower: {
+    // How many floors there are to fight through, counting the ground floor. Clearing the top one
+    // wins the run. A stand-in until the roof and the helicopter exist.
+    floors: 3,
+  },
+
+  elevator: {
+    // How long the doors take to slide, for the picture only.
+    doorSeconds: 1.4,
+    // The ride up, from the doors closing to the doors opening on the next floor.
+    rideSeconds: 6,
+    // After arriving, how long the doors stay open before they close again behind the players.
+    arrivalOpenSeconds: 4,
+    // Each floor up adds this fraction to every wave's zombie count and to their speed.
+    extraZombiesPerFloor: 0.4,
+    speedPerFloor: 0.08,
   },
 
   zombie: {
@@ -104,6 +160,7 @@ export const config = {
     prepSeconds: 30,
     // The short pause before the same wave starts again after dying.
     startDelaySeconds: 3,
-    levelClearedSeconds: 8,
+    // The pause on the floor-cleared message before the elevator opens.
+    levelClearedSeconds: 4,
   },
 } as const;

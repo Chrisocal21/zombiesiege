@@ -11,6 +11,7 @@ export type Action =
   | 'fire'
   | 'aim'
   | 'reload'
+  | 'swap'
   | 'leanLeft'
   | 'leanRight'
   | 'cover'
@@ -34,6 +35,7 @@ export const ACTIONS: ActionInfo[] = [
   { id: 'fire', label: 'Fire', group: 'Combat' },
   { id: 'aim', label: 'Aim down sights', group: 'Combat' },
   { id: 'reload', label: 'Reload', group: 'Combat' },
+  { id: 'swap', label: 'Swap weapon', group: 'Combat' },
   { id: 'leanLeft', label: 'Lean left', group: 'Combat' },
   { id: 'leanRight', label: 'Lean right', group: 'Combat' },
   { id: 'cover', label: 'Take cover', group: 'Interaction' },
@@ -52,6 +54,7 @@ const DEFAULTS: Record<Action, string> = {
   fire: 'Mouse0',
   aim: 'Mouse2',
   reload: 'KeyR',
+  swap: 'KeyX',
   leanLeft: 'KeyQ',
   leanRight: 'KeyE',
   cover: 'KeyF',

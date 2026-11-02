@@ -459,6 +459,7 @@ const TILE_METERS: Record<Surface, number> = {
   slab: 4,
   building: 12,
   gate: 1,
+  lift: 1,
   step: 1,
 };
 

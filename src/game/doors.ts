@@ -1,11 +1,13 @@
 import { config } from '../config';
 import type { Door, LevelBox } from '../levels/types';
 import type { GameState, Player } from './state';
+import { giveShotgun, owns, reserveOf, setReserve, weaponStats } from './weapons';
 
 export type Interaction =
   | { kind: 'pickup'; index: number }
   | { kind: 'door'; index: number }
   | { kind: 'gate' }
+  | { kind: 'station'; index: number }
   | null;
 
 // The spot a player stands at to board a door up, a little way inside the room.
@@ -20,6 +22,14 @@ export function interactionTarget(state: GameState, player: Player): Interaction
     const panel = state.level.gate.panel;
     const near = Math.hypot(panel.x - player.x, panel.z - player.z) <= config.doors.gateRange;
     return near && player.y < 1 ? { kind: 'gate' } : null;
+  }
+  if (state.waves.phase === 'prep' || state.waves.phase === 'break' || state.waves.phase === 'active') {
+    const stations = state.level.stations;
+    for (let index = 0; index < stations.length; index++) {
+      const station = stations[index];
+      const near = Math.hypot(station.position.x - player.x, station.position.z - player.z) <= config.stations.range;
+      if (near && player.y < 1) return { kind: 'station', index };
+    }
   }
   if (state.waves.phase !== 'prep') return null;
 
@@ -69,6 +79,11 @@ export function useAction(state: GameState, player: Player): void {
   const target = interactionTarget(state, player);
   if (!target) return;
 
+  if (target.kind === 'station') {
+    buy(state, player, target.index);
+    return;
+  }
+
   if (target.kind === 'gate') {
     closeGate(state);
     return;
@@ -82,6 +97,41 @@ export function useAction(state: GameState, player: Player): void {
   player.bars--;
   state.doors[target.index] = { boarded: true, boardedTick: state.tick };
   state.level.boxes.push(boardBox(state.level.doors[target.index]));
+}
+
+export interface Offer {
+  // What pressing use does here: 'weapon' buys the gun itself, 'ammo' fills spare rounds.
+  action: 'weapon' | 'ammo';
+  label: string;
+  cost: number;
+  // 'ok' can be bought now, 'full' has nothing to fill, 'poor' costs more than the player has.
+  status: 'ok' | 'full' | 'poor';
+}
+
+// What a station is selling this player right now.
+export function stationOffer(state: GameState, player: Player, index: number): Offer {
+  const kind = state.level.stations[index].kind;
+  const points = state.points[player.id] ?? 0;
+  if (kind === 'shotgun' && !owns(player, 'shotgun')) {
+    return { action: 'weapon', label: 'Buy sawed-off shotgun', cost: config.stations.shotgunCost, status: points >= config.stations.shotgunCost ? 'ok' : 'poor' };
+  }
+  // The ammo locker fills whatever is in hand, and the weapon wall fills its own gun's shells.
+  const weapon = kind === 'shotgun' ? 'shotgun' : player.weapon;
+  const cost = kind === 'shotgun' ? config.stations.shellCost : config.stations.ammoCost;
+  const full = reserveOf(player, weapon) >= weaponStats(weapon).reserveMax;
+  return { action: 'ammo', label: kind === 'shotgun' ? 'Buy shells' : 'Buy ammo', cost, status: full ? 'full' : points >= cost ? 'ok' : 'poor' };
+}
+
+function buy(state: GameState, player: Player, index: number): void {
+  const offer = stationOffer(state, player, index);
+  if (offer.status !== 'ok') return;
+  state.points[player.id] -= offer.cost;
+  if (offer.action === 'weapon') giveShotgun(player, state.tick);
+  else {
+    const weapon = state.level.stations[index].kind === 'shotgun' ? 'shotgun' : player.weapon;
+    setReserve(player, weapon, weaponStats(weapon).reserveMax);
+  }
+  player.lastBuyTick = state.tick;
 }
 
 // Closing the gate shuts the way out and starts the countdown for boarding up doors.

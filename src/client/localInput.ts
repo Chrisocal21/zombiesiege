@@ -21,7 +21,7 @@ export interface LocalInput {
 }
 
 // Presses that are remembered until the next message goes out, even if released first.
-const LATCHED: Action[] = ['jump', 'cover', 'use', 'freeze'];
+const LATCHED: Action[] = ['jump', 'cover', 'use', 'freeze', 'swap'];
 
 export function createLocalInput(element: HTMLElement): LocalInput {
   const down = new Set<string>();
@@ -118,6 +118,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         jump: queued.has('jump') || held('jump'),
         toggleCover: queued.has('cover'),
         use: queued.has('use'),
+        swap: queued.has('swap'),
         toggleFreeze: queued.has('freeze'),
       };
       yaw = 0;

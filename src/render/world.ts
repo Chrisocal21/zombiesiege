@@ -14,6 +14,8 @@ import {
   surfaceMaterial,
   tileMeters,
 } from './materials';
+import { buildLift } from './lift';
+import { buildStations } from './station';
 import { buildGate, buildStreet } from './street';
 import { asphaltMaterial, hazardMaterial, labelTexture } from './streetTextures';
 import { buildCartons, buildPillar, buildVehicle } from './vehicles';
@@ -83,7 +85,7 @@ const slabMaterials = (() => {
 // for walking on.
 function buildBoxObject(box: LevelBox, index: number): THREE.Object3D | null {
   const surface = box.surface ?? 'plain';
-  if (surface === 'board' || surface === 'gate' || surface === 'step') return null;
+  if (surface === 'board' || surface === 'gate' || surface === 'lift' || surface === 'step') return null;
   if (surface === 'car' || surface === 'van') return buildVehicle(box);
   if (surface === 'building' || surface === 'crate') return buildArchitecture(box);
   if (surface === 'cartons') return buildCartons(box);
@@ -610,12 +612,16 @@ export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.
   buildStreet(scene, level, glowMap);
   const syncDoors = buildDoors(scene, level, glowMap);
   const syncGate = buildGate(scene, level, glowMap);
+  const syncLift = buildLift(scene, level, glowMap);
+  const syncStations = buildStations(scene, level, glowMap);
 
   return {
     update(time, state) {
       animateDressing(time);
       syncDoors(state, time);
       syncGate(state, time);
+      syncLift(state, time);
+      syncStations(state, time);
       for (const lamp of lamps) {
         let brightness = 1;
         if (lamp.flicker && !settings.reducedFlashing) {

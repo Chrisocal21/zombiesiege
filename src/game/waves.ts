@@ -1,23 +1,40 @@
 import { config } from '../config';
 import type { Level } from '../levels/types';
-import { doorwaySpawn, openDoors, resetDoors } from './doors';
+import { closeLift, everyoneInCab, openLift } from './elevator';
+import { closeGate, doorwaySpawn, openDoors, resetDoors } from './doors';
 import { createPlayer, type GameState } from './state';
+import { guaranteeAmmo } from './weapons';
 import { aliveZombies, spawnZombie } from './zombies';
 
 export const TOTAL_WAVES = config.waves.zombiesPerWave.length;
+
+export function isTopFloor(state: GameState): boolean {
+  return state.floor >= config.tower.floors - 1;
+}
+
+// Every floor up brings more zombies to each wave.
+export function zombiesInWave(floor: number, wave: number): number {
+  return Math.round(config.waves.zombiesPerWave[wave - 1] * (1 + config.elevator.extraZombiesPerFloor * floor));
+}
 
 // Spawns the wave's zombies one at a time, runs the break between waves, and resets the wave if
 // every player is down.
 export function updateWaves(state: GameState, dt: number, level: Level): void {
   const waves = state.waves;
 
-  if (state.players.every((player) => player.health <= 0)) {
+  const safe = waves.phase === 'cleared' || waves.phase === 'lift' || waves.phase === 'ride' || waves.phase === 'won';
+  if (!safe && state.players.every((player) => player.health <= 0)) {
     restartWave(state, level);
     return;
   }
 
-  // Nothing happens until the players are in and the gate is closed.
-  if (waves.phase === 'entry') return;
+  // Nothing happens until the players are in and the gate is closed, and nothing after the end.
+  if (waves.phase === 'entry' || waves.phase === 'won') return;
+
+  // Arriving on a new floor, the elevator doors close again behind the players.
+  if (state.lift.open && waves.phase !== 'lift' && (state.tick - state.lift.changedTick) / config.ticksPerSecond > config.elevator.arrivalOpenSeconds) {
+    closeLift(state);
+  }
 
   if (waves.phase === 'prep' || waves.phase === 'break') {
     waves.timer -= dt;
@@ -28,13 +45,29 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.phase === 'cleared') {
     waves.timer -= dt;
     if (waves.timer <= 0) {
-      // A fresh run: the gate and boards come off and the players are back out in the street.
-      resetDoors(state);
-      state.zombies = [];
-      state.players = state.players.map((player) => createPlayer(player.id, level.streetSpawns[player.id]));
-      waves.number = 1;
-      waves.phase = 'entry';
+      if (isTopFloor(state)) {
+        waves.phase = 'won';
+      } else {
+        // The floor is clear: the elevator opens and waits for everyone to step in.
+        openLift(state);
+        waves.phase = 'lift';
+      }
     }
+    return;
+  }
+
+  if (waves.phase === 'lift') {
+    if (everyoneInCab(state)) {
+      closeLift(state);
+      waves.phase = 'ride';
+      waves.timer = config.elevator.rideSeconds;
+    }
+    return;
+  }
+
+  if (waves.phase === 'ride') {
+    waves.timer -= dt;
+    if (waves.timer <= 0) arriveOnNextFloor(state, level);
     return;
   }
 
@@ -67,22 +100,58 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   }
 }
 
-function startWave(state: GameState): void {
-  const waves = state.waves;
-  waves.phase = 'active';
-  waves.toSpawn = config.waves.zombiesPerWave[waves.number - 1];
-  waves.spawnTimer = 0;
-  waves.startedTick = state.tick;
+// The doors open on the next floor. Same layout for now, with the boards gone, every player at
+// full health outside the elevator, and a fresh countdown to board up doors before wave 1.
+function arriveOnNextFloor(state: GameState, level: Level): void {
+  state.floor++;
+  startFloor(state, level);
+  openLift(state);
+  state.waves.arrivedTick = state.tick;
 }
 
-// Everyone is down: clear the field, bring everyone back at full health, and begin the same
-// wave again after a short pause.
-function restartWave(state: GameState, level: Level): void {
+// Wave 1 of the current floor: boards off, zombies gone, everyone back at full health, and the
+// countdown to board up doors. The street gate is shut for good, so it goes straight back down
+// with no animation.
+function startFloor(state: GameState, level: Level): void {
+  resetDoors(state);
+  closeGate(state);
+  state.gate.closedTick = -1_000_000;
   state.zombies = [];
   state.players = state.players.map((player) => createPlayer(player.id, level.playerSpawns[player.id]));
   const waves = state.waves;
+  waves.number = 1;
+  waves.phase = 'prep';
+  waves.timer = config.waves.prepSeconds;
+  waves.toSpawn = 0;
+}
+
+function startWave(state: GameState): void {
+  const waves = state.waves;
+  waves.phase = 'active';
+  waves.toSpawn = zombiesInWave(state.floor, waves.number);
+  waves.spawnTimer = 0;
+  waves.startedTick = state.tick;
+  for (const player of state.players) guaranteeAmmo(player);
+}
+
+// Everyone is down. That costs a life: with one left, the same wave begins again after a short
+// pause. With none left the floor starts over from wave 1 and the lives are refilled.
+function restartWave(state: GameState, level: Level): void {
+  const waves = state.waves;
+  waves.diedTick = state.tick;
+  state.lives--;
+  if (state.lives <= 0) {
+    state.lives = config.player.lives;
+    waves.lostRun = true;
+    // The score goes with the run.
+    state.points = state.points.map(() => 0);
+    startFloor(state, level);
+    return;
+  }
+  waves.lostRun = false;
+  state.zombies = [];
+  state.players = state.players.map((player) => createPlayer(player.id, level.playerSpawns[player.id]));
   waves.phase = 'break';
   waves.timer = config.waves.startDelaySeconds;
   waves.toSpawn = 0;
-  waves.diedTick = state.tick;
 }

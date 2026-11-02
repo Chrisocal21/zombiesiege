@@ -2,14 +2,18 @@ import { drawTacticalMap } from './tacticalMap';
 import { bindings, keyLabel } from '../client/bindings';
 import { settings } from '../client/settings';
 import { config } from '../config';
-import { interactionTarget } from '../game/doors';
+import { interactionTarget, stationOffer } from '../game/doors';
+import { weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
-import { TOTAL_WAVES } from '../game/waves';
+import { TOTAL_WAVES, isTopFloor, zombiesInWave } from '../game/waves';
+
 import { aliveZombies } from '../game/zombies';
 import type { Level } from '../levels/types';
 import type { Menu } from './menu';
 import { COLOR, clamp, keycap, measure, panel, roundedRect, text } from './ui';
+
+const floorName = (floor: number): string => (floor === 0 ? 'Ground floor' : `Floor ${floor}`);
 
 export interface Hud {
   toggleMap(): void;
@@ -52,6 +56,11 @@ export function createHud(level: Level, menu: Menu): Hud {
   let mapOpen = false;
   let previousTick = 0;
   let killAt = -10;
+  let killWasHead = false;
+  // The score last drawn, and the gain just made, shown as a short-lived +N under the crosshair.
+  let shownPoints = 0;
+  let gainAmount = 0;
+  let gainAt = -10;
   window.addEventListener('keydown', event => {
     if (event.code === bindings.map && !event.repeat && !menu.isOpen() && document.pointerLockElement) { event.preventDefault(); mapOpen = !mapOpen; }
   });
@@ -81,7 +90,7 @@ export function createHud(level: Level, menu: Menu): Hud {
       const frame = Math.min(0.1, time - lastTime);
       lastTime = time;
 
-      if (state.tick < previousTick) { marks.length = 0; ghostHealth = player.health; hitUntil = 0; killAt = -10; }
+      if (state.tick < previousTick) { marks.length = 0; ghostHealth = player.health; hitUntil = 0; killAt = -10; gainAt = -10; shownPoints = state.points[player.id] ?? 0; }
       previousTick = state.tick;
       if (menu.isOpen()) mapOpen = false;
       // Reacting to what just happened in the game.
@@ -92,10 +101,17 @@ export function createHud(level: Level, menu: Menu): Hud {
           if (player.lastShotZombie) {
             hitUntil = time + (player.lastShotKill ? KILL_MARKER_SECONDS : HIT_MARKER_SECONDS);
             hitIsKill = player.lastShotKill;
-            if (hitIsKill) killAt = time;
+            if (hitIsKill) { killAt = time; killWasHead = player.lastShotHead; }
           }
         }
       }
+      const points = state.points[player.id] ?? 0;
+      if (points > shownPoints) {
+        // Gains within a moment of each other add up, so rapid hits read as one number.
+        gainAmount = time - gainAt < 0.9 ? gainAmount + points - shownPoints : points - shownPoints;
+        gainAt = time;
+      }
+      shownPoints = points;
       if (player.lastHurtTick !== seenHurtTick) {
         seenHurtTick = player.lastHurtTick;
         if (seenHurtTick >= 0) {
@@ -121,6 +137,9 @@ export function createHud(level: Level, menu: Menu): Hud {
     if (phase === 'entry') {
       const panelPos = level.gate.panel;
       points.push({ x: panelPos.x, z: panelPos.z, color: COLOR.good, label: 'GATE' });
+    } else if (phase === 'lift') {
+      const lift = level.elevator;
+      points.push({ x: lift.position.x, z: lift.position.z, color: COLOR.good, label: 'ELEVATOR' });
     } else if (phase === 'prep') {
       if (player.bars < config.doors.carryLimit) {
         state.pickups.forEach((pickup) => {
@@ -148,7 +167,7 @@ export function createHud(level: Level, menu: Menu): Hud {
     if (settings.showCompass) drawCompass(width, unit, player, points);
     drawObjective(margin, unit, state, player, points);
     drawRadar(margin, height, unit, state, player, points);
-    drawHealth(margin, height, unit, player, time);
+    drawHealth(margin, height, unit, state.lives, player, time);
     drawAmmo(width, height, margin, unit, player, time);
     drawStatus(width, height, margin, unit, state, player, time);
     if (settings.cameraStyle === 'bodycam') {
@@ -156,8 +175,8 @@ export function createHud(level: Level, menu: Menu): Hud {
       const timestamp = `${String(Math.floor(elapsed / 3600)).padStart(2, '0')}:${String(Math.floor(elapsed / 60) % 60).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
       const rx = width - margin - 248 * unit;
       context.fillStyle = Math.floor(time * 2) % 2 ? COLOR.danger : '#7c3330';
-      context.beginPath(); context.arc(rx + 6 * unit, margin + 140 * unit, 4 * unit, 0, Math.PI * 2); context.fill();
-      text(context, `REC / BODY 01   ${timestamp}`, rx + 18 * unit, margin + 145 * unit, { size: 13 * unit, color: COLOR.dim, spacing: 1 * unit });
+      context.beginPath(); context.arc(rx + 6 * unit, margin + 196 * unit, 4 * unit, 0, Math.PI * 2); context.fill();
+      text(context, `REC / BODY 01   ${timestamp}`, rx + 18 * unit, margin + 201 * unit, { size: 13 * unit, color: COLOR.dim, spacing: 1 * unit });
     }
     drawPrompt(width, height, unit, state, player);
     drawBanner(width, height, unit, state, time);
@@ -347,7 +366,7 @@ export function createHud(level: Level, menu: Menu): Hud {
         }
         break;
       case 'prep':
-        title = 'Barricade two doors';
+        title = state.floor > 0 ? `${floorName(state.floor)}: barricade two doors` : 'Barricade two doors';
         detail = `Boards found ${state.pickups.filter((pickup) => pickup.taken).length} of ${state.pickups.length}   Doors sealed ${state.doors.filter((door) => door.boarded).length}`;
         timer = waves.timer;
         break;
@@ -361,8 +380,23 @@ export function createHud(level: Level, menu: Menu): Hud {
         detail = `${waves.toSpawn + aliveZombies(state)} zombies left`;
         break;
       case 'cleared':
-        title = 'Level cleared';
+        title = `${floorName(state.floor)} cleared`;
         detail = 'All five waves survived';
+        break;
+      case 'won':
+        title = 'Extraction';
+        detail = 'You made it out';
+        break;
+      case 'lift': {
+        title = 'Get in the elevator';
+        const lift = state.level.elevator;
+        const distance = Math.hypot(lift.position.x - player.x, lift.position.z - player.z);
+        detail = distance > 3 ? `${Math.round(distance)} m to the elevator` : 'Everyone inside to go up';
+        break;
+      }
+      case 'ride':
+        title = `Going up to ${floorName(state.floor + 1).toLowerCase()}`;
+        detail = 'Hold on';
         break;
     }
 
@@ -490,7 +524,7 @@ export function createHud(level: Level, menu: Menu): Hud {
     text(context, 'N', northX, northY + 6 * unit, { size: 17 * unit, weight: 800, align: 'center', color: COLOR.accent, shadow: false });
   }
 
-  function drawHealth(margin: number, height: number, unit: number, player: Player, time: number): void {
+  function drawHealth(margin: number, height: number, unit: number, lives: number, player: Player, time: number): void {
     const radius = 112 * unit;
     const x = margin;
     const w = radius * 2;
@@ -501,6 +535,12 @@ export function createHud(level: Level, menu: Menu): Hud {
 
     panel(context, x - 16 * unit, y - 52 * unit, w + 32 * unit, 98 * unit, 'rgba(10,20,26,0.68)', 8 * unit);
     text(context, 'VITALS', x, y - 12 * unit, { size: 15 * unit, color: COLOR.dim, spacing: 4 * unit, weight: 700 });
+    // One pip per life, lit while it is still there.
+    for (let i = 0; i < config.player.lives; i++) {
+      context.fillStyle = i < lives ? COLOR.accent : 'rgba(255,255,255,0.14)';
+      roundedRect(context, x + 82 * unit + i * 20 * unit, y - 25 * unit, 14 * unit, 14 * unit, 3 * unit);
+      context.fill();
+    }
     text(context, String(Math.ceil(player.health)), x + w, y - 8 * unit, { size: 30 * unit, weight: 800, align: 'right', color: fraction < 0.3 ? COLOR.danger : COLOR.text });
     roundedRect(context, x, y, w, h, 3 * unit);
     context.fillStyle = 'rgba(0,0,0,0.6)';
@@ -525,18 +565,19 @@ export function createHud(level: Level, menu: Menu): Hud {
   }
 
   function drawAmmo(width: number, height: number, margin: number, unit: number, player: Player, time: number): void {
-    const magazine = config.pistol.magazineSize;
+    const stats = weaponStats(player.weapon);
+    const magazine = stats.magazineSize;
     const right = width - margin;
     const baseY = height - margin - 40 * unit;
     const reloading = player.reloadLeft > 0;
     const low = player.ammo <= Math.ceil(magazine / 3);
 
     panel(context, right - 278 * unit, baseY - 142 * unit, 300 * unit, 200 * unit, 'rgba(10,20,26,0.62)', 8 * unit);
-    text(context, 'P9 / 9 x 19', right, baseY - 100 * unit, { size: 17 * unit, color: COLOR.dim, align: 'right', spacing: 6 * unit, weight: 700 });
+    text(context, player.stowed ? `${stats.name}   [${keyLabel(bindings.swap)}] SWAP` : stats.name, right, baseY - 100 * unit, { size: 17 * unit, color: COLOR.dim, align: 'right', spacing: 6 * unit, weight: 700 });
     if (reloading) {
       text(context, 'RELOADING', right, baseY - 10 * unit, { size: 36 * unit, weight: 800, align: 'right', color: COLOR.accent, spacing: 4 * unit });
       const w = 260 * unit;
-      const progress = 1 - player.reloadLeft / config.pistol.reloadSeconds;
+      const progress = 1 - player.reloadLeft / stats.reloadSeconds;
       roundedRect(context, right - w, baseY + 8 * unit, w, 6 * unit, 3 * unit);
       context.fillStyle = 'rgba(255,255,255,0.16)';
       context.fill();
@@ -547,8 +588,9 @@ export function createHud(level: Level, menu: Menu): Hud {
       const blink = player.ammo === 0 && !settings.reducedFlashing ? 0.55 + 0.45 * Math.sin(time * 10) : 1;
       context.save();
       context.globalAlpha = blink;
-      const infinity = measure(context, '/ ∞', 30 * unit, 700, 1 * unit);
-      text(context, '/ ∞', right, baseY - 12 * unit, { size: 30 * unit, color: COLOR.dim, align: 'right', weight: 700, spacing: 1 * unit });
+      const reserveLabel = `/ ${player.reserve}`;
+      const infinity = measure(context, reserveLabel, 30 * unit, 700, 1 * unit);
+      text(context, reserveLabel, right, baseY - 12 * unit, { size: 30 * unit, color: player.reserve === 0 ? COLOR.danger : COLOR.dim, align: 'right', weight: 700, spacing: 1 * unit });
       text(context, String(player.ammo), right - infinity - 14 * unit, baseY - 6 * unit, { size: 96 * unit, weight: 800, align: 'right', color: low ? COLOR.danger : COLOR.text });
       context.restore();
 
@@ -575,15 +617,24 @@ export function createHud(level: Level, menu: Menu): Hud {
   function drawStatus(width: number, height: number, margin: number, unit: number, state: GameState, player: Player, time: number): void {
     const x = width - margin - 248 * unit;
     panel(context, x, margin, 248 * unit, 112 * unit);
-    text(context, 'SURVIVAL / SOLO', x + 20 * unit, margin + 28 * unit, { size: 13 * unit, spacing: 3 * unit, color: COLOR.dim });
+    text(context, `SURVIVAL / SOLO / ${floorName(state.floor).toUpperCase()}`, x + 20 * unit, margin + 28 * unit, { size: 13 * unit, spacing: 3 * unit, color: COLOR.dim });
     text(context, String(state.waves.number).padStart(2, '0'), x + 20 * unit, margin + 84 * unit, { size: 52 * unit, weight: 800, color: COLOR.accent });
     text(context, '/ 05 WAVES', x + 93 * unit, margin + 77 * unit, { size: 16 * unit, color: COLOR.dim });
     for (let i = 0; i < TOTAL_WAVES; i++) {
       context.fillStyle = i < state.waves.number - (state.waves.phase === 'cleared' ? 0 : 1) ? COLOR.good : 'rgba(255,255,255,.12)';
       context.fillRect(x + (20 + i * 43) * unit, margin + 99 * unit, 35 * unit, 3 * unit);
     }
+    // The score, under the wave counter.
+    const scoreY = margin + 124 * unit;
+    panel(context, x, scoreY, 248 * unit, 56 * unit);
+    text(context, 'POINTS', x + 20 * unit, scoreY + 34 * unit, { size: 13 * unit, spacing: 3 * unit, color: COLOR.dim });
+    text(context, String(state.points[player.id] ?? 0), x + 228 * unit, scoreY + 40 * unit, { size: 34 * unit, weight: 800, align: 'right', color: COLOR.text });
+    if (time - gainAt < 0.9) {
+      const age = time - gainAt;
+      text(context, `+${gainAmount}`, width / 2, height / 2 + (112 + age * 18) * unit, { size: 22 * unit, weight: 700, align: 'center', color: COLOR.accent, spacing: 2 * unit, alpha: Math.min(1, (0.9 - age) * 3) });
+    }
     if (time - killAt < 1.3) {
-      text(context, 'HOSTILE DOWN', width / 2, height / 2 + 77 * unit, { size: 16 * unit, align: 'center', color: COLOR.accent, spacing: 3 * unit, alpha: Math.min(1, (1.3 - time + killAt) * 3) });
+      text(context, killWasHead ? 'HEADSHOT' : 'HOSTILE DOWN', width / 2, height / 2 + 77 * unit, { size: 16 * unit, align: 'center', color: killWasHead ? COLOR.danger : COLOR.accent, spacing: 3 * unit, alpha: Math.min(1, (1.3 - time + killAt) * 3) });
     }
     const hintY = height - margin;
     const hints = [[bindings.map, 'MAP'], [bindings.reload, 'RELOAD'], [bindings.cover, 'COVER']];
@@ -594,14 +645,19 @@ export function createHud(level: Level, menu: Menu): Hud {
       hx += 130 * unit;
     }
     if (player.bars > 0) text(context, `BOARDS ${player.bars} / ${config.doors.carryLimit}`, margin, height - margin + 29 * unit, { size: 13 * unit, color: COLOR.accent, spacing: 2 * unit });
-    if (player.ammo <= 3 && player.reloadLeft <= 0) text(context, player.ammo === 0 ? 'EMPTY / RELOAD' : 'LOW MAGAZINE', width - margin, height - margin + 28 * unit, { size: 14 * unit, align: 'right', color: COLOR.danger, spacing: 2 * unit });
+    if (player.ammo <= 3 && player.reloadLeft <= 0) text(context, player.ammo === 0 ? (player.reserve > 0 ? 'EMPTY / RELOAD' : 'NO AMMO / FIND A STATION') : 'LOW MAGAZINE', width - margin, height - margin + 28 * unit, { size: 14 * unit, align: 'right', color: COLOR.danger, spacing: 2 * unit });
   }
 
   // A line of keycaps and a verb, low in the middle of the screen.
   function drawPrompt(width: number, height: number, unit: number, state: GameState, player: Player): void {
     let prompt: { keys: string[]; label: string } | null = null;
     const interaction = interactionTarget(state, player);
-    if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
+    if (interaction?.kind === 'station') {
+      const offer = stationOffer(state, player, interaction.index);
+      prompt = offer.status === 'ok'
+        ? { keys: [bindings.use], label: `${offer.label}   ${offer.cost} pts` }
+        : offer.status === 'full' ? { keys: [], label: 'Ammo full' } : { keys: [], label: `${offer.label.replace('Buy ', '')} costs ${offer.cost} points` };
+    } else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
     else if (interaction?.kind === 'pickup') prompt = { keys: [bindings.use], label: 'Pick up the boards' };
     else if (interaction?.kind === 'door') prompt = { keys: [bindings.use], label: 'Board up this door' };
     else if (player.ladder) prompt = { keys: [bindings.forward, bindings.back], label: 'Climb' };
@@ -634,13 +690,30 @@ export function createHud(level: Level, menu: Menu): Hud {
     let age = 0;
 
     if (waves.phase === 'cleared') {
-      title = 'LEVEL CLEARED';
-      detail = 'Back to the street for another run';
+      title = `${floorName(state.floor).toUpperCase()} CLEARED`;
+      detail = isTopFloor(state) ? 'Extraction is on the way' : 'The elevator is opening';
       color = COLOR.accent;
       age = 0.5;
+    } else if (waves.phase === 'lift') {
+      title = 'ELEVATOR READY';
+      detail = 'Step inside to go up';
+      color = COLOR.good;
+      age = 0.5;
+    } else if (waves.phase === 'ride') {
+      title = floorName(state.floor + 1).toUpperCase();
+      detail = 'Going up';
+      color = COLOR.accent;
+      age = 0.5;
+    } else if (waves.arrivedTick >= 0 && seconds(waves.arrivedTick) < BANNER_SECONDS) {
+      title = floorName(state.floor).toUpperCase();
+      detail = 'Board up the doors. They are coming';
+      color = COLOR.accent;
+      age = seconds(waves.arrivedTick);
     } else if (waves.diedTick >= 0 && seconds(waves.diedTick) < BANNER_SECONDS) {
-      title = 'YOU WERE OVERRUN';
-      detail = `Restarting wave ${waves.number}`;
+      title = waves.lostRun ? 'OUT OF LIVES' : 'YOU WERE OVERRUN';
+      detail = waves.lostRun
+        ? 'Back to wave 1 with fresh lives'
+        : `Restarting wave ${waves.number}. ${state.lives} ${state.lives === 1 ? 'life' : 'lives'} left`;
       color = COLOR.danger;
       age = seconds(waves.diedTick);
     } else if (state.gate.closed && seconds(state.gate.closedTick) < BANNER_SECONDS) {
@@ -650,7 +723,7 @@ export function createHud(level: Level, menu: Menu): Hud {
       age = seconds(state.gate.closedTick);
     } else if (waves.startedTick >= 0 && seconds(waves.startedTick) < BANNER_SECONDS) {
       title = `WAVE ${waves.number}`;
-      detail = `${config.waves.zombiesPerWave[waves.number - 1]} zombies incoming`;
+      detail = `${zombiesInWave(state.floor, waves.number)} zombies incoming`;
       age = seconds(waves.startedTick);
     } else if (state.tick < 4.5 * config.ticksPerSecond && waves.phase === 'entry') {
       title = 'LEVEL 0';

@@ -7,6 +7,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { config } from '../config';
 import type { Player } from '../game/state';
+import { weaponStats } from '../game/weapons';
 import { LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, LEFT_HAND_SUPPORT, RIGHT_HAND_ON_GRIP, loadHand } from './hand';
 import type { CameraPose } from './view';
 
@@ -377,6 +378,51 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   grip.add(leftHand);
   const supportHand = loadHand(leftHand, LEFT_HAND_SUPPORT);
 
+  // The sawed-off shotgun: two short barrels that hinge open over the same pistol grip, shown
+  // in place of the pistol so both share the hands and sleeves.
+  const pistolParts = root.children.filter((part) => part !== grip);
+  const slideParts = slide.children.filter((part) => part !== muzzle);
+  const wood = new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.74, metalness: 0.02 });
+  const shotgunParts = new THREE.Group();
+  shotgunParts.name = 'Sawed-off shotgun';
+  shotgunParts.visible = false;
+  root.add(shotgunParts);
+  const barrels = new THREE.Group();
+  barrels.position.set(0, 0.035, 0);
+  shotgunParts.add(barrels);
+  for (const x of [-0.0118, 0.0118]) {
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.0115, 0.0115, 0.19, 24), slideMetal);
+    tube.rotation.x = Math.PI / 2;
+    tube.position.set(x, 0.012, -0.095);
+    barrels.add(tube);
+    barrelPart(barrels, 0.0078, 0.0012, darkMetal, [x, 0.012, -0.1903]);
+  }
+  box(barrels, [0.006, 0.004, 0.19], brightMetal, [0, 0.0225, -0.095]);
+  // The bead sits on the same sight line as the pistol's dots.
+  box(barrels, [0.0036, 0.0108, 0.004], darkMetal, [0, 0.0289, -0.185]);
+  box(barrels, [0.0024, 0.0024, 0.0008], sight, [0, 0.0343, -0.1828]);
+  softBox(shotgunParts, [0.034, 0.042, 0.1], 0.004, slideMetal, [0, 0.045, 0.03]);
+  softBox(shotgunParts, [0.02, 0.0035, 0.01], 0.001, darkMetal, [0, 0.0678, 0.052]);
+  for (const x of [-0.0066, 0.0066]) {
+    softBox(shotgunParts, [0.0056, 0.0068, 0.009], 0.001, darkMetal, [x, 0.0728, 0.052]);
+    box(shotgunParts, [0.0024, 0.0024, 0.0008], sight, [x, 0.0732, 0.0568]);
+  }
+  softBox(shotgunParts, [0.03, 0.02, 0.12], 0.003, polymer, [0, 0.014, 0.02]);
+  box(shotgunParts, [0.0045, 0.018, 0.005], darkMetal, [0, 0.002, 0]);
+  softBox(shotgunParts, [0.007, 0.012, 0.014], 0.002, darkMetal, [0, 0.0725, 0.082]);
+  profile(
+    shotgunParts,
+    [
+      [-0.0235, -0.004, 0.003],
+      [-0.0417, -0.0777, 0.004],
+      [-0.0856, -0.0678, 0.006],
+      [-0.0695, 0.0044, 0.004],
+    ],
+    0.03,
+    0.0056,
+    wood,
+  );
+
   const forwardAxis = new THREE.Vector3(0, 0, 1);
   // The glove ends just inside the sleeve, like a combat shirt cuff worn over a glove. The sleeve opening
   // is only a little wider than the wrist, and the forearm barely widens from there.
@@ -448,6 +494,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const droppedVelocity = new THREE.Vector3();
 
   let seenShotTick = -1;
+  let wasShotgun = false;
+  let swapDip = 0;
   let flashLeft = 0;
 
   let slideKick = 0;
@@ -472,6 +520,17 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
   return {
     update(player, pose, frameSeconds, preview = false) {
+      const shotgunHeld = player.weapon === 'shotgun';
+      if (shotgunHeld !== wasShotgun) {
+        wasShotgun = shotgunHeld;
+        for (const part of pistolParts) part.visible = !shotgunHeld;
+        for (const part of slideParts) part.visible = !shotgunHeld;
+        shotgunParts.visible = shotgunHeld;
+        muzzle.position.set(0, 0.0475, shotgunHeld ? -0.195 : -0.14);
+        swapDip = 1;
+      }
+      swapDip *= Math.exp(-frameSeconds * 8);
+      const stats = weaponStats(player.weapon);
       if (currentOutfit !== appearance.outfit) {
         currentOutfit = appearance.outfit;
         sleeve.map = sleeve.bumpMap = outfitTexture(currentOutfit); sleeve.needsUpdate = true;
@@ -483,12 +542,12 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       if (player.lastShotTick !== seenShotTick) {
         seenShotTick = player.lastShotTick;
         if (seenShotTick >= 0) {
-          recoilVelocity += 2.2;
+          recoilVelocity += shotgunHeld ? 5 : 2.2;
           slideKick = 1;
           triggerPull = 1;
           flashLeft = FLASH_SECONDS;
           flashMaterial.rotation = Math.random() * Math.PI * 2;
-          flash.scale.setScalar(FLASH_SIZE * (0.8 + Math.random() * 0.5));
+          flash.scale.setScalar(FLASH_SIZE * (shotgunHeld ? 1.6 : 1) * (0.8 + Math.random() * 0.5));
         }
       }
       // Integrate a damped spring in short steps so 30 Hz and 144 Hz settle alike.
@@ -533,11 +592,12 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       // Reload: the empty magazine falls away, the left hand brings up a fresh one and seats it
       // with a push, then lets go, and the slide is released if the gun was empty.
       const reloading = player.reloadLeft > 0;
-      const progress = reloading ? 1 - player.reloadLeft / config.pistol.reloadSeconds : 0;
+      const progress = reloading ? 1 - player.reloadLeft / stats.reloadSeconds : 0;
       const tilt = Math.sin(progress * Math.PI);
       const stage = (from: number, to: number) => smooth(clamp((progress - from) / (to - from), 0, 1));
 
-      if (reloading && !wasReloading) {
+      if (reloading && !wasReloading && shotgunHeld) reloadWasEmpty = false;
+      if (reloading && !wasReloading && !shotgunHeld) {
         reloadWasEmpty = player.ammo === 0;
         magazine.getWorldPosition(droppedMagazine.position);
         magazine.getWorldQuaternion(droppedMagazine.quaternion);
@@ -581,6 +641,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         magazine.position.set(0, 0, 0);
         supportHand.blendPose(LEFT_HAND_SUPPORT, LEFT_HAND_SUPPORT, 0);
       }
+      if (shotgunHeld) magazine.visible = false;
+      barrels.rotation.x = shotgunHeld ? -0.45 * stage(0.1, 0.3) * (1 - stage(0.72, 0.9)) : 0;
       // Track the hand-model wrists, including reload pose changes, instead of
       // guessing sleeve attachment points and leaving gaps at the cuffs.
       if (rightHand.getWrist(rightWrist)) {
@@ -601,7 +663,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
       // An empty gun keeps the slide locked back until the reload is nearly done.
       const slideLocked = player.ammo === 0 && !(reloading && progress > 0.85);
-      slide.position.z = SLIDE_TRAVEL * Math.max(slideKick, slideLocked ? 1 : 0);
+      slide.position.z = shotgunHeld ? 0 : SLIDE_TRAVEL * Math.max(slideKick, slideLocked ? 1 : 0);
 
       // Raising the gun to the eye. It also steadies the bob, sway, and recoil.
       const aimStep = frameSeconds / config.player.aimSeconds;
@@ -612,7 +674,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
       root.position.set(
         basePosition.x + bobX * loose * motion - tilt * 0.03,
-        basePosition.y + (bobY + breathing) * loose * motion - landing + tilt * 0.03 + seat * 0.012 - lowered * 0.35,
+        basePosition.y + (bobY + breathing) * loose * motion - landing + tilt * 0.03 + seat * 0.012 - lowered * 0.35 - swapDip * 0.3,
         basePosition.z + recoil * 0.25 * (1 - aim * 0.5),
       );
       root.rotation.set(

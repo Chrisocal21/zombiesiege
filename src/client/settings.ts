@@ -5,6 +5,8 @@ import { config } from '../config';
 export interface Settings {
   // Multiplies mouse turning. 1 is the default feel.
   sensitivity: number;
+  // Master volume, 0 to 1.
+  volume: number;
   // Degrees, when not aiming.
   fieldOfView: number;
   // Strength of the lens warp. 0 is a flat picture.
@@ -20,12 +22,14 @@ export interface Settings {
 
 export const SETTING_RANGES = {
   sensitivity: { min: 0.2, max: 3, step: 0.05 },
+  volume: { min: 0, max: 1, step: 0.05 },
   fieldOfView: { min: 60, max: 110, step: 1 },
   fisheye: { min: 0, max: 0.4, step: 0.01 },
 } as const;
 
 const DEFAULTS: Settings = {
   sensitivity: 1,
+  volume: 0.7,
   fieldOfView: config.view.fieldOfView,
   fisheye: config.view.fisheye,
   showRadar: true,

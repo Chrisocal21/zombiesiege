@@ -40,6 +40,8 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
     state.pickups.filter(p => !p.taken).forEach(p => marker(p.x, p.z, COLOR.accent, 'BOARDS'));
     state.zombies.filter(z => !z.dead).forEach(z => marker(z.x, z.z, COLOR.danger, ''));
   }
+  marker(state.level.elevator.position.x, state.level.elevator.position.z, state.waves.phase === 'lift' ? COLOR.good : COLOR.dim, 'ELEVATOR');
+  for (const station of state.level.stations) marker(station.position.x, station.position.z, COLOR.accent, station.kind === 'shotgun' ? 'WEAPONS' : 'AMMO');
   marker(state.level.gate.panel.x, state.level.gate.panel.z, COLOR.good, 'GATE');
   const [px, py] = point(player.x, player.z);
   ctx.save(); ctx.translate(px, py); ctx.rotate(-player.yaw);
@@ -48,7 +50,7 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
   const sx = x + 725 * u;
   text(ctx, street ? 'STREET LEVEL' : 'THE GARAGE', sx, y + 146 * u, { size: 20 * u, color: COLOR.accent, weight: 800 });
   text(ctx, 'SURVIVE THE NIGHT', sx, y + 179 * u, { size: 12 * u, color: COLOR.dim, spacing: 2 * u });
-  ['01 / Enter the garage', '02 / Seal the shutter', '03 / Barricade two doors', '04 / Survive five waves'].forEach((line, i) => text(ctx, line, sx, y + (245 + i * 44) * u, { size: 15 * u, color: i < (state.gate.closed ? 2 : 0) ? COLOR.good : COLOR.text }));
+  ['01 / Enter the garage', '02 / Seal the shutter', '03 / Barricade two doors', '04 / Survive five waves', '05 / Take the elevator up'].forEach((line, i) => text(ctx, line, sx, y + (245 + i * 44) * u, { size: 15 * u, color: i < (state.gate.closed ? 2 : 0) ? COLOR.good : COLOR.text }));
   text(ctx, 'LEGEND', sx, y + 490 * u, { size: 12 * u, color: COLOR.dim, spacing: 3 * u });
   [['YOU', '#ffffff'], ['SUPPLIES', COLOR.accent], ['HOSTILES', COLOR.danger], ['SEALED / GATE', COLOR.good]].forEach(([label, color], i) => {
     ctx.fillStyle = color; ctx.fillRect(sx, y + (515 + i * 27) * u, 6 * u, 6 * u);

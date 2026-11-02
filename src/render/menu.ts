@@ -4,7 +4,15 @@ import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } 
 import { outfitTexture } from './gearTextures';
 import { COLOR, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
 
-export type Screen = 'main' | 'pause' | 'controls' | 'settings' | 'character';
+export type Screen = 'main' | 'pause' | 'controls' | 'settings' | 'character' | 'victory';
+
+// What the victory screen reports about the run that just ended.
+export interface RunStats {
+  floors: number;
+  points: number;
+  lives: number;
+  seconds: number;
+}
 
 export interface MenuCallbacks {
   // Start the game from the title screen.
@@ -12,6 +20,8 @@ export interface MenuCallbacks {
   // Go back to the game from the pause menu.
   resume(): void;
   restart(): void;
+  // Leave the game and go back to the title screen.
+  toTitle(): void;
 }
 
 export interface Menu {
@@ -19,7 +29,7 @@ export interface Menu {
   screen(): Screen | null;
   // True on the title screen and on the controls and settings screens opened from it.
   onTitle(): boolean;
-  open(screen: Screen): void;
+  open(screen: Screen, stats?: RunStats): void;
   close(): void;
   draw(context: CanvasRenderingContext2D, width: number, height: number, time: number): void;
 }
@@ -38,6 +48,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   let current: Screen | null = 'main';
   // Which of the two top screens the controls and settings screens go back to.
   let parent: 'main' | 'pause' = 'main';
+  let stats: RunStats = { floors: 0, points: 0, lives: 0, seconds: 0 };
   let rebinding: Action | null = null;
   let dragging: string | null = null;
   let focusedItem = 0;
@@ -78,9 +89,9 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         rebinding = null;
         return;
       }
-      if ((current === 'main' || current === 'pause') && ['ArrowUp', 'ArrowDown', 'Enter'].includes(event.code)) {
+      if ((current === 'main' || current === 'pause' || current === 'victory') && ['ArrowUp', 'ArrowDown', 'Enter'].includes(event.code)) {
         event.preventDefault(); keyboardMode = true;
-        const count = current === 'main' ? 3 : 4;
+        const count = current === 'main' ? 3 : current === 'victory' ? 2 : 4;
         if (event.code === 'ArrowUp') focusedItem = (focusedItem + count - 1) % count;
         if (event.code === 'ArrowDown') focusedItem = (focusedItem + 1) % count;
         if (event.code === 'Enter') activate = true;
@@ -107,9 +118,10 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   return {
     isOpen: () => current !== null,
     screen: () => current,
-    onTitle: () => current !== null && parent === 'main',
-    open(screen) {
+    onTitle: () => current !== null && current !== 'victory' && parent === 'main',
+    open(screen, runStats) {
       current = screen;
+      if (runStats) stats = runStats;
       if (screen === 'main' || screen === 'pause') parent = screen;
       focusedItem = 0;
       rebinding = null;
@@ -181,7 +193,34 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
 
       const left = width * 0.075;
 
-      if (current === 'main' || current === 'pause') {
+      if (current === 'victory') {
+        text(context, 'OPERATION 001', left, height * 0.22, { size: 20 * unit, color: COLOR.accent, spacing: 8 * unit });
+        text(context, 'EXTRACTED', left, height * 0.32, { size: 118 * unit, weight: 800, spacing: 10 * unit });
+        context.fillStyle = COLOR.accent;
+        context.fillRect(left, height * 0.32 + 26 * unit, 150 * unit, 5 * unit);
+        text(context, 'THE CHOPPER IS HERE. YOU MADE IT OUT OF THE TOWER', left, height * 0.32 + 72 * unit, { size: 22 * unit, color: COLOR.dim, spacing: 4 * unit });
+        const minutes = Math.floor(stats.seconds / 60);
+        const rows: [string, string][] = [
+          ['FLOORS CLEARED', String(stats.floors)],
+          ['POINTS', String(stats.points)],
+          ['LIVES LEFT', String(stats.lives)],
+          ['TIME', `${minutes}:${String(Math.floor(stats.seconds % 60)).padStart(2, '0')}`],
+        ];
+        rows.forEach(([label, value], i) => {
+          const rowY = height * 0.5 + i * 44 * unit;
+          text(context, label, left, rowY, { size: 18 * unit, color: COLOR.dim, spacing: 4 * unit });
+          text(context, value, left + 330 * unit, rowY, { size: 30 * unit, weight: 800, align: 'right' });
+        });
+        let y = height * 0.74;
+        const entries: [string, () => void][] = [
+          ['PLAY AGAIN', () => callbacks.restart()],
+          ['MAIN MENU', () => { callbacks.toTitle(); }],
+        ];
+        for (const [index, [label, action]] of entries.entries()) {
+          if (item(label, left, y, index)) action();
+          y += 62 * unit;
+        }
+      } else if (current === 'main' || current === 'pause') {
         text(context, 'PROBABLY FINE STUDIOS', left, height * 0.22, { size: 20 * unit, color: COLOR.accent, spacing: 8 * unit });
         text(context, 'ZOMBIE', left, height * 0.32, { size: 118 * unit, weight: 800, spacing: 10 * unit });
         text(context, 'SIEGE', left, height * 0.32 + 112 * unit, { size: 118 * unit, weight: 800, spacing: 10 * unit });
@@ -195,7 +234,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         panel(context, bx, by, bw, 285 * unit, 'rgba(10,20,26,0.76)', 8 * unit);
         text(context, 'OPERATION 001', bx + 26 * unit, by + 37 * unit, { size: 15 * unit, color: COLOR.accent, spacing: 4 * unit });
         text(context, 'HOLD THE GARAGE', bx + 26 * unit, by + 78 * unit, { size: 27 * unit, weight: 800 });
-        ['Enter from the street.', 'Seal the gate. Find the boards.', 'Survive all five waves.'].forEach((line, i) => text(context, line, bx + 26 * unit, by + (119 + i * 31) * unit, { size: 18 * unit, color: COLOR.dim }));
+        ['Enter from the street.', 'Seal the gate. Find the boards.', 'Survive five waves, then ride up.'].forEach((line, i) => text(context, line, bx + 26 * unit, by + (119 + i * 31) * unit, { size: 18 * unit, color: COLOR.dim }));
         context.fillStyle = COLOR.border; context.fillRect(bx + 26 * unit, by + 218 * unit, bw - 52 * unit, 1);
         text(context, 'SOLO  /  5 WAVES  /  P9', bx + 26 * unit, by + 254 * unit, { size: 14 * unit, color: COLOR.accent, spacing: 2 * unit });
         let y = height * 0.66;
@@ -370,8 +409,9 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             context.fillStyle = COLOR.text;
             context.fill();
             text(context, format(value), trackX + trackWidth + 36 * unit, y, { size: 24 * unit, color: COLOR.text, shadow: false });
-            y += 58 * unit;
+            y += 54 * unit;
           };
+          slider('volume', 'Volume', (value) => `${Math.round(value * 100)}%`);
           slider('sensitivity', 'Mouse sensitivity', (value) => value.toFixed(2));
           slider('fieldOfView', 'Field of view', (value) => `${Math.round(value)}`);
           slider('fisheye', 'Lens warp', (value) => (value === 0 ? 'Off' : value.toFixed(2)));
@@ -397,7 +437,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             context.fillStyle = on ? '#15110a' : COLOR.text;
             context.fill();
             text(context, on ? 'On' : 'Off', tx + w + 22 * unit, y, { size: 22 * unit, color: COLOR.dim, shadow: false });
-            y += 50 * unit;
+            y += 46 * unit;
           };
           toggle('showRadar', 'Radar');
           toggle('showCompass', 'Compass');

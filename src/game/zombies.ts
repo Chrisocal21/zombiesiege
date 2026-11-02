@@ -92,7 +92,7 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
       const speed =
         zombieConfig.moveSpeed *
         zombie.speedFactor *
-        (1 + zombieConfig.speedPerWave * (state.waves.number - 1));
+        (1 + zombieConfig.speedPerWave * (state.waves.number - 1) + config.elevator.speedPerFloor * state.floor);
       const moved = resolveCircle(
         level,
         zombie.x + (dx / distance) * speed * dt,
@@ -144,11 +144,11 @@ export function raycastZombies(
   origin: Vec3,
   direction: Vec3,
   maxDistance: number,
-): { zombie: Zombie; distance: number } | null {
+): { zombie: Zombie; distance: number; head: boolean } | null {
   const { radius, height, headHeight } = config.zombie;
   const body = radius * 0.8;
   const head = radius * 0.55;
-  let nearest: { zombie: Zombie; distance: number } | null = null;
+  let nearest: { zombie: Zombie; distance: number; head: boolean } | null = null;
 
   for (const zombie of state.zombies) {
     if (zombie.dead) continue;
@@ -158,10 +158,11 @@ export function raycastZombies(
       { min: { x: zombie.x - body, y: 0, z: zombie.z - body }, max: { x: zombie.x + body, y: headHeight, z: zombie.z + body } },
       { min: { x: zombie.x - head, y: headHeight, z: zombie.z - head }, max: { x: zombie.x + head, y: height, z: zombie.z + head } },
     ];
-    for (const part of parts) {
+    for (let index = 0; index < parts.length; index++) {
+      const part = parts[index];
       const hit = rayAabb(origin, direction, part.min, part.max, limit);
       if (hit && (nearest === null || hit.distance < nearest.distance)) {
-        nearest = { zombie, distance: hit.distance };
+        nearest = { zombie, distance: hit.distance, head: index === 1 };
       }
     }
   }

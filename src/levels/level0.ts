@@ -1,4 +1,4 @@
-import type { Door, Gate, Level, LevelBox, Ramp, Surface } from './types';
+import type { Door, Elevator, Gate, Level, LevelBox, Ramp, Surface } from './types';
 
 const FLOOR = '#6b6e72';
 const WALL = '#8a8d90';
@@ -36,6 +36,17 @@ const gate: Gate = {
   panel: { x: 6.1, y: 1.2, z: 9.6 },
 };
 
+// The elevator is in the north wall, west of the container. Its cab sits behind the wall like the
+// space behind each doorway.
+const elevator: Elevator = {
+  position: { x: -6, y: 0, z: -10.25 },
+  normal: { x: 0, z: 1 },
+  width: 2.2,
+  height: 2.5,
+  cabDepth: ALCOVE_DEPTH,
+  cabWidth: ALCOVE_WIDTH,
+};
+
 const ramp: Ramp = { x: 3, width: 4.2, zBottom: 10.5, zTop: 34.5, rise: STREET };
 
 interface Opening {
@@ -59,7 +70,7 @@ function wall(axis: 'x' | 'z', fixed: number, from: number, to: number): LevelBo
 
   const onThisWall = (position: { x: number; z: number }) => (axis === 'x' ? position.z === fixed : position.x === fixed);
   const centreOf = (position: { x: number; z: number }) => (axis === 'x' ? position.x : position.z);
-  const openings: Opening[] = [...doors, gate]
+  const openings: Opening[] = [...doors, gate, elevator]
     .filter((opening) => onThisWall(opening.position))
     .map((opening) => ({ centre: centreOf(opening.position), width: opening.width, height: opening.height }))
     .sort((a, b) => a.centre - b.centre);
@@ -153,6 +164,7 @@ export const level0: Level = {
     ...wall('z', -10.25, -10, 10),
     ...wall('z', 10.25, -10, 10),
     ...doors.flatMap(alcove),
+    ...alcove(elevator),
 
     // The ramp down from the street, between two retaining walls.
     ...rampSteps(),
@@ -235,6 +247,13 @@ export const level0: Level = {
   ],
   doors,
   gate,
+  elevator,
+  // Resupply on the west wall, near the south-west corner and out of the way of the doors.
+  stations: [
+    { kind: 'ammo', position: { x: -9.95, y: 1.25, z: 8.8 }, normal: { x: 1, z: 0 } },
+    // The weapon wall, on the east side between the two doors.
+    { kind: 'shotgun', position: { x: 9.95, y: 1.25, z: -1 }, normal: { x: -1, z: 0 } },
+  ],
   ramp,
   // Two bundles of boards, far apart, so finding them takes some of the opening time.
   barricadeBars: [

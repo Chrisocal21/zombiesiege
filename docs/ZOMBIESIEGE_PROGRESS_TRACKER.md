@@ -4,8 +4,8 @@
 
 ## Zombie Siege
 
-**Overall progress:** 42% (23/55)
-**Last updated:** November 1, 2026
+**Overall progress:** 56% (31/55)
+**Last updated:** November 2, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
 
@@ -40,24 +40,24 @@
 
 ### Phase 1 — Solo Level 0 Complete
 
-**Phase progress:** 65% (13/20)
+**Phase progress:** 95% (19/20)
 
 #### Feature 1.1 — Lives and Survival
-**Progress:** 33% (1/3)
-- [ ] 3 lives; going down restarts the current wave; 0 lives restarts from wave 1
+**Progress:** 100% (3/3)
+- [x] 3 lives; going down restarts the current wave; 0 lives restarts from wave 1
 - [x] Auto-regenerating health
-- [ ] Points per kill, counter on screen
+- [x] Points per hit, kill and headshot (headshots kill outright), counter on screen
 
 #### Feature 1.2 — Level Flow
-**Progress:** 0% (0/3)
-- [ ] Level 0 cleared after wave 5
-- [ ] Win screen
-- [ ] Menu: replay or next level
+**Progress:** 100% (3/3)
+- [x] Floor cleared after wave 5; the elevator opens and rides up to the next floor
+- [x] Win screen at the top of the tower
+- [x] Menu: back to title from the win screen
 
 #### Feature 1.3 — Sound
-**Progress:** 0% (0/2)
-- [ ] Gunshot, groan, and hit clips (CC0)
-- [ ] Each clip's license logged in ASSET_LICENSES.md
+**Progress:** 50% (1/2)
+- [x] Gunshots, groans, hits, reloads, elevator and purchases, synthesized in the browser with a volume setting (no clip files, so no licenses)
+- [ ] Tune the sounds, or swap in real CC0 clips later
 
 #### Feature 1.4 — Movement and Cover
 **Progress:** 100% (6/6)
@@ -110,13 +110,13 @@
 
 ### Phase 3 — Level 1 and Spending
 
-**Phase progress:** 0% (0/7)
+**Phase progress:** 29% (2/7)
 
 - [ ] Level 1 map with multiple areas
-- [ ] Climb the tower: each level is a floor higher, ending on the roof with a helicopter airlift
+- [ ] Climb the tower: each level is a floor higher, ending on the roof with a helicopter airlift (elevator and floor counter built; floors still reuse the garage)
 - [ ] Doors that cost points
-- [ ] Weapon stations
-- [ ] More weapons and limited ammo
+- [x] Weapon stations: ammo locker and a sawed-off shotgun wall
+- [x] More weapons and limited ammo: spare rounds per gun, pistol and sawed-off shotgun (more guns later)
 - [ ] Dual wielding: second pistol or sawed-off shotgun
 - [ ] More zombie types as data
 
@@ -151,6 +151,7 @@
 | Nov 1, 2026 | Crouch, jump, ledge climbing, ladders and cover built. Zombies, waves and health regeneration built. Level 0 rebuilt with textured materials, lamps, props and a night sky | 35% |
 | Nov 1, 2026 | Four doorways with dark alcoves behind them, two bundles of boards to find, 30 second opening to board up two doors, P to freeze the zombies for testing | 38% |
 | Nov 1, 2026 | Level 0 rebuilt as a parking garage under a tower, with a street, ramp and gate; waves rest 25 seconds; title and pause menu with rebindable keys and settings; new HUD | 42% |
+| Nov 2, 2026 | Elevator and floors, lives, points, headshot kills, synthesized sound, win screen, limited ammo with an ammo station, and a buyable sawed-off shotgun with weapon swap | 56% |
 
 ---
 

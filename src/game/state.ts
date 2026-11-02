@@ -1,5 +1,5 @@
 import { config } from '../config';
-import type { Ladder, Level, Vec3 } from '../levels/types';
+import type { Elevator, Ladder, Level, LevelBox, Vec3 } from '../levels/types';
 
 // A pull-up onto a ledge, played out over a fixed time. Nothing else moves the player meanwhile.
 export interface Mantle {
@@ -53,7 +53,15 @@ export interface Player {
   lastHurtTick: number;
   lastHurtX: number;
   lastHurtZ: number;
+  // The weapon in hand. Its magazine and spare rounds are `ammo` and `reserve`.
+  weapon: 'pistol' | 'shotgun';
+  // The other weapon, put away with its own rounds, or null while only the pistol is owned.
+  stowed: { weapon: 'pistol' | 'shotgun'; ammo: number; reserve: number } | null;
+  // Tick of the last weapon swap or purchase of a weapon, or -1.
+  lastSwapTick: number;
   ammo: number;
+  // Spare rounds outside the magazine.
+  reserve: number;
   // Seconds until the next shot is allowed.
   cooldown: number;
   // Seconds left on a reload, or 0 when not reloading.
@@ -66,6 +74,12 @@ export interface Player {
   // True when the last shot hit a zombie rather than the level, and when it killed it.
   lastShotZombie: boolean;
   lastShotKill: boolean;
+  // Tick of the last time the trigger was pulled on an empty gun, or -1.
+  lastDryTick: number;
+  // Tick of the last purchase at a wall station, or -1.
+  lastBuyTick: number;
+  // True when the last shot hit a zombie in the head.
+  lastShotHead: boolean;
   // Bundles of boards being carried.
   bars: number;
 }
@@ -91,9 +105,10 @@ export interface Zombie {
   deadLeft: number;
 }
 
+// 'won' is the end of the run, after the top floor. 'lift' is the elevator standing open once the floor is cleared, and 'ride' is the trip up.
 // 'entry' is the run from the street into the garage, ending when the gate is closed. 'prep' is
 // the countdown to board up doors, 'break' the rest between waves.
-export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared';
+export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'lift' | 'ride' | 'won';
 
 export interface Waves {
   // The wave being fought, or the one coming up during a break. Starts at 1.
@@ -108,6 +123,10 @@ export interface Waves {
   // Tick the wave last began, and the tick the player last died, for messages on screen.
   startedTick: number;
   diedTick: number;
+  // Tick the players last stepped out of the elevator onto a new floor, or -1.
+  arrivedTick: number;
+  // True when the last time everyone went down was the final life, so the floor started over.
+  lostRun: boolean;
 }
 
 export interface DoorState {
@@ -120,6 +139,12 @@ export interface GateState {
   closed: boolean;
   // Tick it was closed, for the renderer's animation. -1 while open.
   closedTick: number;
+}
+
+export interface LiftState {
+  open: boolean;
+  // Tick the doors last started to open or close, for the renderer's animation. -1 before any.
+  changedTick: number;
 }
 
 export interface BarPickup {
@@ -135,12 +160,30 @@ export interface GameState {
   // A testing aid: while true, zombies and the wave clock stand still.
   frozen: boolean;
   gate: GateState;
+  lift: LiftState;
+  // Shared by the players. Going down costs one.
+  lives: number;
+  // Each player's score, by player id. Spent on doors and weapons once those exist.
+  points: number[];
+  // Which floor of the tower this is. The ground floor is 0.
+  floor: number;
   doors: DoorState[];
   pickups: BarPickup[];
   players: Player[];
   zombies: Zombie[];
   nextZombieId: number;
   waves: Waves;
+}
+
+// A solid box that fills the elevator doorway while the doors are shut.
+export function liftDoorBox(elevator: Elevator): LevelBox {
+  const alongX = elevator.normal.z !== 0;
+  return {
+    position: { x: elevator.position.x, y: elevator.height / 2, z: elevator.position.z },
+    size: { x: alongX ? elevator.width : 0.4, y: elevator.height, z: alongX ? 0.4 : elevator.width },
+    color: '#000000',
+    surface: 'lift',
+  };
 }
 
 export function createPlayer(id: number, spawn: Vec3): Player {
@@ -170,7 +213,11 @@ export function createPlayer(id: number, spawn: Vec3): Player {
     lastHurtTick: -1,
     lastHurtX: 0,
     lastHurtZ: 0,
+    weapon: 'pistol',
+    stowed: null,
+    lastSwapTick: -1,
     ammo: config.pistol.magazineSize,
+    reserve: config.pistol.reserveStart,
     cooldown: 0,
     reloadLeft: 0,
     lastShotTick: -1,
@@ -178,6 +225,9 @@ export function createPlayer(id: number, spawn: Vec3): Player {
     lastShotHit: false,
     lastShotZombie: false,
     lastShotKill: false,
+    lastShotHead: false,
+    lastDryTick: -1,
+    lastBuyTick: -1,
     bars: 0,
   };
 }
@@ -187,9 +237,13 @@ export function createGameState(level: Level): GameState {
   for (let id = 0; id < config.playerCount; id++) players.push(createPlayer(id, level.streetSpawns[id]));
   return {
     tick: 0,
-    level: { ...level, boxes: [...level.boxes] },
+    level: { ...level, boxes: [...level.boxes, liftDoorBox(level.elevator)] },
     frozen: false,
     gate: { closed: false, closedTick: -1 },
+    lift: { open: false, changedTick: -1 },
+    floor: 0,
+    lives: config.player.lives,
+    points: players.map(() => 0),
     doors: level.doors.map(() => ({ boarded: false, boardedTick: -1 })),
     pickups: level.barricadeBars.map((bar) => ({ x: bar.x, z: bar.z, taken: false })),
     players,
@@ -204,6 +258,8 @@ export function createGameState(level: Level): GameState {
       spawnIndex: 0,
       startedTick: -1,
       diedTick: -1,
+      arrivedTick: -1,
+      lostRun: false,
     },
   };
 }

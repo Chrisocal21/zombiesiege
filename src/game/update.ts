@@ -4,7 +4,8 @@ import { useAction } from './doors';
 import { raycastBoxes } from './hitscan';
 import type { InputMessage } from './inputs';
 import { moveBody } from './movement';
-import { eyeY, type GameState, type Player } from './state';
+import { eyeY, type GameState, type Player, type Zombie } from './state';
+import { swapWeapon, weaponStats } from './weapons';
 import { updateWaves } from './waves';
 import { damageZombie, raycastZombies, updateZombies } from './zombies';
 
@@ -81,24 +82,34 @@ function weapon(
   dt: number,
   level: Level,
 ): void {
-  const pistol = config.pistol;
+  if (input.swap && player.stowed && !player.ladder && !player.mantle) swapWeapon(player, state.tick);
+  const pistol = weaponStats(player.weapon);
   player.cooldown = Math.max(0, player.cooldown - dt);
 
   if (player.reloadLeft > 0) {
     player.reloadLeft -= dt;
     if (player.reloadLeft <= 0) {
       player.reloadLeft = 0;
-      player.ammo = pistol.magazineSize;
+      // Fill the magazine from the spare rounds.
+      const taken = Math.min(pistol.magazineSize - player.ammo, player.reserve);
+      player.ammo += taken;
+      player.reserve -= taken;
     }
     return;
   }
   // Both hands are busy on a ladder or a ledge.
   if (player.ladder || player.mantle) return;
 
-  const wantsReload = input.reload && player.ammo < pistol.magazineSize;
-  // Pulling the trigger on an empty magazine reloads too.
-  if (wantsReload || (input.fire && player.ammo === 0)) {
+  const wantsReload = input.reload && player.ammo < pistol.magazineSize && player.reserve > 0;
+  // Pulling the trigger on an empty magazine reloads too, if there is anything to load.
+  if (wantsReload || (input.fire && player.ammo === 0 && player.reserve > 0)) {
     player.reloadLeft = pistol.reloadSeconds;
+    return;
+  }
+  // Nothing in the gun and nothing spare: just a click.
+  if (input.fire && player.ammo === 0 && player.cooldown <= 0) {
+    player.lastDryTick = state.tick;
+    player.cooldown = 0.4;
     return;
   }
 
@@ -119,17 +130,52 @@ function weapon(
     y: eyeY(player),
     z: player.z - Math.sin(player.yaw) * player.leanOffset,
   };
-  const wallDistance = raycastBoxes(level, origin, direction, pistol.range);
-  const zombieHit = raycastZombies(state, origin, direction, wallDistance ?? pistol.range);
-  if (zombieHit) damageZombie(state, zombieHit.zombie, pistol.damage);
-  player.lastShotKill = zombieHit !== null && zombieHit.zombie.dead;
+  // The middle pellet goes where the crosshair is, and shows as the shot. The rest scatter in a cone.
+  const up = { x: -Math.sin(player.yaw) * -Math.sin(player.pitch), y: Math.cos(player.pitch), z: -Math.cos(player.yaw) * -Math.sin(player.pitch) };
+  const right = { x: Math.cos(player.yaw), y: 0, z: -Math.sin(player.yaw) };
+  let zombieHit: ReturnType<typeof raycastZombies> = null;
+  let wallDistance: number | null = null;
+  const struck = new Map<Zombie, boolean>();
+  for (let pellet = 0; pellet < pistol.pellets; pellet++) {
+    let aim = direction;
+    if (pellet > 0) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.sqrt(Math.random()) * pistol.spread;
+      const sideways = Math.cos(angle) * radius;
+      const lift = Math.sin(angle) * radius;
+      aim = {
+        x: direction.x + right.x * sideways + up.x * lift,
+        y: direction.y + up.y * lift,
+        z: direction.z + right.z * sideways + up.z * lift,
+      };
+      const length = Math.hypot(aim.x, aim.y, aim.z);
+      aim = { x: aim.x / length, y: aim.y / length, z: aim.z / length };
+    }
+    const wall = raycastBoxes(level, origin, aim, pistol.range);
+    const hit = raycastZombies(state, origin, aim, wall ?? pistol.range);
+    if (pellet === 0) { wallDistance = wall; zombieHit = hit; }
+    if (!hit) continue;
+    // A shot to the head kills whatever its health.
+    damageZombie(state, hit.zombie, hit.head ? hit.zombie.health : pistol.damage);
+    struck.set(hit.zombie, (struck.get(hit.zombie) ?? false) || hit.head);
+  }
+  // Points once per zombie hit, however many pellets landed.
+  let anyKill = false;
+  let anyHead = false;
+  for (const [zombie, head] of struck) {
+    state.points[player.id] += head ? config.points.perHeadshot : zombie.dead ? config.points.perKill : config.points.perHit;
+    if (zombie.dead) anyKill = true;
+    if (head) anyHead = true;
+  }
+  player.lastShotKill = anyKill;
+  player.lastShotHead = anyHead;
 
   const hitDistance = zombieHit ? zombieHit.distance : wallDistance;
   const distance = hitDistance ?? pistol.range;
 
   player.lastShotTick = state.tick;
   player.lastShotHit = hitDistance !== null;
-  player.lastShotZombie = zombieHit !== null;
+  player.lastShotZombie = struck.size > 0;
   player.lastShotEnd = {
     x: origin.x + direction.x * distance,
     y: origin.y + direction.y * distance,

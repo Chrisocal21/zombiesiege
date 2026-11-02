@@ -20,6 +20,8 @@ export interface InputMessage {
   toggleCover: boolean;
   // True when the use key (pick up, board up) was pressed since the last message.
   use: boolean;
+  // True when the swap-weapon key was pressed since the last message.
+  swap: boolean;
   // True when the freeze key was pressed since the last message. A testing aid.
   toggleFreeze: boolean;
 }
