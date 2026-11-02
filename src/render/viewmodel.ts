@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { config } from '../config';
 import type { Player } from '../game/state';
 import type { CameraPose } from './view';
@@ -21,12 +22,12 @@ export interface Viewmodel {
 
 function noiseTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 32;
-  canvas.height = 32;
+  canvas.width = 128;
+  canvas.height = 128;
   const context = canvas.getContext('2d')!;
-  const image = context.createImageData(32, 32);
+  const image = context.createImageData(128, 128);
   for (let i = 0; i < image.data.length; i += 4) {
-    const value = 218 + Math.random() * 37;
+    const value = 232 + Math.random() * 23;
     image.data[i] = value;
     image.data[i + 1] = value;
     image.data[i + 2] = value;
@@ -52,6 +53,50 @@ function box(
   return mesh;
 }
 
+// A rounded bar, like a finger segment. Its length runs along the given axis.
+function capsule(
+  parent: THREE.Object3D,
+  radius: number,
+  length: number,
+  material: THREE.Material,
+  position: [number, number, number],
+  axis: 'x' | 'z',
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 6, 14), material);
+  mesh.position.set(...position);
+  if (axis === 'x') mesh.rotation.z = Math.PI / 2;
+  else mesh.rotation.x = Math.PI / 2;
+  parent.add(mesh);
+  return mesh;
+}
+
+function ball(
+  parent: THREE.Object3D,
+  radius: number,
+  material: THREE.Material,
+  position: [number, number, number],
+  stretch: [number, number, number] = [1, 1, 1],
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 18, 14), material);
+  mesh.position.set(...position);
+  mesh.scale.set(...stretch);
+  parent.add(mesh);
+  return mesh;
+}
+
+function softBox(
+  parent: THREE.Object3D,
+  size: [number, number, number],
+  radius: number,
+  material: THREE.Material,
+  position: [number, number, number],
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(new RoundedBoxGeometry(...size, 4, radius), material);
+  mesh.position.set(...position);
+  parent.add(mesh);
+  return mesh;
+}
+
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -69,7 +114,6 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const darkMetal = new THREE.MeshStandardMaterial({ color: 0x16181c, metalness: 0.8, roughness: 0.5 });
   const polymer = new THREE.MeshStandardMaterial({ color: 0x202328, roughness: 0.85, metalness: 0.05, map: grain });
   const glove = new THREE.MeshStandardMaterial({ color: 0x7d6a4e, roughness: 0.9, map: grain });
-  const gloveDark = new THREE.MeshStandardMaterial({ color: 0x4d4130, roughness: 0.95, map: grain });
   const sleeve = new THREE.MeshStandardMaterial({ color: 0x55653f, roughness: 1, map: grain });
   const sleeveCuff = new THREE.MeshStandardMaterial({ color: 0x323d29, roughness: 1, map: grain });
   const sight = new THREE.MeshStandardMaterial({
@@ -124,28 +168,54 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   box(magazine, [0.028, 0.1, 0.042], darkMetal, [0, -0.058, 0]);
   box(magazine, [0.034, 0.01, 0.056], polymer, [0, -0.113, 0.002]);
 
-  // The right hand: palm and heel, then three fingers wrapped round the front of the grip.
-  box(grip, [0.026, 0.085, 0.034], glove, [0.03, -0.05, 0.012]);
-  box(grip, [0.05, 0.075, 0.016], glove, [0.012, -0.048, 0.034]);
-  box(grip, [0.042, 0.028, 0.03], gloveDark, [0.014, -0.012, 0.036]);
-  box(grip, [0.056, 0.022, 0.026], glove, [0.008, -0.026, -0.038]);
-  box(grip, [0.056, 0.022, 0.026], glove, [0.008, -0.05, -0.038]);
-  box(grip, [0.044, 0.021, 0.024], glove, [0.014, -0.074, -0.037]);
-  box(grip, [0.02, 0.03, 0.04], gloveDark, [-0.022, -0.026, 0.022]);
+  // The right hand, all rounded: a soft palm and heel, then three fingers that wrap round the
+  // front of the grip and curl back along the left side, each with a knuckle joint.
+  softBox(grip, [0.026, 0.085, 0.045], 0.011, glove, [0.03, -0.05, 0.0]);
+  softBox(grip, [0.05, 0.07, 0.022], 0.01, glove, [0.012, -0.05, 0.036]);
+  ball(grip, 0.02, glove, [0.004, -0.012, 0.034], [1.15, 0.75, 1]);
+  ball(grip, 0.02, glove, [-0.022, -0.03, 0.026], [0.85, 1.25, 1.05]);
+  const fingers = [
+    { y: -0.03, radius: 0.0108 },
+    { y: -0.052, radius: 0.0105 },
+    { y: -0.073, radius: 0.0095 },
+  ];
+  for (const { y, radius } of fingers) {
+    const frontZ = -0.025 - radius;
+    capsule(grip, radius, 0.05, glove, [0.008, y, frontZ], 'x');
+    capsule(grip, radius, 0.02, glove, [-0.0265, y, frontZ + 0.014], 'z');
+    ball(grip, radius, glove, [-0.0265, y, frontZ]);
+  }
   // Trigger finger along the frame, thumb on the other side.
-  box(root, [0.014, 0.014, 0.07], glove, [0.025, 0.004, -0.045]);
-  box(root, [0.03, 0.012, 0.014], glove, [0.012, -0.007, -0.002]);
-  const thumb = box(root, [0.014, 0.014, 0.072], glove, [-0.027, 0.02, 0.006]);
-  thumb.rotation.y = -0.05;
+  capsule(root, 0.0095, 0.05, glove, [0.026, 0.006, -0.045], 'z');
+  capsule(root, 0.0085, 0.02, glove, [0.012, -0.007, -0.002], 'x');
+  capsule(root, 0.0105, 0.04, glove, [-0.0265, 0.017, 0.012], 'z');
+  ball(root, 0.0107, glove, [-0.0265, 0.017, -0.0095]);
+  capsule(root, 0.0095, 0.02, glove, [-0.0262, 0.0175, -0.0335], 'z');
 
   // Forearm in a jacket sleeve, running back and down out of view.
   const arm = new THREE.Group();
   arm.position.set(0.04, -0.05, 0.1);
   arm.rotation.x = 0.38;
   root.add(arm);
-  box(arm, [0.062, 0.062, 0.05], glove, [0, 0, 0.025]);
-  box(arm, [0.078, 0.078, 0.018], sleeveCuff, [0, 0, 0.059]);
-  box(arm, [0.072, 0.072, 0.32], sleeve, [0, 0, 0.228]);
+  const tube = (
+    radiusFront: number,
+    radiusBack: number,
+    length: number,
+    material: THREE.Material,
+    z: number,
+  ) => {
+    const mesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(radiusBack, radiusFront, length, 22),
+      material,
+    );
+    mesh.rotation.x = Math.PI / 2;
+    mesh.position.z = z;
+    arm.add(mesh);
+  };
+  ball(arm, 0.03, glove, [0, 0, 0]);
+  tube(0.03, 0.034, 0.06, glove, 0.03);
+  tube(0.043, 0.043, 0.02, sleeveCuff, 0.07);
+  tube(0.04, 0.037, 0.32, sleeve, 0.24);
 
   // Muzzle flash: a bright core with four spikes, shown for a moment after each shot.
   const flash = new THREE.Group();
