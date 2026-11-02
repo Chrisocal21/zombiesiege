@@ -25,8 +25,8 @@ export function step(state: GameState, inputs: InputMessage[], dt: number, level
       const cos = Math.cos(player.yaw);
       const moved = resolveCircle(
         level,
-        player.x + (-sin * forward + -cos * right) * speed,
-        player.z + (-cos * forward + sin * right) * speed,
+        player.x + (-sin * forward + cos * right) * speed,
+        player.z + (-cos * forward + -sin * right) * speed,
         config.player.radius,
       );
       player.x = moved.x;
