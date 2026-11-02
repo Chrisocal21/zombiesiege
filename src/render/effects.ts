@@ -28,6 +28,8 @@ interface Bullet {
   end: THREE.Vector3;
   remaining: number;
   hit: boolean;
+  // True when what it hits is a zombie, which bleeds instead of throwing sparks.
+  blood: boolean;
 }
 
 // A thin cone behind the bullet, brightest at the bullet and fading to nothing.
@@ -76,6 +78,7 @@ export function createEffects(
   });
   const sparkGeometry = new THREE.BoxGeometry(0.025, 0.025, 0.025);
   const sparkMaterial = new THREE.MeshBasicMaterial({ color: 0xffd27a });
+  const bloodMaterial = new THREE.MeshBasicMaterial({ color: 0x6e0d0d });
   const up = new THREE.Vector3(0, 1, 0);
 
   const bullets: Bullet[] = [];
@@ -84,7 +87,7 @@ export function createEffects(
   let seenShotTick = -1;
   const muzzle = new THREE.Vector3();
 
-  function fireBullet(end: THREE.Vector3, hit: boolean): void {
+  function fireBullet(end: THREE.Vector3, hit: boolean, blood: boolean): void {
     const direction = end.clone().sub(muzzle);
     const remaining = direction.length();
     direction.normalize();
@@ -96,12 +99,12 @@ export function createEffects(
     trail.scale.y = 0.001;
     group.add(new THREE.Mesh(bulletGeometry, bulletMaterial), trail);
     scene.add(group);
-    bullets.push({ group, trail, travelled: 0, direction, end, remaining, hit });
+    bullets.push({ group, trail, travelled: 0, direction, end, remaining, hit, blood });
   }
 
-  function burst(at: THREE.Vector3): void {
+  function burst(at: THREE.Vector3, blood: boolean): void {
     for (let i = 0; i < SPARK_COUNT; i++) {
-      const mesh = new THREE.Mesh(sparkGeometry, sparkMaterial);
+      const mesh = new THREE.Mesh(sparkGeometry, blood ? bloodMaterial : sparkMaterial);
       mesh.position.copy(at);
       scene.add(mesh);
       const velocity = new THREE.Vector3(
@@ -124,7 +127,7 @@ export function createEffects(
           camera.updateMatrixWorld();
           camera.localToWorld(viewmodel.getMuzzle(muzzle));
           const end = player.lastShotEnd;
-          fireBullet(new THREE.Vector3(end.x, end.y, end.z), player.lastShotHit);
+          fireBullet(new THREE.Vector3(end.x, end.y, end.z), player.lastShotHit, player.lastShotZombie);
         }
       }
 
@@ -132,7 +135,7 @@ export function createEffects(
         const bullet = bullets[i];
         const travel = config.pistol.bulletSpeed * frameSeconds;
         if (travel >= bullet.remaining) {
-          if (bullet.hit) burst(bullet.end);
+          if (bullet.hit) burst(bullet.end, bullet.blood);
           scene.remove(bullet.group);
           bullets.splice(i, 1);
         } else {

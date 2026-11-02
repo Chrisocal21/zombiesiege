@@ -1,12 +1,13 @@
 import { createLocalInput } from './client/localInput';
 import { config } from './config';
-import { createGameState } from './game/state';
+import { createGameState, eyeY } from './game/state';
 import { MAX_PITCH, step } from './game/update';
 import { level0 } from './levels/level0';
 import { createEffects } from './render/effects';
 import { createHud } from './render/hud';
 import { createView, syncCamera } from './render/view';
 import { createViewmodel } from './render/viewmodel';
+import { createZombieViews } from './render/zombies';
 
 document.body.style.margin = '0';
 document.body.style.overflow = 'hidden';
@@ -16,15 +17,15 @@ const level = level0;
 const state = createGameState(level);
 const view = createView(level);
 const input = createLocalInput(view.renderer.domElement);
-const hud = createHud();
+const hud = createHud(level);
 const viewmodel = createViewmodel(view.viewScene);
 const effects = createEffects(view.scene, view.camera, viewmodel);
+const zombieViews = createZombieViews(view.scene);
 
 const tickSeconds = 1 / config.ticksPerSecond;
 let leftover = 0;
 let lastTime = performance.now();
-let previousX = state.players[0].x;
-let previousZ = state.players[0].z;
+let previous = { x: state.players[0].x, y: eyeY(state.players[0]), z: state.players[0].z };
 
 view.renderer.setAnimationLoop((now) => {
   // Capped so a hidden tab does not trigger a flood of catch-up ticks.
@@ -32,13 +33,14 @@ view.renderer.setAnimationLoop((now) => {
   lastTime = now;
   leftover += frameSeconds;
 
-  const player = state.players[0];
   while (leftover >= tickSeconds) {
-    previousX = player.x;
-    previousZ = player.z;
+    const before = state.players[0];
+    previous = { x: before.x, y: eyeY(before), z: before.z };
     step(state, [input.poll(0)], tickSeconds, level);
     leftover -= tickSeconds;
   }
+  // A restart replaces the player object, so it is looked up fresh every frame.
+  const player = state.players[0];
 
   // Draw between the last two ticks so motion stays smooth on any screen refresh rate.
   // Turning is drawn from the latest tick plus the mouse movement not yet sent.
@@ -47,8 +49,9 @@ view.renderer.setAnimationLoop((now) => {
   const yaw = player.yaw + look.yaw;
   const pose = {
     // The head sits out to the side of the body when leaning.
-    x: previousX + (player.x - previousX) * blend + Math.cos(yaw) * player.leanOffset,
-    z: previousZ + (player.z - previousZ) * blend - Math.sin(yaw) * player.leanOffset,
+    x: previous.x + (player.x - previous.x) * blend + Math.cos(yaw) * player.leanOffset,
+    y: previous.y + (eyeY(player) - previous.y) * blend,
+    z: previous.z + (player.z - previous.z) * blend - Math.sin(yaw) * player.leanOffset,
     yaw,
     pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, player.pitch + look.pitch)),
     roll: -(player.leanOffset / config.player.leanDistance) * config.view.leanRoll,
@@ -56,8 +59,10 @@ view.renderer.setAnimationLoop((now) => {
   syncCamera(view.camera, pose);
   viewmodel.update(player, pose, frameSeconds);
   view.setAim(viewmodel.aimAmount());
+  view.animate(now / 1000);
   input.setLookScale(view.camera.fov / config.view.fieldOfView);
   effects.update(player, frameSeconds);
+  zombieViews.update(state, frameSeconds);
   view.render();
-  hud.draw(input.isLocked(), player);
+  hud.draw(input.isLocked(), state, player);
 });

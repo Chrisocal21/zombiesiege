@@ -36,7 +36,16 @@ Decisions made during the build, and every open question.
 | Nov 1, 2026 | Hold right click to aim down the sights: the sight line sits on screen center, the view zooms from 75 to 55 degrees, the crosshair hides, walking drops to 60% speed, and aiming is blocked during a reload. Accuracy is the same as from the hip for now | Chris asked for aiming; the numbers and rules are the coding Claude's |
 | Nov 1, 2026 | Bullet is now a small copper round with a short fading streak at 140 m/s, drawn oversized so it can be seen. Still visual only; damage lands instantly | Chris asked for it |
 | Nov 1, 2026 | Lean on Q and E while aiming: the head moves 0.35 m out and the picture tilts, a wall stops it short, and shots start from the leaned head so you can fire round a corner. The gun stays fixed on screen while the world tilts | Chris asked for it; distance and speed are the coding Claude's numbers |
-| Nov 1, 2026 | Crouching, jumping, climbing, ladders, and back-to-wall peeking are planned as Feature 1.4 in Phase 1. Not built yet | Chris asked for them |
+| Nov 1, 2026 | Crouching, jumping, climbing, ladders, and back-to-wall peeking are Feature 1.4 in Phase 1 | Chris asked for them |
+| Nov 1, 2026 | Height: the player now has a height above the floor. Anything lower than 0.4 m is walked up, a jump rises about 0.9 m, and gravity is 16 | Coding Claude, numbers are placeholders |
+| Nov 1, 2026 | Crouch is hold C (or left Ctrl), jump is Space, cover is F. Crouching drops the eyes to 1.05 m and slows to 55% | Coding Claude chose the keys |
+| Nov 1, 2026 | Climbing: jumping while facing a ledge between 0.5 and 2.25 m above your feet pulls you up onto it over about half a second, with both hands off the gun. Any box with a free flat top can be climbed, which the game works out itself | Chris asked for it; the 2.25 m is the coding Claude's number |
+| Nov 1, 2026 | Ladders are listed in the level file (position, direction, bottom and top). Walk into one facing it to grab it, W up and S down, Space to kick off. Climbing off the top puts you on the roof | Chris asked for it |
+| Nov 1, 2026 | Cover: F next to a wall or barrier sticks you to it. You only slide along it, can lean with Q and E without aiming, and step away to leave. Behind a barrier lower than eye height you duck on your own and stand up by aiming. This is the first version of Chris's back-to-wall peek; lean still works on its own | Chris asked for it; the design is the coding Claude's |
+| Nov 1, 2026 | Zombies: one type, walk straight at the nearest living player and slide along obstacles, 75 health (3 pistol hits), hit for 10 once a second after a 0.4 s wind-up, 2.5 m/s and 6% faster each wave. A player more than 1 m above a zombie's feet can not be hit, which makes high spots safe for now | Chris asked for zombies; the numbers are placeholders |
+| Nov 1, 2026 | Waves: 3, 5, 7, 9 and 12 zombies, one every 1.5 s from the four corners, a 3 s pause before wave 1 and a 10 s break between waves. Clearing wave 5 shows Level 0 cleared, then starts again from wave 1. This is a stand-in for the win screen and menu | Coding Claude |
+| Nov 1, 2026 | Health is 100 and comes back at 15 per second after 5 seconds without a hit. At 0 the current wave restarts with full health, as decided for Step Zero. No lives yet | Coding Claude for the numbers |
+| Nov 1, 2026 | The yard is rebuilt to match the hand and gun: textures painted in code (concrete, panels, wood crates, corrugated container, rusty barrels), bevelled edges, a shipping container with a roof ladder, concrete barriers, wall lamps with real lights (one flickers), puddles, a night sky with stars, a moon casting shadows, and a dark skyline. No downloaded assets, so nothing new for ASSET_LICENSES.md | Chris asked for it |
 | Nov 1, 2026 | The weapon is drawn in a separate pass on top of the world so it never pokes through walls, with reflections so the metal reads as metal. Gloves are tan and the sleeve olive so the hand separates from the dark gun at night | Coding Claude |
 | Nov 1, 2026 | Weapon animation: walk bob, breathing, lag when turning, recoil with the slide kicking back, slide locked back when empty, and a reload where the magazine drops out and a new one slides in | Coding Claude |
 | Nov 1, 2026 | Responsiveness pass after Chris's feedback: game ticks raised from 60 to 120 per second, clicks are remembered until the next tick so none are dropped, shot spacing cut from 0.25 to 0.15 seconds, raw mouse input requested | Chris asked for it |
@@ -49,6 +58,6 @@ Decisions made during the build, and every open question.
 - Final name
 - Exact checkpoint spot in the Level 0 room
 - State sync method for Phase 2: full snapshots or only changes
-- Whether back-to-wall peeking needs its own cover mode, or lean is enough
-- Which objects can be climbed and how ladders are marked in the level file
+- Whether zombies should climb crates and ladders, so high spots are not safe
+- Whether the cover mode feels right after playing it
 - How the second weapon for dual wielding is obtained: floor pickups, wall stations, or something else

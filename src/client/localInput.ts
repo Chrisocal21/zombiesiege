@@ -22,8 +22,19 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   // A click is remembered until the next message goes out, even if the button
   // is released before then, so quick clicks are never dropped.
   let clickQueued = false;
+  // Jump and cover are single presses, remembered the same way.
+  let jumpQueued = false;
+  let coverQueued = false;
 
-  window.addEventListener('keydown', (event) => keys.add(event.code));
+  window.addEventListener('keydown', (event) => {
+    keys.add(event.code);
+    if (event.repeat) return;
+    if (event.code === 'Space') {
+      jumpQueued = true;
+      event.preventDefault();
+    }
+    if (event.code === 'KeyF') coverQueued = true;
+  });
   window.addEventListener('keyup', (event) => keys.delete(event.code));
   window.addEventListener('blur', () => {
     keys.clear();
@@ -81,10 +92,16 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         reload: keys.has('KeyR'),
         aim: aiming,
         lean: (keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0),
+        crouch: keys.has('KeyC') || keys.has('ControlLeft'),
+        // Holding Space keeps trying to jump, so it climbs as soon as a ledge is in reach.
+        jump: jumpQueued || keys.has('Space'),
+        toggleCover: coverQueued,
       };
       yaw = 0;
       pitch = 0;
       clickQueued = false;
+      jumpQueued = false;
+      coverQueued = false;
       return message;
     },
   };

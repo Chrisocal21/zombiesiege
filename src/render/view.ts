@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { config } from '../config';
 import type { Level } from '../levels/types';
+import { buildWorld } from './world';
 
-const NIGHT = 0x0b0e14;
+const NIGHT = 0x0c1119;
 
 export interface View {
   scene: THREE.Scene;
@@ -14,6 +15,8 @@ export interface View {
   // Zooms the world view: 0 is the normal view, 1 is fully aimed.
   setAim(amount: number): void;
   render(): void;
+  // Call once per frame with the running time in seconds, for the flickering lamps.
+  animate(time: number): void;
 }
 
 // The finished frame is drawn through this as a final step, bending it like a slight fisheye lens.
@@ -41,6 +44,8 @@ const LENS_FRAGMENT = /* glsl */ `
 
 export interface CameraPose {
   x: number;
+  // Height of the eyes above the floor.
+  y: number;
   z: number;
   yaw: number;
   pitch: number;
@@ -50,7 +55,7 @@ export interface CameraPose {
 
 // Puts the camera at a pose worked out from the game state. The renderer only reads the state.
 export function syncCamera(camera: THREE.PerspectiveCamera, pose: CameraPose): void {
-  camera.position.set(pose.x, config.player.eyeHeight, pose.z);
+  camera.position.set(pose.x, pose.y, pose.z);
   camera.rotation.set(pose.pitch, pose.yaw, pose.roll, 'YXZ');
 }
 
@@ -64,24 +69,30 @@ export function createView(level: Level): View {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(NIGHT);
-  scene.fog = new THREE.Fog(NIGHT, 6, 34);
+  scene.fog = new THREE.Fog(NIGHT, 8, 42);
 
-  scene.add(new THREE.HemisphereLight(0xa8bbdd, 0x3a4048, 3.5));
-  const moon = new THREE.DirectionalLight(0xc8d8f0, 3);
-  moon.position.set(6, 12, 4);
+  // Moonlight is the only thing that casts shadows across the whole yard. The lamps add pools of
+  // colour, and the hemisphere keeps the shadows from going pitch black.
+  scene.add(new THREE.HemisphereLight(0x6f86b8, 0x242a33, 1.1));
+  const moon = new THREE.DirectionalLight(0xaec4ff, 2.2);
+  moon.position.set(-12, 18, 10.5);
+  moon.castShadow = true;
+  moon.shadow.mapSize.set(4096, 4096);
+  moon.shadow.camera.left = -17;
+  moon.shadow.camera.right = 17;
+  moon.shadow.camera.top = 17;
+  moon.shadow.camera.bottom = -17;
+  moon.shadow.camera.near = 1;
+  moon.shadow.camera.far = 60;
+  moon.shadow.bias = -0.0003;
+  moon.shadow.normalBias = 0.03;
   scene.add(moon);
-
-  for (const box of level.boxes) {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(box.size.x, box.size.y, box.size.z),
-      new THREE.MeshLambertMaterial({ color: box.color }),
-    );
-    mesh.position.set(box.position.x, box.position.y, box.position.z);
-    scene.add(mesh);
-  }
+  // A studio-style environment gives the metal something to reflect.
+  const environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04);
+  const world = buildWorld(scene, level, environment.texture);
 
   const aspect = window.innerWidth / window.innerHeight;
-  const camera = new THREE.PerspectiveCamera(config.view.fieldOfView, aspect, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(config.view.fieldOfView, aspect, 0.1, 130);
   const spawn = level.playerSpawns[0];
   camera.position.set(spawn.x, spawn.y + config.player.eyeHeight, spawn.z);
 
@@ -105,10 +116,11 @@ export function createView(level: Level): View {
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.004;
   viewScene.add(key, key.target);
-  // A studio-style environment gives the metal something to reflect.
-  const environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04);
   viewScene.environment = environment.texture;
   viewScene.environmentIntensity = 0.4;
+  // The yard gets the same reflections, much fainter, so the metal and the puddles pick up a sky.
+  scene.environment = environment.texture;
+  scene.environmentIntensity = 0.1;
 
   // Both scenes are drawn into this, then the lens pass puts it on screen.
   const bufferSize = renderer.getDrawingBufferSize(new THREE.Vector2());
@@ -150,6 +162,7 @@ export function createView(level: Level): View {
     camera,
     viewScene,
     renderer,
+    animate: (time) => world.update(time),
     setAim(amount) {
       const { fieldOfView, aimFieldOfView } = config.view;
       camera.fov = fieldOfView + (aimFieldOfView - fieldOfView) * amount;

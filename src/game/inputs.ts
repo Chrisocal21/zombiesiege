@@ -1,17 +1,19 @@
-// What a player wants to do this tick. The game state is the only thing that acts on it.
-// The message comes from the keyboard today and from the network in Phase 2.
+// What a player asked for during one tick. A networked player will send the same thing.
 export interface InputMessage {
   playerId: number;
-  // -1 to 1. Forward is positive, right is positive.
   moveForward: number;
   moveRight: number;
-  // Radians turned since the last message. Positive turns left and up.
   lookYaw: number;
   lookPitch: number;
-  // True while the button is held.
   fire: boolean;
   reload: boolean;
   aim: boolean;
-  // -1 to lean left, 1 to lean right. Only has an effect while aiming.
+  // -1 for left, 1 for right.
   lean: number;
+  // Held while crouching.
+  crouch: boolean;
+  // True for any tick where jump was pressed since the last message.
+  jump: boolean;
+  // True when the cover key was pressed since the last message.
+  toggleCover: boolean;
 }

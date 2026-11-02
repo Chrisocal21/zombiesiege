@@ -412,6 +412,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   let aim = 0;
   const basePosition = new THREE.Vector3();
   let bobPhase = 0;
+  let lowered = 0;
   let time = 0;
   let swayYaw = 0;
   let swayPitch = 0;
@@ -453,7 +454,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       swayYaw *= settle;
       swayPitch *= settle;
 
-      const speed = Math.hypot(player.vx, player.vz);
+      // Footsteps only bob the gun while the feet are on the ground.
+      const speed = player.onGround ? Math.hypot(player.vx, player.vz) : 0;
+      // Both hands are busy climbing, so the gun drops out of the way.
+      lowered += ((player.ladder || player.mantle ? 1 : 0) - lowered) * Math.min(1, frameSeconds * 10);
       const walking = Math.min(1, speed / config.player.moveSpeed);
       bobPhase += speed * frameSeconds * 1.5;
       const bobX = Math.sin(bobPhase) * 0.006 * walking;
@@ -509,7 +513,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
       root.position.set(
         basePosition.x + bobX * loose - tilt * 0.03,
-        basePosition.y + (bobY + breathing) * loose + tilt * 0.03 + seat * 0.012,
+        basePosition.y + (bobY + breathing) * loose + tilt * 0.03 + seat * 0.012 - lowered * 0.35,
         basePosition.z + kick * 0.045 * (1 - aim * 0.5),
       );
       root.rotation.set(

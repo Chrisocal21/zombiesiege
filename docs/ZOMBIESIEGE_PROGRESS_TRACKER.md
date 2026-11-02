@@ -4,7 +4,7 @@
 
 ## Zombie Siege
 
-**Overall progress:** 19% (9/48)
+**Overall progress:** 35% (17/48)
 **Last updated:** November 1, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
@@ -24,7 +24,7 @@
 
 ### Step Zero — Solo Loop
 
-**Progress:** 75% (6/8)
+**Progress:** 100% (8/8)
 **Done when:** Chris plays waves 1 to 5 and wants another run.
 
 - [x] Level file format (boxes, player spawns, zombie spawns, checkpoint, kit spot)
@@ -33,19 +33,19 @@
 - [x] Host-owned game state fed by input messages, separate from rendering
 - [x] First person movement and mouselook
 - [x] Pistol: shoot and reload
-- [ ] Zombie that chases the nearest player and hits
-- [ ] Waves: slow ramp and timed break
+- [x] Zombie that chases the nearest player and hits
+- [x] Waves: slow ramp and timed break
 
 ---
 
 ### Phase 1 — Solo Level 0 Complete
 
-**Phase progress:** 7% (1/14)
+**Phase progress:** 50% (7/14)
 
 #### Feature 1.1 — Lives and Survival
-**Progress:** 0% (0/3)
+**Progress:** 33% (1/3)
 - [ ] 3 lives; going down restarts the current wave; 0 lives restarts from wave 1
-- [ ] Auto-regenerating health
+- [x] Auto-regenerating health
 - [ ] Points per kill, counter on screen
 
 #### Feature 1.2 — Level Flow
@@ -60,13 +60,13 @@
 - [ ] Each clip's license logged in ASSET_LICENSES.md
 
 #### Feature 1.4 — Movement and Cover
-**Progress:** 17% (1/6)
+**Progress:** 100% (6/6)
 - [x] Lean left and right while aiming (Q and E), stopped by walls
-- [ ] Crouching
-- [ ] Jumping
-- [ ] Climbing onto boxes and other objects
-- [ ] Ladders
-- [ ] Back-to-wall cover: peek round the edge and shoot
+- [x] Crouching
+- [x] Jumping
+- [x] Climbing onto boxes and other objects
+- [x] Ladders
+- [x] Back-to-wall cover: peek round the edge and shoot
 
 ---
 
@@ -135,6 +135,7 @@
 | Nov 1, 2026 | Pistol: shooting, reloading, ammo on the HUD, gun in view with flash and tracer | 20% |
 | Nov 1, 2026 | Weapon visuals: real hand model, redrawn pistol, shadows. Dual wielding added to Phase 3 | 19% |
 | Nov 1, 2026 | Aim down sights, fisheye, bullet look, trigger and reload animation. Lean (Q and E) built. Five more movement and cover tasks added to Phase 1 | 19% |
+| Nov 1, 2026 | Crouch, jump, ledge climbing, ladders and cover built. Zombies, waves and health regeneration built. Level 0 rebuilt with textured materials, lamps, props and a night sky | 35% |
 
 ---
 

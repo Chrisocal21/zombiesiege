@@ -10,8 +10,8 @@
 | Exact checkpoint spot in the Level 0 room | Needed for the Level 0 file before Phase 2 | Decide while sketching the room |
 | Is the HUD drawn on the canvas, as Supplyline does? | Matches Chris's no-HTML rule for UI | Yes; coding Claude to confirm the cost |
 | State sync: full snapshots or only changes? | Shapes the Phase 2 networking build | Coding Claude's call, explained simply to Chris |
-| What is "back against a wall and look around with the gun"? | Lean already lets you peek round an edge and shoot, and a wall stops it. A separate cover mode, where you stick to a wall and slide along it, is more to build and changes how movement feels | Lean first, play it, then decide whether a cover mode is still wanted |
-| Which objects can be climbed, and how? | Crates and boxes are easy if you can jump to the top edge. Walls and ladders need level data to say where. Decides how the level file grows | Climb anything up to a set height by jumping; ladders marked in the level file |
+| Can zombies reach a player standing high up? | Right now a player on a crate or the container roof is out of reach, so camping up there wins every wave. Options: zombies climb ladders and crates too, or the high spots get a limit | Let zombies climb crates and ladders in Phase 3; keep high spots safe for now, and see if it spoils Level 0 |
+| Is the cover mode as wanted? | Built as F to stick to a wall or barrier, slide along it, and lean without aiming. Low barriers make you duck on your own | Play it, then adjust |
 | How do you get the second weapon for dual wielding? | Chris said "pick up"; the plan so far is wall stations that cost points. Fixed spots, zombie drops, and stations each play differently | Decide in Phase 3; zombie drops were set aside for the first aid kit as unfair |
 
 ---
@@ -51,6 +51,8 @@
 | Tone and look? | Gritty night, fog, blocky shapes | Nov 1, 2026 |
 | Sound? | Basic CC0 effects | Nov 1, 2026 |
 | Build approach? | Planning files first, then scaffold in VS Code | Nov 1, 2026 |
+| What is "back against a wall and peek with the gun"? | A cover mode on F, plus the lean | Nov 1, 2026 |
+| What can be climbed, and how? | Jump facing a ledge up to 2.25 m above your feet and you pull up onto it; ladders are listed in the level file | Nov 1, 2026 |
 
 ---
 
