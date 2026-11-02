@@ -18,7 +18,7 @@ export const config = {
     damage: 25,
     secondsBetweenShots: 0.15,
     magazineSize: 12,
-    reloadSeconds: 1.5,
+    reloadSeconds: 1.9,
     range: 50,
     // Only the look of the bullet in flight. Damage still lands the instant you fire.
     bulletSpeed: 90,
