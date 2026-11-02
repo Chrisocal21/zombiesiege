@@ -60,6 +60,8 @@ export interface Player {
   lastShotHit: boolean;
   // True when the last shot hit a zombie rather than the level.
   lastShotZombie: boolean;
+  // Bundles of boards being carried.
+  bars: number;
 }
 
 export interface Zombie {
@@ -75,12 +77,16 @@ export interface Zombie {
   // Tick of its last swing and of the last bullet that hit it, for the renderer. -1 means never.
   lastAttackTick: number;
   lastHitTick: number;
+  // While still coming in through a doorway, the spot just inside it to walk to first.
+  // Null once it is in the room and chasing.
+  entry: { x: number; z: number } | null;
   dead: boolean;
   // Seconds left of the falling-over animation once dead, after which it is removed.
   deadLeft: number;
 }
 
-export type WavePhase = 'break' | 'active' | 'cleared';
+// 'prep' is the opening time to board up doors, 'break' the rest between waves.
+export type WavePhase = 'prep' | 'break' | 'active' | 'cleared';
 
 export interface Waves {
   // The wave being fought, or the one coming up during a break. Starts at 1.
@@ -97,8 +103,26 @@ export interface Waves {
   diedTick: number;
 }
 
+export interface DoorState {
+  boarded: boolean;
+  // Tick it was boarded, for the renderer's animation. -1 if open.
+  boardedTick: number;
+}
+
+export interface BarPickup {
+  x: number;
+  z: number;
+  taken: boolean;
+}
+
 export interface GameState {
   tick: number;
+  // This game's own copy of the level, because boarded doors add solid boxes to it.
+  level: Level;
+  // A testing aid: while true, zombies and the wave clock stand still.
+  frozen: boolean;
+  doors: DoorState[];
+  pickups: BarPickup[];
   players: Player[];
   zombies: Zombie[];
   nextZombieId: number;
@@ -136,6 +160,7 @@ export function createPlayer(id: number, level: Level): Player {
     lastShotEnd: { x: 0, y: 0, z: 0 },
     lastShotHit: false,
     lastShotZombie: false,
+    bars: 0,
   };
 }
 
@@ -144,13 +169,17 @@ export function createGameState(level: Level): GameState {
   for (let id = 0; id < config.playerCount; id++) players.push(createPlayer(id, level));
   return {
     tick: 0,
+    level: { ...level, boxes: [...level.boxes] },
+    frozen: false,
+    doors: level.doors.map(() => ({ boarded: false, boardedTick: -1 })),
+    pickups: level.barricadeBars.map((bar) => ({ x: bar.x, z: bar.z, taken: false })),
     players,
     zombies: [],
     nextZombieId: 0,
     waves: {
       number: 1,
-      phase: 'break',
-      timer: config.waves.startDelaySeconds,
+      phase: 'prep',
+      timer: config.waves.prepSeconds,
       toSpawn: 0,
       spawnTimer: 0,
       spawnIndex: 0,

@@ -45,6 +45,10 @@ Decisions made during the build, and every open question.
 | Nov 1, 2026 | Zombies: one type, walk straight at the nearest living player and slide along obstacles, 75 health (3 pistol hits), hit for 10 once a second after a 0.4 s wind-up, 2.5 m/s and 6% faster each wave. A player more than 1 m above a zombie's feet can not be hit, which makes high spots safe for now | Chris asked for zombies; the numbers are placeholders |
 | Nov 1, 2026 | Waves: 3, 5, 7, 9 and 12 zombies, one every 1.5 s from the four corners, a 3 s pause before wave 1 and a 10 s break between waves. Clearing wave 5 shows Level 0 cleared, then starts again from wave 1. This is a stand-in for the win screen and menu | Coding Claude |
 | Nov 1, 2026 | Health is 100 and comes back at 15 per second after 5 seconds without a hit. At 0 the current wave restarts with full health, as decided for Step Zero. No lives yet | Coding Claude for the numbers |
+| Nov 1, 2026 | Zombies now come out of four doorways, one in each wall, instead of the corners. Each doorway opens into a dark roofed alcove outside the wall where the zombie appears, walks through the door to a spot just inside, then chases. This replaces the corners entry above | Chris asked for it |
+| Nov 1, 2026 | Boarding up: two bundles of boards lie on the floor (a pillar of light marks them). G picks one up, and G at an open door boards it, one bundle per door, so two of the four doors can be sealed. Boards are solid, so nothing walks or shoots through them. Boards are permanent, and only possible in the opening | Chris asked for it; the keys, the carry rules and the permanent boards are the coding Claude's choice |
+| Nov 1, 2026 | The opening before wave 1 is 30 seconds with no zombies, to find the boards and choose the doors. Zombies spawn only at open doors, taking turns. After clearing wave 5 the boards come off and a new 30 second opening starts. After dying, the same wave restarts after 3 seconds with the boards as they were | Chris asked for it; the restart rules are the coding Claude's |
+| Nov 1, 2026 | P freezes every zombie and the wave clock, and P again resumes them, so the map can be walked and looked at. Meant as a testing aid, and it is a message to the game so it stays in the rules and not the renderer | Chris asked for it |
 | Nov 1, 2026 | The yard is rebuilt to match the hand and gun: textures painted in code (concrete, panels, wood crates, corrugated container, rusty barrels), bevelled edges, a shipping container with a roof ladder, concrete barriers, wall lamps with real lights (one flickers), puddles, a night sky with stars, a moon casting shadows, and a dark skyline. No downloaded assets, so nothing new for ASSET_LICENSES.md | Chris asked for it |
 | Nov 1, 2026 | The weapon is drawn in a separate pass on top of the world so it never pokes through walls, with reflections so the metal reads as metal. Gloves are tan and the sleeve olive so the hand separates from the dark gun at night | Coding Claude |
 | Nov 1, 2026 | Weapon animation: walk bob, breathing, lag when turning, recoil with the slide kicking back, slide locked back when empty, and a reload where the magazine drops out and a new one slides in | Coding Claude |
@@ -58,6 +62,7 @@ Decisions made during the build, and every open question.
 - Final name
 - Exact checkpoint spot in the Level 0 room
 - State sync method for Phase 2: full snapshots or only changes
+- Whether zombies should be able to tear boards down
 - Whether zombies should climb crates and ladders, so high spots are not safe
 - Whether the cover mode feels right after playing it
 - How the second weapon for dual wielding is obtained: floor pickups, wall stations, or something else

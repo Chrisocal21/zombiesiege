@@ -1,5 +1,6 @@
 import { config } from '../config';
 import type { GameState, Player } from '../game/state';
+import { interactionTarget } from '../game/doors';
 import { ladderInReach } from '../game/movement';
 import { TOTAL_WAVES } from '../game/waves';
 import { aliveZombies } from '../game/zombies';
@@ -66,6 +67,7 @@ export function createHud(level: Level): Hud {
           16,
         );
         text('Walk into a ladder to climb it, W up and S down', width / 2, height / 2 + 84, 16);
+        text('G pick up boards and board up doors in the opening, P freeze the zombies to look around', width / 2, height / 2 + 108, 16);
         return;
       }
 
@@ -98,7 +100,16 @@ export function createHud(level: Level): Hud {
 
       // Wave and zombies left, top centre.
       const waves = state.waves;
-      if (waves.phase === 'break') {
+      if (waves.phase === 'prep') {
+        const boarded = state.doors.filter((door) => door.boarded).length;
+        text(`Board up the doors: ${Math.ceil(waves.timer)}`, width / 2, 44, 24);
+        text(
+          `Find the bundles of boards and press G at a door. Boarded ${boarded} of ${state.level.doors.length}, carrying ${player.bars}. Zombies use the open doors.`,
+          width / 2,
+          68,
+          15,
+        );
+      } else if (waves.phase === 'break') {
         text(`Wave ${waves.number} of ${TOTAL_WAVES} in ${Math.ceil(waves.timer)}`, width / 2, 44, 22);
       } else if (waves.phase === 'active') {
         const left = waves.toSpawn + aliveZombies(state);
@@ -122,8 +133,12 @@ export function createHud(level: Level): Hud {
 
       // A hint for what the body can do right now.
       let hint: string | null = null;
-      if (player.cover) hint = 'In cover: Q and E peek, hold right click to rise, F to leave';
+      const interaction = interactionTarget(state, player);
+      if (interaction?.kind === 'pickup') hint = 'G to pick up the boards';
+      else if (interaction?.kind === 'door') hint = 'G to board up this door';
+      else if (player.cover) hint = 'In cover: Q and E peek, hold right click to rise, F to leave';
       else if (ladderInReach(player, level)) hint = 'W to climb the ladder';
+      if (state.frozen) text('Zombies frozen, P to resume', width / 2, height - 56, 18, WARNING);
       if (hint) text(hint, width / 2, height - 28, 16, 'rgba(230,233,239,0.75)');
     },
   };

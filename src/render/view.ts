@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { config } from '../config';
+import type { GameState } from '../game/state';
 import type { Level } from '../levels/types';
 import { buildWorld } from './world';
 
@@ -15,8 +16,8 @@ export interface View {
   // Zooms the world view: 0 is the normal view, 1 is fully aimed.
   setAim(amount: number): void;
   render(): void;
-  // Call once per frame with the running time in seconds, for the flickering lamps.
-  animate(time: number): void;
+  // Call once per frame with the running time in seconds and the game state.
+  animate(time: number, state: GameState): void;
 }
 
 // The finished frame is drawn through this as a final step, bending it like a slight fisheye lens.
@@ -162,7 +163,7 @@ export function createView(level: Level): View {
     camera,
     viewScene,
     renderer,
-    animate: (time) => world.update(time),
+    animate: (time, state) => world.update(time, state),
     setAim(amount) {
       const { fieldOfView, aimFieldOfView } = config.view;
       camera.fov = fieldOfView + (aimFieldOfView - fieldOfView) * amount;

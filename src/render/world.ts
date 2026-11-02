@@ -1,17 +1,20 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import type { GameState } from '../game/state';
 import type { Ladder, Level, LevelBox, LevelLight } from '../levels/types';
 import {
   floorDecalTexture,
   glowTexture,
+  plankMaterial,
   puddleAlphaTexture,
   surfaceMaterial,
   tileMeters,
 } from './materials';
 
 export interface World {
-  // Call every frame with the running time in seconds, for flickering lamps.
-  update(time: number): void;
+  // Call every frame with the running time in seconds and the game state, for flickering lamps,
+  // boarded doors and the bundles of boards.
+  update(time: number, state: GameState): void;
 }
 
 const BEVEL: Partial<Record<string, number>> = { crate: 0.035, container: 0.03, plain: 0.05 };
@@ -196,6 +199,135 @@ function buildLamp(config: LevelLight, glowMap: THREE.Texture, parent: THREE.Gro
   };
 }
 
+// How long the boards take to fly into place, in ticks.
+const BOARD_TICKS = 40;
+const PLANK_HEIGHTS = [0.42, 0.92, 1.45, 1.98];
+
+// Door frames, the red lights behind them, the boards that appear when a door is boarded up, and
+// the bundles of boards lying on the floor waiting to be found.
+function buildDoors(scene: THREE.Scene, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
+  const wood = plankMaterial();
+  const frameMaterial = new THREE.MeshStandardMaterial({ color: 0xb59a2e, roughness: 0.55, metalness: 0.35 });
+  const nailMaterial = new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.5, metalness: 0.7 });
+
+  const boards: THREE.Group[] = [];
+  for (const door of level.doors) {
+    const facing = Math.atan2(door.normal.x, door.normal.z);
+    const group = new THREE.Group();
+    // The inner face of the wall, so the frame stands just proud of it.
+    group.position.set(door.position.x + door.normal.x * 0.25, 0, door.position.z + door.normal.z * 0.25);
+    group.rotation.y = facing;
+    scene.add(group);
+
+    for (const side of [-1, 1]) {
+      const jamb = new THREE.Mesh(new RoundedBoxGeometry(0.2, door.height + 0.2, 0.14, 2, 0.02), frameMaterial);
+      jamb.position.set(side * (door.width / 2 + 0.1), (door.height + 0.2) / 2, 0.07);
+      jamb.castShadow = true;
+      group.add(jamb);
+    }
+    const header = new THREE.Mesh(new RoundedBoxGeometry(door.width + 0.4, 0.2, 0.14, 2, 0.02), frameMaterial);
+    header.position.set(0, door.height + 0.1, 0.07);
+    header.castShadow = true;
+    group.add(header);
+
+    // A dim red light in the dark space behind the door.
+    const lamp = new THREE.Group();
+    lamp.position.set(door.position.x - door.normal.x * 1.6, 3.2, door.position.z - door.normal.z * 1.6);
+    lamp.add(new THREE.PointLight(0xff4a2a, 9, 8, 2));
+    const bulb = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: glowMap, color: 0xff3a22, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.7 }),
+    );
+    bulb.scale.setScalar(0.9);
+    lamp.add(bulb);
+    scene.add(lamp);
+
+    // The boards, across the opening on the room side.
+    const planks = new THREE.Group();
+    PLANK_HEIGHTS.forEach((y, index) => {
+      const plank = new THREE.Mesh(new RoundedBoxGeometry(door.width + 0.7, 0.21, 0.06, 2, 0.01), wood);
+      plank.position.set(index % 2 === 0 ? 0.05 : -0.07, y, 0.2);
+      plank.rotation.z = (index % 2 === 0 ? 1 : -1) * (0.025 + index * 0.012);
+      plank.castShadow = plank.receiveShadow = true;
+      for (const side of [-1, 1]) {
+        const nail = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.02, 8), nailMaterial);
+        nail.rotation.x = Math.PI / 2;
+        nail.position.set(side * (door.width / 2 + 0.05), 0, 0.035);
+        plank.add(nail);
+      }
+      planks.add(plank);
+    });
+    planks.visible = false;
+    group.add(planks);
+    boards.push(planks);
+  }
+
+  // A bundle of boards on the floor, with a soft pillar of light so it can be found in the dark.
+  const beamGeometry = new THREE.CylinderGeometry(0.22, 0.34, 3.2, 16, 1, true);
+  const beamColors = new Float32Array(beamGeometry.attributes.position.count * 3);
+  for (let i = 0; i < beamGeometry.attributes.position.count; i++) {
+    const brightness = 1 - (beamGeometry.attributes.position.getY(i) + 1.6) / 3.2;
+    beamColors.set([brightness, 0.78 * brightness, 0.35 * brightness], i * 3);
+  }
+  beamGeometry.setAttribute('color', new THREE.BufferAttribute(beamColors, 3));
+  const beamMaterial = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    opacity: 0.5,
+  });
+  const strapMaterial = new THREE.MeshStandardMaterial({ color: 0x1d1f22, roughness: 0.6, metalness: 0.5 });
+
+  const bundles = level.barricadeBars.map((bar, index) => {
+    const group = new THREE.Group();
+    group.position.set(bar.x, 0, bar.z);
+    group.rotation.y = index * 1.3 + 0.4;
+    for (let i = 0; i < 5; i++) {
+      const plank = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.07, 0.2, 2, 0.015), wood);
+      plank.position.set((i % 2) * 0.05 - 0.03, 0.04 + Math.floor(i / 2) * 0.075, (i - 2) * 0.1);
+      plank.rotation.y = (i - 2) * 0.05;
+      plank.castShadow = plank.receiveShadow = true;
+      group.add(plank);
+    }
+    for (const x of [-0.45, 0.45]) {
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.25, 0.7), strapMaterial);
+      strap.position.set(x, 0.12, 0);
+      group.add(strap);
+    }
+    const beam = new THREE.Mesh(beamGeometry, beamMaterial.clone());
+    beam.position.y = 1.7;
+    group.add(beam);
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: glowMap, color: 0xffc860, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.55 }),
+    );
+    halo.scale.setScalar(2.2);
+    halo.position.y = 0.2;
+    group.add(halo);
+    scene.add(group);
+    return { group, beam };
+  });
+
+  return (state, time) => {
+    boards.forEach((planks, index) => {
+      const door = state.doors[index];
+      planks.visible = door.boarded;
+      if (!door.boarded) return;
+      const progress = Math.min(1, (state.tick - door.boardedTick) / BOARD_TICKS);
+      planks.children.forEach((plank, order) => {
+        // Each plank slams in a little after the one before.
+        const local = Math.max(0, Math.min(1, progress * 1.8 - order * 0.2));
+        plank.visible = local > 0;
+        plank.position.z = 0.2 + (1 - local) * 0.9;
+      });
+    });
+    bundles.forEach(({ group, beam }, index) => {
+      group.visible = !state.pickups[index].taken;
+      (beam.material as THREE.MeshBasicMaterial).opacity = 0.4 + 0.15 * Math.sin(time * 2.4 + index);
+    });
+  };
+}
+
 function buildSky(scene: THREE.Scene): void {
   const dome = new THREE.Mesh(
     new THREE.SphereGeometry(110, 32, 16),
@@ -366,9 +498,11 @@ export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.
   const lamps = level.lights.map((light) => buildLamp(light, glowMap, lampGroup));
 
   buildSky(scene);
+  const syncDoors = buildDoors(scene, level, glowMap);
 
   return {
-    update(time) {
+    update(time, state) {
+      syncDoors(state, time);
       for (const lamp of lamps) {
         let brightness = 1;
         if (lamp.flicker) {

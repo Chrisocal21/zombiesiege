@@ -1,5 +1,6 @@
 import { config } from '../config';
 import type { Level } from '../levels/types';
+import { useAction } from './doors';
 import { raycastBoxes } from './hitscan';
 import type { InputMessage } from './inputs';
 import { moveBody } from './movement';
@@ -10,11 +11,14 @@ import { damageZombie, raycastZombies, updateZombies } from './zombies';
 export const MAX_PITCH = Math.PI / 2 - 0.05;
 
 // Advances the game by one tick. Rules only, nothing here knows about Three.js.
-export function step(state: GameState, inputs: InputMessage[], dt: number, level: Level): void {
+export function step(state: GameState, inputs: InputMessage[], dt: number): void {
+  const level = state.level;
   for (const input of inputs) {
     const player = state.players[input.playerId];
     if (!player || player.health <= 0) continue;
 
+    if (input.toggleFreeze) state.frozen = !state.frozen;
+    if (input.use) useAction(state, player);
     look(player, input);
     // You can't look down the sights mid-reload, or while hanging off a ladder or a ledge.
     player.aiming = input.aim && player.reloadLeft === 0 && !player.ladder && !player.mantle;
@@ -23,8 +27,10 @@ export function step(state: GameState, inputs: InputMessage[], dt: number, level
     weapon(state, player, input, dt, level);
   }
 
-  updateZombies(state, dt, level);
-  updateWaves(state, dt, level);
+  if (!state.frozen) {
+    updateZombies(state, dt, level);
+    updateWaves(state, dt, level);
+  }
   for (const player of state.players) regenerate(state, player, dt);
   state.tick++;
 }

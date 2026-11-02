@@ -1,5 +1,6 @@
 import { config } from '../config';
 import type { Level } from '../levels/types';
+import { doorwaySpawn, openDoors, resetDoors } from './doors';
 import { createPlayer, type GameState } from './state';
 import { aliveZombies, spawnZombie } from './zombies';
 
@@ -15,7 +16,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     return;
   }
 
-  if (waves.phase === 'break') {
+  if (waves.phase === 'prep' || waves.phase === 'break') {
     waves.timer -= dt;
     if (waves.timer <= 0) startWave(state);
     return;
@@ -24,9 +25,12 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.phase === 'cleared') {
     waves.timer -= dt;
     if (waves.timer <= 0) {
+      // A fresh run: the boards come off and there is a new opening to choose doors in.
+      resetDoors(state);
+      state.zombies = [];
       waves.number = 1;
-      waves.phase = 'break';
-      waves.timer = config.waves.startDelaySeconds;
+      waves.phase = 'prep';
+      waves.timer = config.waves.prepSeconds;
     }
     return;
   }
@@ -34,8 +38,14 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.toSpawn > 0) {
     waves.spawnTimer -= dt;
     if (waves.spawnTimer <= 0) {
-      const spawn = level.zombieSpawns[waves.spawnIndex++ % level.zombieSpawns.length];
-      spawnZombie(state, spawn.x, spawn.z);
+      // Zombies only come through the doors that are still open.
+      const open = openDoors(state);
+      if (open.length > 0) {
+        const door = level.doors[open[waves.spawnIndex % open.length]];
+        const spawn = doorwaySpawn(door, (waves.spawnIndex * 0.381966) % 1);
+        spawnZombie(state, spawn.x, spawn.z, spawn.entry);
+      }
+      waves.spawnIndex++;
       waves.toSpawn--;
       waves.spawnTimer = config.waves.secondsBetweenSpawns;
     }

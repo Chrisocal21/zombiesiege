@@ -36,7 +36,7 @@ view.renderer.setAnimationLoop((now) => {
   while (leftover >= tickSeconds) {
     const before = state.players[0];
     previous = { x: before.x, y: eyeY(before), z: before.z };
-    step(state, [input.poll(0)], tickSeconds, level);
+    step(state, [input.poll(0)], tickSeconds);
     leftover -= tickSeconds;
   }
   // A restart replaces the player object, so it is looked up fresh every frame.
@@ -59,7 +59,7 @@ view.renderer.setAnimationLoop((now) => {
   syncCamera(view.camera, pose);
   viewmodel.update(player, pose, frameSeconds);
   view.setAim(viewmodel.aimAmount());
-  view.animate(now / 1000);
+  view.animate(now / 1000, state);
   input.setLookScale(view.camera.fov / config.view.fieldOfView);
   effects.update(player, frameSeconds);
   zombieViews.update(state, frameSeconds);

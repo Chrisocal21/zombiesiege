@@ -61,6 +61,17 @@ export const config = {
     bulletSpeed: 140,
   },
 
+  doors: {
+    // How close to a bundle of boards you must be to pick it up.
+    pickupRange: 1.6,
+    // How close to a doorway you must be to board it up.
+    boardRange: 2.6,
+    // How many bundles can be carried at once.
+    carryLimit: 2,
+    // How far inside the room a zombie walks before it goes after you.
+    entryDistance: 1.8,
+  },
+
   zombie: {
     maxHealth: 75,
     moveSpeed: 2.5,
@@ -83,7 +94,9 @@ export const config = {
     zombiesPerWave: [3, 5, 7, 9, 12],
     secondsBetweenSpawns: 1.5,
     breakSeconds: 10,
-    // The pause before wave 1, and again after dying or clearing the level.
+    // The opening time to find the bars and board up doors, before wave 1.
+    prepSeconds: 30,
+    // The short pause before the same wave starts again after dying.
     startDelaySeconds: 3,
     levelClearedSeconds: 8,
   },

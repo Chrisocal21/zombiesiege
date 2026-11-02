@@ -11,6 +11,7 @@
 | Is the HUD drawn on the canvas, as Supplyline does? | Matches Chris's no-HTML rule for UI | Yes; coding Claude to confirm the cost |
 | State sync: full snapshots or only changes? | Shapes the Phase 2 networking build | Coding Claude's call, explained simply to Chris |
 | Can zombies reach a player standing high up? | Right now a player on a crate or the container roof is out of reach, so camping up there wins every wave. Options: zombies climb ladders and crates too, or the high spots get a limit | Let zombies climb crates and ladders in Phase 3; keep high spots safe for now, and see if it spoils Level 0 |
+| Can zombies tear the boards down, as in COD? | Right now boards are permanent for the whole level, so the door choice is final. Tearing them down would make boards something to defend and repair | Keep permanent for Level 0, see how the choice feels |
 | Is the cover mode as wanted? | Built as F to stick to a wall or barrier, slide along it, and lean without aiming. Low barriers make you duck on your own | Play it, then adjust |
 | How do you get the second weapon for dual wielding? | Chris said "pick up"; the plan so far is wall stations that cost points. Fixed spots, zombie drops, and stations each play differently | Decide in Phase 3; zombie drops were set aside for the first aid kit as unfair |
 

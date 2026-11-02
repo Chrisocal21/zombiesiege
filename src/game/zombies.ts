@@ -4,7 +4,12 @@ import { resolveCircle } from './collision';
 import { rayAabb } from './hitscan';
 import type { GameState, Player, Zombie } from './state';
 
-export function spawnZombie(state: GameState, x: number, z: number): void {
+export function spawnZombie(
+  state: GameState,
+  x: number,
+  z: number,
+  entry: { x: number; z: number } | null,
+): void {
   const id = state.nextZombieId++;
   state.zombies.push({
     id,
@@ -17,6 +22,7 @@ export function spawnZombie(state: GameState, x: number, z: number): void {
     speedFactor: 0.85 + 0.3 * ((id * 0.618) % 1),
     lastAttackTick: -1,
     lastHitTick: -1,
+    entry,
     dead: false,
     deadLeft: 0,
   });
@@ -53,15 +59,21 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     }
     zombie.attackCooldown = Math.max(0, zombie.attackCooldown - dt);
 
+    // Coming in through a doorway, a zombie walks to the spot just inside it first.
+    if (zombie.entry && Math.hypot(zombie.entry.x - zombie.x, zombie.entry.z - zombie.z) < 0.5) {
+      zombie.entry = null;
+    }
     const target = nearestPlayer(state, zombie);
     if (!target) continue;
-    const dx = target.x - zombie.x;
-    const dz = target.z - zombie.z;
+    const goal = zombie.entry ?? target;
+    const dx = goal.x - zombie.x;
+    const dz = goal.z - zombie.z;
     const distance = Math.hypot(dx, dz);
     // Yaw 0 faces -z, the same as the player.
     zombie.yaw = Math.atan2(-dx, -dz);
 
-    const inReach = distance <= zombieConfig.attackRange && target.y < zombieConfig.reachHeight;
+    const inReach =
+      zombie.entry === null && distance <= zombieConfig.attackRange && target.y < zombieConfig.reachHeight;
     if (inReach) {
       if (zombie.attackCooldown === 0) {
         zombie.attackCooldown = zombieConfig.secondsBetweenAttacks;
@@ -74,7 +86,7 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     }
 
     // It stops a little short of its reach, so it stays on you without walking into you.
-    if (distance > zombieConfig.attackRange * 0.75) {
+    if (zombie.entry || distance > zombieConfig.attackRange * 0.75) {
       const speed =
         zombieConfig.moveSpeed *
         zombie.speedFactor *

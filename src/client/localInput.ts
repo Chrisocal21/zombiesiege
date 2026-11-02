@@ -25,6 +25,8 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   // Jump and cover are single presses, remembered the same way.
   let jumpQueued = false;
   let coverQueued = false;
+  let useQueued = false;
+  let freezeQueued = false;
 
   window.addEventListener('keydown', (event) => {
     keys.add(event.code);
@@ -34,6 +36,8 @@ export function createLocalInput(element: HTMLElement): LocalInput {
       event.preventDefault();
     }
     if (event.code === 'KeyF') coverQueued = true;
+    if (event.code === 'KeyG') useQueued = true;
+    if (event.code === 'KeyP') freezeQueued = true;
   });
   window.addEventListener('keyup', (event) => keys.delete(event.code));
   window.addEventListener('blur', () => {
@@ -96,12 +100,16 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         // Holding Space keeps trying to jump, so it climbs as soon as a ledge is in reach.
         jump: jumpQueued || keys.has('Space'),
         toggleCover: coverQueued,
+        use: useQueued,
+        toggleFreeze: freezeQueued,
       };
       yaw = 0;
       pitch = 0;
       clickQueued = false;
       jumpQueued = false;
       coverQueued = false;
+      useQueued = false;
+      freezeQueued = false;
       return message;
     },
   };

@@ -4,7 +4,7 @@
 
 ## Zombie Siege
 
-**Overall progress:** 35% (17/48)
+**Overall progress:** 38% (19/50)
 **Last updated:** November 1, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
@@ -40,7 +40,7 @@
 
 ### Phase 1 — Solo Level 0 Complete
 
-**Phase progress:** 50% (7/14)
+**Phase progress:** 56% (9/16)
 
 #### Feature 1.1 — Lives and Survival
 **Progress:** 33% (1/3)
@@ -67,6 +67,11 @@
 - [x] Climbing onto boxes and other objects
 - [x] Ladders
 - [x] Back-to-wall cover: peek round the edge and shoot
+
+#### Feature 1.5 — Doorways and Boards
+**Progress:** 100% (2/2)
+- [x] Zombies come out of four doorways in the walls
+- [x] Two bundles of boards on the floor; board up two of the four doors in the 30 second opening, forcing the waves through the other two
 
 ---
 
@@ -136,6 +141,7 @@
 | Nov 1, 2026 | Weapon visuals: real hand model, redrawn pistol, shadows. Dual wielding added to Phase 3 | 19% |
 | Nov 1, 2026 | Aim down sights, fisheye, bullet look, trigger and reload animation. Lean (Q and E) built. Five more movement and cover tasks added to Phase 1 | 19% |
 | Nov 1, 2026 | Crouch, jump, ledge climbing, ladders and cover built. Zombies, waves and health regeneration built. Level 0 rebuilt with textured materials, lamps, props and a night sky | 35% |
+| Nov 1, 2026 | Four doorways with dark alcoves behind them, two bundles of boards to find, 30 second opening to board up two doors, P to freeze the zombies for testing | 38% |
 
 ---
 

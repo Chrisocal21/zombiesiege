@@ -420,6 +420,7 @@ const TILE_METERS: Record<Surface, number> = {
   container: 1,
   barrel: 1,
   plain: 2,
+  board: 1,
 };
 
 export function tileMeters(surface: Surface): number {
@@ -538,4 +539,27 @@ export function skinTexture(): THREE.CanvasTexture {
 
 export function clothTexture(): THREE.CanvasTexture {
   return paintTexture(256, 22, paintCloth);
+}
+
+const paintPlank: Painter = (context, size, random) => {
+  context.fillStyle = '#a07b4d';
+  context.fillRect(0, 0, size, size);
+  // Grain runs along the length, which is the horizontal direction of the texture.
+  for (let i = 0; i < 90; i++) {
+    const y = random() * size;
+    context.strokeStyle = `rgba(${random() < 0.6 ? '45,28,12' : '235,205,155'},${0.08 + random() * 0.16})`;
+    context.lineWidth = 0.6 + random() * 1.8;
+    context.beginPath();
+    context.moveTo(0, y);
+    context.bezierCurveTo(size * 0.3, y + (random() - 0.5) * 8, size * 0.6, y + (random() - 0.5) * 8, size, y + (random() - 0.5) * 4);
+    context.stroke();
+  }
+  blobs(context, size, random, 10, size * 0.05, size * 0.2, '30,18,8', 0.3);
+  specks(context, size, random, size * 2, 2, 0.08, 0.16);
+};
+
+// Rough, weathered planks, for boarding doors and for the bundles on the floor.
+export function plankMaterial(): THREE.MeshStandardMaterial {
+  const map = paintTexture(256, 31, paintPlank);
+  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 1.5, roughness: 0.9 });
 }
