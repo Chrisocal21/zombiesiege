@@ -77,6 +77,7 @@ Hold out against waves of zombies in a dark, foggy, blocky world. Kill zombies f
 - [agreed] A level is a set number of waves; Level 0 has 5
 - [agreed] Flat points per kill; points only count up in Level 0
 - [agreed] Win screen, then a menu to replay or pick the next level
+- [stated] Dual wielding: a player can pick up a second weapon, such as another pistol or a sawed-off shotgun, and hold one in each hand (Phase 3)
 
 ### Look and Sound
 
@@ -140,6 +141,7 @@ Hold out against waves of zombies in a dark, foggy, blocky world. Kill zombies f
 - Doors that cost points
 - Weapon stations on walls
 - More weapons and limited ammo, once stations exist
+- Dual wielding: a second pistol or a sawed-off shotgun in the left hand
 - More zombie types, added as data
 
 ---

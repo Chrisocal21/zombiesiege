@@ -4,7 +4,7 @@
 
 ## Zombie Siege
 
-**Overall progress:** 20% (8/41)
+**Overall progress:** 19% (8/42)
 **Last updated:** November 1, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
@@ -89,12 +89,13 @@
 
 ### Phase 3 — Level 1 and Spending
 
-**Phase progress:** 0% (0/5)
+**Phase progress:** 0% (0/6)
 
 - [ ] Level 1 map with multiple areas
 - [ ] Doors that cost points
 - [ ] Weapon stations
 - [ ] More weapons and limited ammo
+- [ ] Dual wielding: second pistol or sawed-off shotgun
 - [ ] More zombie types as data
 
 ---
@@ -123,6 +124,7 @@
 | Nov 1, 2026 | Level 0 room renders from the level file with night lighting and fog | 12% |
 | Nov 1, 2026 | Game state, input messages, walking with wall and crate collision, mouselook, canvas HUD | 17% |
 | Nov 1, 2026 | Pistol: shooting, reloading, ammo on the HUD, gun in view with flash and tracer | 20% |
+| Nov 1, 2026 | Weapon visuals: real hand model, redrawn pistol, shadows. Dual wielding added to Phase 3 | 19% |
 
 ---
 

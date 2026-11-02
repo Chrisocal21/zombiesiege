@@ -13,15 +13,16 @@ const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z).normal
 const HAND_FORWARD = v(0.3, 0.3, -1);
 const HAND_THUMB_SIDE = v(0, 1, 0);
 // Where the middle finger's knuckle sits against the grip.
-const MIDDLE_KNUCKLE = new THREE.Vector3(0.037, -0.023, -0.02);
+const MIDDLE_KNUCKLE = new THREE.Vector3(0.037, -0.015, -0.02);
 
 // The direction of each finger bone in turn, from the knuckle out to the tip.
-const WRAP_GRIP = [v(-0.9, 0, -0.3), v(-0.7, 0, 0.7), v(0.1, 0, 1)];
+// The index finger runs along the frame, turns in through the trigger guard, and hooks the
+// trigger. The other three lean toward each other so they close up around the grip.
 const POSE: Record<string, THREE.Vector3[]> = {
-  index: [v(-0.55, -0.05, -0.85), v(-0.8, 0, 0.5), v(-0.1, 0, 1)],
-  middle: WRAP_GRIP,
-  ring: WRAP_GRIP,
-  pinky: WRAP_GRIP,
+  index: [v(-0.37, -0.02, -0.93), v(-0.85, -0.1, -0.5), v(-0.6, -0.1, 0.8)],
+  middle: [v(-0.9, 0, -0.3), v(-0.7, 0, 0.7), v(0.1, 0, 1)],
+  ring: [v(-0.9, 0.13, -0.3), v(-0.7, 0.1, 0.7), v(0.1, 0.05, 1)],
+  pinky: [v(-0.9, 0.28, -0.3), v(-0.7, 0.2, 0.7), v(0.1, 0.1, 1)],
   thumb: [v(-0.7, 0.75, -0.4), v(-0.2, 0.3, -1), v(0.12, 0.05, -1)],
 };
 
@@ -56,6 +57,8 @@ export function loadHand(grip: THREE.Object3D): void {
     if (!mesh) return;
 
     mesh.frustumCulled = false;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     mesh.material = new THREE.MeshStandardMaterial({ color: SKIN_COLOR, roughness: 0.62 });
 
     const bones = new Map(mesh.skeleton.bones.map((bone) => [bone.name, bone]));

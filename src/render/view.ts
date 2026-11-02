@@ -33,6 +33,7 @@ export function createView(level: Level): View {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.autoClear = false;
+  renderer.shadowMap.enabled = true;
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -64,8 +65,20 @@ export function createView(level: Level): View {
   const viewCamera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.02, 10);
   viewScene.add(new THREE.HemisphereLight(0xc4d2ee, 0x2a2e36, 1.4));
   const key = new THREE.DirectionalLight(0xdde8ff, 3);
-  key.position.set(-1, 2, 1);
-  viewScene.add(key);
+  // The light is aimed at where the weapon sits, with a shadow area just big enough to cover it.
+  key.position.set(-0.8, 1.6, 0.4);
+  key.target.position.set(0.2, -0.2, -0.6);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -0.6;
+  key.shadow.camera.right = 0.6;
+  key.shadow.camera.top = 0.6;
+  key.shadow.camera.bottom = -0.6;
+  key.shadow.camera.near = 0.5;
+  key.shadow.camera.far = 4;
+  key.shadow.bias = -0.0004;
+  key.shadow.normalBias = 0.004;
+  viewScene.add(key, key.target);
   // A studio-style environment gives the metal something to reflect.
   const environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04);
   viewScene.environment = environment.texture;

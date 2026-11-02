@@ -10,6 +10,7 @@
 | Exact checkpoint spot in the Level 0 room | Needed for the Level 0 file before Phase 2 | Decide while sketching the room |
 | Is the HUD drawn on the canvas, as Supplyline does? | Matches Chris's no-HTML rule for UI | Yes; coding Claude to confirm the cost |
 | State sync: full snapshots or only changes? | Shapes the Phase 2 networking build | Coding Claude's call, explained simply to Chris |
+| How do you get the second weapon for dual wielding? | Chris said "pick up"; the plan so far is wall stations that cost points. Fixed spots, zombie drops, and stations each play differently | Decide in Phase 3; zombie drops were set aside for the first aid kit as unfair |
 
 ---
 

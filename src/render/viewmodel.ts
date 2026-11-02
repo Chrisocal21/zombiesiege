@@ -227,9 +227,9 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       [-0.015, -0.028, 0.006],
       [-0.024, -0.012, 0.004],
       [-0.03, -0.03, 0.001],
-      [-0.074, -0.03, 0.001],
-      [-0.0715, 0.012, 0.003],
-      [-0.0775, 0.0185, 0.004],
+      [-0.07, -0.03, 0.001],
+      [-0.0675, 0.016, 0.003],
+      [-0.0725, 0.0215, 0.004],
     ],
     0.0275,
     0.0028,
@@ -268,12 +268,12 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     root,
     [
       [-0.0235, -0.004, 0.003],
-      [-0.0491, -0.1109, 0.004],
-      [-0.0999, -0.0995, 0.006],
-      [-0.0744, 0.0055, 0.004],
+      [-0.0448, -0.0914, 0.004],
+      [-0.0887, -0.0815, 0.006],
+      [-0.0695, 0.0044, 0.004],
     ],
-    0.033,
-    0.0058,
+    0.03,
+    0.0056,
     gripPolymer,
   );
   const grip = new THREE.Group();
@@ -283,14 +283,14 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
   const magazine = new THREE.Group();
   grip.add(magazine);
-  box(magazine, [0.024, 0.1, 0.04], darkMetal, [0, -0.058, 0]);
-  softBox(magazine, [0.03, 0.0095, 0.052], 0.003, polymer, [0, -0.1135, 0.001]);
+  box(magazine, [0.022, 0.08, 0.036], darkMetal, [0, -0.048, -0.002]);
+  softBox(magazine, [0.0275, 0.008, 0.047], 0.0028, polymer, [0, -0.0925, -0.002]);
 
   loadHand(grip);
 
   // Forearm in a jacket sleeve, running back and down out of view.
   const arm = new THREE.Group();
-  arm.position.set(0.011, -0.039, 0.118);
+  arm.position.set(0.011, -0.031, 0.118);
   arm.rotation.set(0.3, -0.2, 0);
   root.add(arm);
   const tube = (
@@ -326,6 +326,14 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   muzzle.add(flash);
   const flashLight = new THREE.PointLight(0xffb15a, 0, 2.5, 2);
   muzzle.add(flashLight);
+
+  // Lit parts shade each other, so the fingers and thumb cast shadows on the gun.
+  root.traverse((object) => {
+    if (object instanceof THREE.Mesh && object.material instanceof THREE.MeshStandardMaterial) {
+      object.castShadow = true;
+      object.receiveShadow = true;
+    }
+  });
 
   let seenShotTick = -1;
   let flashLeft = 0;
