@@ -6,6 +6,7 @@ import { level0 } from './levels/level0';
 import { createEffects } from './render/effects';
 import { createHud } from './render/hud';
 import { createView, syncCamera } from './render/view';
+import { createViewmodel } from './render/viewmodel';
 
 document.body.style.margin = '0';
 document.body.style.overflow = 'hidden';
@@ -13,10 +14,11 @@ document.body.style.background = '#000';
 
 const level = level0;
 const state = createGameState(level);
-const { scene, camera, renderer } = createView(level);
-const input = createLocalInput(renderer.domElement);
+const view = createView(level);
+const input = createLocalInput(view.renderer.domElement);
 const hud = createHud();
-const effects = createEffects(scene, camera);
+const viewmodel = createViewmodel(view.viewScene);
+const effects = createEffects(view.scene, view.camera, viewmodel);
 
 const tickSeconds = 1 / config.ticksPerSecond;
 let leftover = 0;
@@ -24,7 +26,7 @@ let lastTime = performance.now();
 let previousX = state.players[0].x;
 let previousZ = state.players[0].z;
 
-renderer.setAnimationLoop((now) => {
+view.renderer.setAnimationLoop((now) => {
   // Capped so a hidden tab does not trigger a flood of catch-up ticks.
   const frameSeconds = Math.min((now - lastTime) / 1000, 0.1);
   lastTime = now;
@@ -42,13 +44,15 @@ renderer.setAnimationLoop((now) => {
   // Turning is drawn from the latest tick plus the mouse movement not yet sent.
   const blend = leftover / tickSeconds;
   const look = input.pendingLook();
-  syncCamera(camera, {
+  const pose = {
     x: previousX + (player.x - previousX) * blend,
     z: previousZ + (player.z - previousZ) * blend,
     yaw: player.yaw + look.yaw,
     pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, player.pitch + look.pitch)),
-  });
+  };
+  syncCamera(view.camera, pose);
+  viewmodel.update(player, pose, frameSeconds);
   effects.update(player, frameSeconds);
-  renderer.render(scene, camera);
+  view.render();
   hud.draw(input.isLocked(), player);
 });

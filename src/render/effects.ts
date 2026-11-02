@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { config } from '../config';
 import type { Player } from '../game/state';
+import type { Viewmodel } from './viewmodel';
 
-const FLASH_SECONDS = 0.05;
 const SPARK_COUNT = 6;
 const SPARK_SECONDS = 0.3;
 const SPARK_SPEED = 3;
@@ -23,35 +23,16 @@ interface Spark {
 }
 
 export interface Effects {
-  // Call once per frame after the camera has been synced to the player.
+  // Call once per frame, after the camera and the viewmodel have been updated.
   update(player: Player, frameSeconds: number): void;
 }
 
-// The pistol in view, plus the muzzle flash, flying bullets, and impact sparks.
-export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamera): Effects {
-  const gun = new THREE.Group();
-  gun.position.set(0.22, -0.2, -0.55);
-  gun.scale.setScalar(0.75);
-  const slide = new THREE.Mesh(
-    new THREE.BoxGeometry(0.07, 0.08, 0.34),
-    new THREE.MeshLambertMaterial({ color: 0x5a616d }),
-  );
-  const grip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.16, 0.08),
-    new THREE.MeshLambertMaterial({ color: 0x3a3f47 }),
-  );
-  grip.position.set(0, -0.1, 0.1);
-  gun.add(slide, grip);
-
-  const flash = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.1, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0xffe08a }),
-  );
-  flash.position.set(0, 0.02, -0.22);
-  flash.visible = false;
-  gun.add(flash);
-  camera.add(gun);
-
+// The things a shot leaves in the world: a flying bullet and a burst of sparks where it lands.
+export function createEffects(
+  scene: THREE.Scene,
+  camera: THREE.PerspectiveCamera,
+  viewmodel: Viewmodel,
+): Effects {
   const bulletGeometry = new THREE.BoxGeometry(0.03, 0.03, 0.14);
   const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffe9a0 });
   const sparkGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
@@ -61,8 +42,6 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
   const sparks: Spark[] = [];
 
   let seenShotTick = -1;
-  let flashLeft = 0;
-  let kick = 0;
   const muzzle = new THREE.Vector3();
 
   function fireBullet(end: THREE.Vector3, hit: boolean): void {
@@ -96,13 +75,11 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
       if (player.lastShotTick !== seenShotTick) {
         seenShotTick = player.lastShotTick;
         if (seenShotTick >= 0) {
+          // The muzzle is known in camera space, so move it into the world.
           camera.updateMatrixWorld();
-          muzzle.set(0, 0.02, -0.2);
-          gun.localToWorld(muzzle);
+          camera.localToWorld(viewmodel.getMuzzle(muzzle));
           const end = player.lastShotEnd;
           fireBullet(new THREE.Vector3(end.x, end.y, end.z), player.lastShotHit);
-          flashLeft = FLASH_SECONDS;
-          kick = 1;
         }
       }
 
@@ -131,17 +108,6 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
         spark.mesh.position.addScaledVector(spark.velocity, frameSeconds);
         spark.mesh.scale.setScalar(spark.life / SPARK_SECONDS);
       }
-
-      flashLeft = Math.max(0, flashLeft - frameSeconds);
-      kick = Math.max(0, kick - frameSeconds * 12);
-      flash.visible = flashLeft > 0;
-
-      // The gun dips while reloading and kicks back after a shot.
-      const reloadProgress =
-        player.reloadLeft > 0 ? 1 - player.reloadLeft / config.pistol.reloadSeconds : 0;
-      gun.rotation.x = Math.sin(reloadProgress * Math.PI) * -0.9 + kick * 0.15;
-      gun.position.z = -0.55 + kick * 0.05;
-      gun.position.y = -0.2;
     },
   };
 }

@@ -1,13 +1,18 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { config } from '../config';
 import type { Level } from '../levels/types';
 
 const NIGHT = 0x0b0e14;
+const FIELD_OF_VIEW = 75;
 
 export interface View {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
+  // The weapon and hand live in their own scene, drawn on top of the world, so they never poke through walls.
+  viewScene: THREE.Scene;
   renderer: THREE.WebGLRenderer;
+  render(): void;
 }
 
 export interface CameraPose {
@@ -27,6 +32,7 @@ export function createView(level: Level): View {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.autoClear = false;
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -47,17 +53,43 @@ export function createView(level: Level): View {
     scene.add(mesh);
   }
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-  // The camera is in the scene so the gun attached to it gets drawn.
-  scene.add(camera);
+  const aspect = window.innerWidth / window.innerHeight;
+  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.1, 100);
   const spawn = level.playerSpawns[0];
   camera.position.set(spawn.x, spawn.y + config.player.eyeHeight, spawn.z);
 
+  // The view camera never moves. The weapon is placed relative to it, which is the same as
+  // being attached to the player's camera, but it has its own close near plane.
+  const viewScene = new THREE.Scene();
+  const viewCamera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.02, 10);
+  viewScene.add(new THREE.HemisphereLight(0xc4d2ee, 0x2a2e36, 1.4));
+  const key = new THREE.DirectionalLight(0xdde8ff, 3);
+  key.position.set(-1, 2, 1);
+  viewScene.add(key);
+  // A studio-style environment gives the metal something to reflect.
+  const environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04);
+  viewScene.environment = environment.texture;
+  viewScene.environmentIntensity = 0.4;
+
   window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const newAspect = window.innerWidth / window.innerHeight;
+    camera.aspect = newAspect;
     camera.updateProjectionMatrix();
+    viewCamera.aspect = newAspect;
+    viewCamera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  return { scene, camera, renderer };
+  return {
+    scene,
+    camera,
+    viewScene,
+    renderer,
+    render() {
+      renderer.clear();
+      renderer.render(scene, camera);
+      renderer.clearDepth();
+      renderer.render(viewScene, viewCamera);
+    },
+  };
 }
