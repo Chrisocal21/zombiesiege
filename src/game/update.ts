@@ -104,9 +104,11 @@ function weapon(
     z: -Math.cos(player.yaw) * cosPitch,
   };
   const origin = { x: player.x, y: config.player.eyeHeight, z: player.z };
-  const distance = raycastBoxes(level, origin, direction, pistol.range) ?? pistol.range;
+  const hitDistance = raycastBoxes(level, origin, direction, pistol.range);
+  const distance = hitDistance ?? pistol.range;
 
   player.lastShotTick = state.tick;
+  player.lastShotHit = hitDistance !== null;
   player.lastShotEnd = {
     x: origin.x + direction.x * distance,
     y: origin.y + direction.y * distance,

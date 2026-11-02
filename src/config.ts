@@ -20,6 +20,8 @@ export const config = {
     magazineSize: 12,
     reloadSeconds: 1.5,
     range: 50,
+    // Only the look of the bullet in flight. Damage still lands the instant you fire.
+    bulletSpeed: 90,
   },
 
   zombie: {

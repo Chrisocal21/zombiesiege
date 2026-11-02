@@ -19,6 +19,8 @@ export interface Player {
   // The renderer uses these to show the last shot. -1 means no shot yet.
   lastShotTick: number;
   lastShotEnd: Vec3;
+  // False when the shot flew its full range without hitting anything.
+  lastShotHit: boolean;
 }
 
 export interface GameState {
@@ -43,6 +45,7 @@ export function createGameState(level: Level): GameState {
       reloadLeft: 0,
       lastShotTick: -1,
       lastShotEnd: { x: 0, y: 0, z: 0 },
+      lastShotHit: false,
     });
   }
   return { tick: 0, players };
