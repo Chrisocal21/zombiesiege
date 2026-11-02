@@ -15,7 +15,8 @@ export type Action =
   | 'leanRight'
   | 'cover'
   | 'use'
-  | 'freeze';
+  | 'freeze'
+  | 'map';
 
 export interface ActionInfo {
   id: Action;
@@ -37,6 +38,7 @@ export const ACTIONS: ActionInfo[] = [
   { id: 'leanRight', label: 'Lean right', group: 'Combat' },
   { id: 'cover', label: 'Take cover', group: 'Interaction' },
   { id: 'use', label: 'Use: gate, boards, doors', group: 'Interaction' },
+  { id: 'map', label: 'Tactical map', group: 'Interaction' },
   { id: 'freeze', label: 'Freeze zombies (testing)', group: 'Interaction' },
 ];
 
@@ -55,6 +57,7 @@ const DEFAULTS: Record<Action, string> = {
   cover: 'KeyF',
   use: 'KeyG',
   freeze: 'KeyP',
+  map: 'KeyM',
 };
 
 const STORAGE_KEY = 'zombiesiege.bindings';

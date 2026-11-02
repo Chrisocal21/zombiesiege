@@ -21,12 +21,12 @@ const paintAsphalt: Painter = (context, size, random) => {
 
 export function asphaltMaterial(): THREE.MeshStandardMaterial {
   const map = paintTexture(1024, 51, paintAsphalt);
-  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 2.5, roughness: 0.96 });
+  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.015, roughness: 0.96 });
 }
 
 // Windows on a tower face: a grid of dark glass, some of it lit. The lit flags come from a hash of
 // the cell, so the albedo and the emissive picture agree.
-const CELLS = 8;
+const CELLS = 4;
 function lit(column: number, row: number, seed: number): number {
   const value = Math.abs(Math.sin(column * 127.1 + row * 311.7 + seed * 74.7) * 43758.5453) % 1;
   return value;
@@ -58,6 +58,9 @@ function paintBuilding(emissive: boolean): Painter {
           const tone = LIGHT_TONES[Math.floor(lit(column, row, 2) * LIGHT_TONES.length)];
           context.fillStyle = `rgba(${tone},${0.4 + lit(column, row, 3) * 0.4})`;
           context.fillRect(x, y, w, h);
+          context.fillStyle = '#000';
+          context.fillRect(x + w / 2 - 2, y, 4, h);
+          context.fillRect(x, y + h * 0.6, w, 3);
         } else {
           context.fillStyle = '#10161f';
           context.fillRect(x, y, w, h);
@@ -77,18 +80,23 @@ function paintBuilding(emissive: boolean): Painter {
   };
 }
 
+const buildingCache = new Map<string, THREE.MeshStandardMaterial>();
 export function buildingMaterial(color: string): THREE.MeshStandardMaterial {
+  const existing = buildingCache.get(color);
+  if (existing) return existing;
   const map = paintTexture(512, 52, paintBuilding(false));
   const emissiveMap = paintTexture(512, 52, paintBuilding(true));
-  return new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     map,
     emissiveMap,
     emissive: 0xffffff,
-    emissiveIntensity: 1.1,
+    emissiveIntensity: 0.35,
     roughness: 0.8,
     metalness: 0.1,
     color,
   });
+  buildingCache.set(color, material);
+  return material;
 }
 
 const paintCardboard: Painter = (context, size, random) => {
@@ -116,15 +124,15 @@ const paintCardboard: Painter = (context, size, random) => {
 
 export function cardboardMaterial(): THREE.MeshStandardMaterial {
   const map = paintTexture(256, 53, paintCardboard);
-  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 1, roughness: 0.92 });
+  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.006, roughness: 0.92 });
 }
 
 const paintHazard: Painter = (context, size, random) => {
   context.fillStyle = '#16161a';
   context.fillRect(0, 0, size, size);
-  context.fillStyle = '#e2b422';
+  context.fillStyle = '#c9a342';
   const stripe = size / 4;
-  for (let i = -4; i < 8; i++) {
+  for (let i = -4; i < 8; i += 2) {
     context.beginPath();
     context.moveTo(i * stripe, size);
     context.lineTo(i * stripe + stripe, size);
@@ -208,7 +216,7 @@ const paintShutter: Painter = (context, size, random) => {
 
 export function shutterMaterial(): THREE.MeshStandardMaterial {
   const map = paintTexture(512, 55, paintShutter);
-  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 4, roughness: 0.5, metalness: 0.7 });
+  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.024, roughness: 0.5, metalness: 0.7 });
 }
 
 // The street and plaza, painted once over everything at street level. The ramp is cut out of it.
@@ -265,6 +273,19 @@ export function streetDecalTexture(
   paving(10.5, 35.5);
   paving(46.5, 48);
 
+  // Surface parking bays and a drive aisle connected to the street at x = 14.
+  context.strokeStyle = 'rgba(225,222,207,0.65)'; context.lineWidth = 0.1 * scale;
+  for (const side of [-1, 1]) for (let z = 17; z < 32; z += 3) {
+    const x = side < 0 ? -23 : 17;
+    context.strokeRect(px(x), pz(z), 5 * scale, 2.7 * scale);
+  }
+  context.fillStyle = 'rgba(220,216,200,0.65)';
+  for (const x of [-14, 14]) {
+    context.beginPath(); context.moveTo(px(x), pz(28)); context.lineTo(px(x - 0.7), pz(29.2));
+    context.lineTo(px(x - 0.2), pz(29.2)); context.lineTo(px(x - 0.2), pz(31));
+    context.lineTo(px(x + 0.2), pz(31)); context.lineTo(px(x + 0.2), pz(29.2));
+    context.lineTo(px(x + 0.7), pz(29.2)); context.closePath(); context.fill();
+  }
   // Kerbs.
   context.fillStyle = '#b4b6b8';
   context.fillRect(px(x0), pz(35.5), width * scale, 0.5 * scale);
@@ -273,6 +294,9 @@ export function streetDecalTexture(
   context.fillRect(px(x0), pz(36), width * scale, 0.08 * scale);
   context.fillRect(px(x0), pz(45.92), width * scale, 0.08 * scale);
 
+  // Driveway curb cuts connect the lot to the road.
+  context.clearRect(px(11.5), pz(35.45), 5 * scale, 0.65 * scale);
+  context.clearRect(px(-16.5), pz(35.45), 5 * scale, 0.65 * scale);
   // A dashed white line down the middle of the road, and a worn edge line each side.
   context.fillStyle = 'rgba(224,224,216,0.8)';
   for (let x = x0 + 1; x < x0 + width - 3; x += 5) context.fillRect(px(x), pz(41) - 0.06 * scale, 3 * scale, 0.14 * scale);

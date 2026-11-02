@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { config } from '../config';
+import { settings } from '../client/settings';
 import type { GameState } from '../game/state';
 import type { Level } from '../levels/types';
 import { asphaltMaterial, hazardMaterial, labelTexture, shutterMaterial, streetDecalTexture } from './streetTextures';
@@ -9,7 +10,7 @@ const STEEL = new THREE.MeshStandardMaterial({ color: 0x5f646b, roughness: 0.5, 
 const DARK_STEEL = new THREE.MeshStandardMaterial({ color: 0x1f2226, roughness: 0.55, metalness: 0.6 });
 
 // How many of the street lamps carry a real light. The rest only glow, which is far cheaper.
-const REAL_STREET_LIGHTS = 3;
+const REAL_STREET_LIGHTS = 6;
 
 function glowSprite(map: THREE.Texture, color: number, scale: number, opacity: number): THREE.Sprite {
   const sprite = new THREE.Sprite(
@@ -97,6 +98,8 @@ export function buildStreet(scene: THREE.Scene, level: Level, glowMap: THREE.Tex
     pole.position.y = 3.5;
     pole.castShadow = true;
     group.add(pole);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.24, 12), STEEL);
+    base.position.y = 0.12; group.add(base);
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 1.6), DARK_STEEL);
     arm.position.set(0, 7, -0.7);
     group.add(arm);
@@ -106,7 +109,7 @@ export function buildStreet(scene: THREE.Scene, level: Level, glowMap: THREE.Tex
     const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.02, 0.58), new THREE.MeshBasicMaterial({ color: 0xffc27a }));
     bulb.position.set(0, 6.88, -1.4);
     group.add(bulb);
-    const glow = glowSprite(glowMap, 0xffb060, 3.4, 0.75);
+    const glow = glowSprite(glowMap, 0xffd6a0, 0.85, 0.28);
     glow.position.set(0, 6.8, -1.4);
     group.add(glow);
 
@@ -119,9 +122,10 @@ export function buildStreet(scene: THREE.Scene, level: Level, glowMap: THREE.Tex
     group.add(pool);
 
     if (index < REAL_STREET_LIGHTS) {
-      const light = new THREE.PointLight(0xffa860, 150, 30, 2);
+      const light = new THREE.SpotLight(0xffd6a0, 220, 24, Math.PI / 3, 0.65, 2);
       light.position.set(0, 6.4, -1.4);
-      group.add(light);
+      light.target.position.set(0, 0, -1.4);
+      group.add(light, light.target);
     }
     scene.add(group);
   });
@@ -273,7 +277,7 @@ export function buildGate(scene: THREE.Scene, level: Level, glowMap: THREE.Textu
       glow.material.opacity = 0.35;
       lever.rotation.x = 0.8;
     } else {
-      const pulse = 0.55 + 0.45 * Math.sin(time * 4);
+      const pulse = settings.reducedFlashing ? 1 : 0.55 + 0.45 * Math.sin(time * 4);
       lamp.color.setRGB(0.22 * pulse, 0.88 * pulse, 0.44 * pulse);
       glow.material.color.setHex(0x38e070);
       glow.material.opacity = 0.25 + 0.4 * pulse;

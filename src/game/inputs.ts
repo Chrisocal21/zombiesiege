@@ -1,5 +1,7 @@
 // What a player asked for during one tick. A networked player will send the same thing.
 export interface InputMessage {
+  // Optional for older clients/replays. The host chooses the fixed camera-height preset.
+  cameraStyle?: 'standard' | 'bodycam';
   playerId: number;
   moveForward: number;
   moveRight: number;

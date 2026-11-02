@@ -32,10 +32,9 @@ export function rayAabb(
     }
     let t1 = (min[axis] - o) / d;
     let t2 = (max[axis] - o) / d;
-    let side = -Math.sign(d);
+    const side = -Math.sign(d);
     if (t1 > t2) {
       [t1, t2] = [t2, t1];
-      side = -side;
     }
     if (t1 > entry) {
       entry = t1;

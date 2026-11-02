@@ -1,162 +1,163 @@
 import * as THREE from 'three';
 import { config } from '../config';
+import { settings } from '../client/settings';
+import { raycastBoxHit } from '../game/hitscan';
 import type { Player } from '../game/state';
+import type { Level, Surface } from '../levels/types';
+import { glowTexture, paintTexture } from './materials';
 import type { Viewmodel } from './viewmodel';
 
-const SPARK_COUNT = 7;
-const SPARK_SECONDS = 0.22;
-const SPARK_SPEED = 3.5;
-const SPARK_GRAVITY = 9;
-const TRAIL_LENGTH = 0.7;
-
-// A jacketed round, as a half outline spun around its length. Base at the bottom, nose up.
-const BULLET_OUTLINE: [number, number][] = [
-  [0, -0.021],
-  [0.0105, -0.021],
-  [0.0115, -0.008],
-  [0.0112, 0.004],
-  [0.009, 0.013],
-  [0.0045, 0.02],
-  [0, 0.022],
-];
-
-interface Bullet {
-  group: THREE.Group;
-  trail: THREE.Mesh;
-  travelled: number;
-  direction: THREE.Vector3;
-  end: THREE.Vector3;
-  remaining: number;
-  hit: boolean;
-  // True when what it hits is a zombie, which bleeds instead of throwing sparks.
-  blood: boolean;
-}
-
-// A thin cone behind the bullet, brightest at the bullet and fading to nothing.
-function trailGeometry(): THREE.BufferGeometry {
-  const geometry = new THREE.CylinderGeometry(0.009, 0.0015, 1, 8, 1, true);
-  geometry.translate(0, -0.5, 0);
-  const positions = geometry.attributes.position;
-  const colors = new Float32Array(positions.count * 3);
-  for (let i = 0; i < positions.count; i++) {
-    const glow = 1 + positions.getY(i);
-    colors.set([glow, glow * 0.62, glow * 0.3], i * 3);
-  }
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  return geometry;
-}
-
-interface Spark {
+interface Flight {
   mesh: THREE.Mesh;
+  end: THREE.Vector3;
   velocity: THREE.Vector3;
+  left: number;
+  hit: boolean;
+  blood: boolean;
+  normal: THREE.Vector3;
+  surface: Surface;
+}
+interface Particle {
+  object: THREE.Mesh | THREE.Sprite;
+  velocity: THREE.Vector3;
+  spin: THREE.Vector3;
   life: number;
+  total: number;
+  gravity: number;
+  floor: number;
+  bounce: boolean;
 }
+export interface Effects { update(player: Player, frameSeconds: number, level: Level): void; }
 
-export interface Effects {
-  // Call once per frame, after the camera and the viewmodel have been updated.
-  update(player: Player, frameSeconds: number): void;
-}
-
-// The things a shot leaves in the world: a flying bullet and a burst of sparks where it lands.
-export function createEffects(
-  scene: THREE.Scene,
-  camera: THREE.PerspectiveCamera,
-  viewmodel: Viewmodel,
-): Effects {
-  const bulletGeometry = new THREE.LatheGeometry(
-    BULLET_OUTLINE.map(([radius, height]) => new THREE.Vector2(radius, height)),
-    14,
-  );
-  const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xd9925a });
-  const glowGeometry = trailGeometry();
-  const glowMaterial = new THREE.MeshBasicMaterial({
-    vertexColors: true,
-    blending: THREE.AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-    side: THREE.DoubleSide,
+// All effects are cosmetic: the deterministic hitscan remains authoritative.
+export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamera, viewmodel: Viewmodel): Effects {
+  const brass = new THREE.MeshStandardMaterial({ color: '#c19a4e', metalness: 0.85, roughness: 0.29 });
+  const shellGeometry = new THREE.CylinderGeometry(0.005, 0.0055, 0.022, 10);
+  const debrisGeometry = new THREE.IcosahedronGeometry(0.022, 0);
+  const sparkGeometry = new THREE.CylinderGeometry(0.004, 0.001, 0.1, 4);
+  const dustMaterial = new THREE.MeshStandardMaterial({ color: '#8d8881', roughness: 1 });
+  const woodMaterial = new THREE.MeshStandardMaterial({ color: '#a48255', roughness: 1 });
+  const sparkMaterial = new THREE.MeshBasicMaterial({ color: '#ffd9a0' });
+  const bloodMaterial = new THREE.MeshStandardMaterial({ color: '#641d1b', roughness: 0.6 });
+  const smokeMap = glowTexture();
+  const tracerGeometry = new THREE.CylinderGeometry(0.003, 0.001, 0.24, 6);
+  const tracerMaterial = new THREE.MeshBasicMaterial({ color: '#ebca8b', transparent: true, opacity: 0.6, depthWrite: false });
+  const scarMap = paintTexture(128, 711, (ctx, size, random) => {
+    ctx.clearRect(0, 0, size, size);
+    ctx.translate(size / 2, size / 2);
+    for (let i = 0; i < 20; i++) {
+      ctx.rotate(random() * 0.8);
+      ctx.fillStyle = `rgba(13,12,10,${0.1 + random() * 0.2})`;
+      ctx.beginPath(); ctx.ellipse(0, 0, 7 + random() * 16, 6 + random() * 14, 0, 0, Math.PI * 2); ctx.fill();
+    }
   });
-  const sparkGeometry = new THREE.BoxGeometry(0.025, 0.025, 0.025);
-  const sparkMaterial = new THREE.MeshBasicMaterial({ color: 0xffd27a });
-  const bloodMaterial = new THREE.MeshBasicMaterial({ color: 0x6e0d0d });
-  const up = new THREE.Vector3(0, 1, 0);
-
-  const bullets: Bullet[] = [];
-  const sparks: Spark[] = [];
-
-  let seenShotTick = -1;
+  const scarMaterial = new THREE.MeshBasicMaterial({ map: scarMap, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+  const scarGeometry = new THREE.PlaneGeometry(0.18, 0.18);
+  const scars: THREE.Mesh[] = [];
+  const particles: Particle[] = [];
+  const flights: Flight[] = [];
   const muzzle = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  let seenShotTick = -1;
+  const shotLight = new THREE.PointLight('#ffb968', 0, 4, 2); scene.add(shotLight);
+  let flashLeft = 0;
 
-  function fireBullet(end: THREE.Vector3, hit: boolean, blood: boolean): void {
-    const direction = end.clone().sub(muzzle);
-    const remaining = direction.length();
-    direction.normalize();
-    const group = new THREE.Group();
-    group.position.copy(muzzle);
-    group.quaternion.setFromUnitVectors(up, direction);
-    const trail = new THREE.Mesh(glowGeometry, glowMaterial);
-    trail.frustumCulled = false;
-    trail.scale.y = 0.001;
-    group.add(new THREE.Mesh(bulletGeometry, bulletMaterial), trail);
-    scene.add(group);
-    bullets.push({ group, trail, travelled: 0, direction, end, remaining, hit, blood });
+  // The weapon uses a fixed lens while ADS/bodycam change the world lens. Match the
+  // screen-space muzzle before placing cosmetic particles in the world scene.
+  function weaponToWorld(point: THREE.Vector3): THREE.Vector3 {
+    const ratio = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / Math.tan(THREE.MathUtils.degToRad(config.view.fieldOfView / 2));
+    point.x *= ratio; point.y *= ratio;
+    return camera.localToWorld(point);
   }
 
-  function burst(at: THREE.Vector3, blood: boolean): void {
-    for (let i = 0; i < SPARK_COUNT; i++) {
-      const mesh = new THREE.Mesh(sparkGeometry, blood ? bloodMaterial : sparkMaterial);
-      mesh.position.copy(at);
-      scene.add(mesh);
-      const velocity = new THREE.Vector3(
-        Math.random() - 0.5,
-        Math.random() - 0.2,
-        Math.random() - 0.5,
-      )
-        .normalize()
-        .multiplyScalar(SPARK_SPEED);
-      sparks.push({ mesh, velocity, life: SPARK_SECONDS });
+  function addParticle(object: THREE.Mesh | THREE.Sprite, at: THREE.Vector3, velocity: THREE.Vector3, life: number, gravity: number, floor = -100, bounce = false): void {
+    object.position.copy(at); scene.add(object);
+    particles.push({ object, velocity, spin: new THREE.Vector3(Math.random() * 12, Math.random() * 15, Math.random() * 10), life, total: life, gravity, floor, bounce });
+    if (particles.length > 160) removeParticle(0);
+  }
+  function removeParticle(i: number): void {
+    const p = particles[i]; scene.remove(p.object);
+    if (p.object instanceof THREE.Sprite) (p.object.material as THREE.SpriteMaterial).dispose();
+    particles.splice(i, 1);
+  }
+  function smoke(at: THREE.Vector3, scale: number, color: string, opacity: number): void {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeMap, color, transparent: true, opacity, depthWrite: false, rotation: Math.random() * 6 }));
+    sprite.scale.setScalar(scale);
+    sprite.userData.opacity = opacity; sprite.userData.size = scale;
+    addParticle(sprite, at, new THREE.Vector3((Math.random() - 0.5) * 0.13, 0.16, 0), 0.65, -0.06);
+  }
+  function impact(flight: Flight): void {
+    const metal = ['car', 'van', 'container', 'barrel', 'gate'].includes(flight.surface);
+    const wood = ['crate', 'board', 'cartons'].includes(flight.surface);
+    for (let i = 0; i < (flight.blood ? 9 : 11); i++) {
+      const material = flight.blood ? bloodMaterial : metal && !settings.reducedFlashing ? sparkMaterial : wood ? woodMaterial : dustMaterial;
+      const debris = new THREE.Mesh(metal ? sparkGeometry : debrisGeometry, material);
+      debris.scale.setScalar(flight.blood ? 0.5 + Math.random() : 0.3 + Math.random());
+      const velocity = flight.normal.clone().multiplyScalar(0.8 + Math.random() * 1.2)
+        .add(new THREE.Vector3((Math.random() - 0.5) * 2.5, Math.random() * 2, (Math.random() - 0.5) * 2.5));
+      addParticle(debris, flight.end, velocity, metal ? 0.2 : 0.45, 9);
+    }
+    if (!flight.blood) {
+      smoke(flight.end, 0.26, wood ? '#a48b67' : '#b0aaa0', 0.22);
+      if (flight.normal.lengthSq() > 0.5) {
+        const scar = new THREE.Mesh(scarGeometry, scarMaterial);
+        scar.position.copy(flight.end).addScaledVector(flight.normal, 0.012);
+        scar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), flight.normal);
+        scar.rotateZ(Math.random() * Math.PI * 2); scene.add(scar); scars.push(scar);
+        if (scars.length > 64) scene.remove(scars.shift()!);
+      }
     }
   }
-
   return {
-    update(player, frameSeconds) {
+    update(player, dt, level) {
+      tracerMaterial.opacity = settings.reducedFlashing ? 0 : 0.6;
       if (player.lastShotTick !== seenShotTick) {
         seenShotTick = player.lastShotTick;
-        if (seenShotTick >= 0) {
-          // The muzzle is known in camera space, so move it into the world.
-          camera.updateMatrixWorld();
-          camera.localToWorld(viewmodel.getMuzzle(muzzle));
-          const end = player.lastShotEnd;
-          fireBullet(new THREE.Vector3(end.x, end.y, end.z), player.lastShotHit, player.lastShotZombie);
-        }
-      }
-
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        const bullet = bullets[i];
-        const travel = config.pistol.bulletSpeed * frameSeconds;
-        if (travel >= bullet.remaining) {
-          if (bullet.hit) burst(bullet.end, bullet.blood);
-          scene.remove(bullet.group);
-          bullets.splice(i, 1);
+        if (seenShotTick < 0) {
+          while (particles.length) removeParticle(0);
+          for (const f of flights) scene.remove(f.mesh); flights.length = 0;
+          for (const scar of scars) scene.remove(scar); scars.length = 0;
         } else {
-          bullet.group.position.addScaledVector(bullet.direction, travel);
-          bullet.remaining -= travel;
-          bullet.travelled += travel;
-          bullet.trail.scale.y = Math.min(bullet.travelled, TRAIL_LENGTH);
+          camera.updateMatrixWorld(); weaponToWorld(viewmodel.getMuzzle(muzzle));
+          const end = new THREE.Vector3(player.lastShotEnd.x, player.lastShotEnd.y, player.lastShotEnd.z);
+          const velocity = end.clone().sub(muzzle).normalize();
+          const cameraRay = end.clone().sub(camera.position).normalize();
+          const hit = player.lastShotZombie ? null : raycastBoxHit(level, camera.position, cameraRay, config.pistol.range + 0.1);
+          const mesh = new THREE.Mesh(tracerGeometry, tracerMaterial); mesh.position.copy(muzzle);
+          mesh.quaternion.setFromUnitVectors(up, velocity); scene.add(mesh);
+          flights.push({ mesh, end, velocity: velocity.multiplyScalar(config.pistol.bulletSpeed), left: end.distanceTo(muzzle) / config.pistol.bulletSpeed,
+            hit: player.lastShotHit, blood: player.lastShotZombie, normal: hit ? new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z) : new THREE.Vector3(0, 1, 0), surface: hit?.box.surface ?? 'wall' });
+          const eject = weaponToWorld(viewmodel.getEjection(new THREE.Vector3()));
+          const shell = new THREE.Mesh(shellGeometry, brass);
+          const ejectVelocity = new THREE.Vector3(1.5 + Math.random(), 1.5 + Math.random(), 0.3).applyQuaternion(camera.quaternion);
+          const ground = raycastBoxHit(level, eject, new THREE.Vector3(0, -1, 0), 20);
+          const floor = ground ? eject.y - ground.distance + 0.008 : 0;
+          addParticle(shell, eject, ejectVelocity, 2.8, 9.8, floor, true);
+          smoke(muzzle, 0.11, '#a8b3b8', 0.14);
+          shotLight.position.copy(muzzle); flashLeft = 0.045;
         }
       }
-
-      for (let i = sparks.length - 1; i >= 0; i--) {
-        const spark = sparks[i];
-        spark.life -= frameSeconds;
-        if (spark.life <= 0) {
-          scene.remove(spark.mesh);
-          sparks.splice(i, 1);
-          continue;
+      flashLeft = Math.max(0, flashLeft - dt); shotLight.intensity = settings.reducedFlashing ? 0 : flashLeft / 0.045 * 8;
+      for (let i = flights.length - 1; i >= 0; i--) {
+        const f = flights[i]; f.left -= dt;
+        if (f.left <= 0) { if (f.hit) impact(f); scene.remove(f.mesh); flights.splice(i, 1); }
+        else f.mesh.position.addScaledVector(f.velocity, dt);
+      }
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i]; p.life -= dt;
+        if (p.life <= 0) { removeParticle(i); continue; }
+        p.velocity.y -= p.gravity * dt; p.object.position.addScaledVector(p.velocity, dt);
+        if (p.bounce && p.object.position.y < p.floor) {
+          p.object.position.y = p.floor; p.velocity.y = Math.abs(p.velocity.y) * 0.27;
+          p.velocity.x *= 0.62; p.velocity.z *= 0.62; p.spin.multiplyScalar(0.6);
         }
-        spark.velocity.y -= SPARK_GRAVITY * frameSeconds;
-        spark.mesh.position.addScaledVector(spark.velocity, frameSeconds);
-        spark.mesh.scale.setScalar(spark.life / SPARK_SECONDS);
+        if (p.object instanceof THREE.Sprite) {
+          p.object.material.opacity = p.object.userData.opacity * p.life / p.total;
+          p.object.scale.setScalar(p.object.userData.size * (1 + (1 - p.life / p.total) * 2));
+        } else {
+          p.object.rotation.x += p.spin.x * dt; p.object.rotation.z += p.spin.z * dt;
+          if (p.life < 0.3) p.object.scale.multiplyScalar(Math.exp(-dt * 8));
+        }
       }
     },
   };

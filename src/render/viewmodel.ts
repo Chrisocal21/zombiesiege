@@ -1,33 +1,39 @@
+import { settings } from '../client/settings';
+import { appearance, selectedGloves } from '../client/appearance';
+import { gloveTexture, outfitTexture } from './gearTextures';
+import { paintTexture } from './materials';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { config } from '../config';
 import type { Player } from '../game/state';
-import { LEFT_HAND_ON_MAGAZINE, RIGHT_HAND_ON_GRIP, loadHand } from './hand';
+import { LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, LEFT_HAND_SUPPORT, RIGHT_HAND_ON_GRIP, loadHand } from './hand';
 import type { CameraPose } from './view';
 
 // Everything here is in meters. The gun points down -z, +x is right, +y is up.
-const REST_POSITION = new THREE.Vector3(0.2, -0.2, -0.62);
-const SCALE = 1.7;
+const REST_POSITION = new THREE.Vector3(0.11, -0.18, -0.64);
+const BODYCAM_POSITION = new THREE.Vector3(0, 0.035, -0.68);
+const SCALE = 1.55;
 // The gun is angled slightly in toward the crosshair.
 const REST_YAW = 0.1;
 const REST_PITCH = 0.03;
 // Aimed, the sights sit dead on the camera's center line. The pitch levels the rear dots
 // with the front dot, and the height puts that line through the eye.
-const AIM_POSITION = new THREE.Vector3(0, -0.1229, -0.52);
+const AIM_POSITION = new THREE.Vector3(0, -0.1120, -0.50);
 const AIM_PITCH = 0.0157;
 const FLASH_SECONDS = 0.05;
 const FLASH_SIZE = 0.13;
 const SLIDE_TRAVEL = 0.032;
 const TRIGGER_TRAVEL = 0.32;
 // Where the fresh magazine starts, off screen, and where it lines up under the grip.
-const MAGAZINE_AWAY = new THREE.Vector3(-0.2, -0.42, 0.12);
+const MAGAZINE_AWAY = new THREE.Vector3(-0.15, -0.22, 0.08);
 const MAGAZINE_READY = new THREE.Vector3(0, -0.085, 0);
 
 export interface Viewmodel {
-  update(player: Player, pose: CameraPose, frameSeconds: number): void;
+  update(player: Player, pose: CameraPose, frameSeconds: number, preview?: boolean): void;
   // How far up to the eye the gun is: 0 is at the hip, 1 is fully aimed.
   aimAmount(): number;
+  getEjection(out: THREE.Vector3): THREE.Vector3;
   // Where the bullet leaves the gun, in the camera's own space.
   getMuzzle(out: THREE.Vector3): THREE.Vector3;
 }
@@ -190,7 +196,15 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const stipple = grain.clone();
   stipple.repeat.set(30, 30);
   stipple.needsUpdate = true;
-  const slideMetal = new THREE.MeshStandardMaterial({ color: 0x33363c, metalness: 0.85, roughness: 0.36 });
+  const wear = paintTexture(512, 811, (ctx, size, random) => {
+    ctx.fillStyle = '#a8abb0'; ctx.fillRect(0, 0, size, size);
+    for (let i = 0; i < 1600; i++) {
+      ctx.strokeStyle = `rgba(210,218,225,${random() * 0.17})`; ctx.lineWidth = 0.4;
+      const x = random() * size, y = random() * size;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + random() * 30, y + 0.8); ctx.stroke();
+    }
+  });
+  const slideMetal = new THREE.MeshStandardMaterial({ color: 0x454b53, metalness: 0.8, roughness: 0.33, map: wear, bumpMap: wear, bumpScale: 0.00008 });
   const brightMetal = new THREE.MeshStandardMaterial({ color: 0x8a8d92, metalness: 1, roughness: 0.3 });
   const darkMetal = new THREE.MeshStandardMaterial({ color: 0x101114, metalness: 0.7, roughness: 0.5 });
   const polymer = new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.62, metalness: 0.05 });
@@ -199,10 +213,15 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     roughness: 0.82,
     metalness: 0.05,
     bumpMap: stipple,
-    bumpScale: 2,
+    bumpScale: 0.0002,
   });
-  const sleeve = new THREE.MeshStandardMaterial({ color: 0x55653f, roughness: 1, map: grain });
-  const sleeveCuff = new THREE.MeshStandardMaterial({ color: 0x323d29, roughness: 1, map: grain });
+  const textile = outfitTexture(appearance.outfit);
+  const gloveMap = gloveTexture();
+  const sleeve = new THREE.MeshStandardMaterial({ color: '#a4a4a4', roughness: 0.96, map: textile, bumpMap: textile, bumpScale: 0.0006 });
+  // The longer glove gauntlet overlaps the sleeve and the source hand's wrist cut.
+  const sleeveCuff = new THREE.MeshStandardMaterial({ color: selectedGloves().color, roughness: 0.9, map: gloveMap, bumpMap: gloveMap, bumpScale: 0.0004 });
+  const gloveStrap = new THREE.MeshStandardMaterial({ color: selectedGloves().accent, roughness: 0.95, map: gloveMap });
+  let currentOutfit = appearance.outfit;
   const sight = new THREE.MeshStandardMaterial({
     color: 0xf4efd6,
     emissive: 0xf4efd6,
@@ -211,6 +230,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   });
 
   const root = new THREE.Group();
+  root.name = 'Weapon viewmodel';
   root.scale.setScalar(SCALE);
   viewScene.add(root);
 
@@ -322,8 +342,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     gripPolymer,
   );
   const grip = new THREE.Group();
+  grip.name = 'Pistol grip';
   grip.position.set(0, 0, 0.05);
   grip.rotation.x = -0.22;
+  grip.updateMatrix();
   root.add(grip);
 
   const magazine = new THREE.Group();
@@ -331,48 +353,71 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   box(magazine, [0.022, 0.066, 0.036], darkMetal, [0, -0.04, -0.002]);
   softBox(magazine, [0.0275, 0.008, 0.047], 0.0028, polymer, [0, -0.0775, -0.002]);
 
+  // Roll pins, extractor and frame rails add scale without altering the sight line.
+  for (const side of [-1, 1]) {
+    for (const z of [-0.047, 0.012, 0.031]) {
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0018, 0.0018, 0.0284, 12), brightMetal);
+      pin.rotation.z = Math.PI / 2; pin.position.set(0, 0.015, z); root.add(pin);
+    }
+    softBox(root, [0.001, 0.002, 0.065], 0.0003, darkMetal, [side * 0.014, 0.005, -0.08]);
+  }
+  const engraving = paintTexture(256, 31, (ctx, size) => {
+    ctx.clearRect(0, 0, size, size); ctx.fillStyle = '#929ba3'; ctx.font = '26px sans-serif'; ctx.fillText('P9   /   9x19', 16, 120);
+    ctx.font = '12px sans-serif'; ctx.fillText('NORTHLINE   /   02401', 16, 145);
+  });
+  const mark = new THREE.Mesh(new THREE.PlaneGeometry(0.052, 0.023), new THREE.MeshStandardMaterial({ map: engraving, transparent: true, roughness: 0.5, depthWrite: false }));
+  mark.rotation.y = Math.PI / 2; mark.position.set(0.0152, 0.047, -0.073); slide.add(mark);
+  const ejection = new THREE.Object3D(); ejection.position.set(0.02, 0.065, -0.008); root.add(ejection);
   const rightHand = loadHand(grip, RIGHT_HAND_ON_GRIP);
 
-  // The left hand only comes into view during a reload, carrying the fresh magazine.
+  // One persistent support hand performs both the firing grip and the reload.
+  // Blending its actual finger rig avoids duplicated hands popping in and out.
   const leftHand = new THREE.Group();
-  leftHand.visible = false;
+  leftHand.name = 'Support hand anchor';
   grip.add(leftHand);
-  loadHand(leftHand, LEFT_HAND_ON_MAGAZINE);
-  const leftArm = new THREE.Group();
-  leftArm.position.set(-0.034, -0.125, 0.004);
-  leftArm.quaternion.setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    new THREE.Vector3(-0.3, -0.85, 0.45).normalize(),
-  );
-  leftHand.add(leftArm);
-  const leftCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.039, 0.038, 0.02, 22), sleeveCuff);
-  leftCuff.position.y = 0.012;
-  const leftSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.037, 0.36, 22), sleeve);
-  leftSleeve.position.y = 0.2;
-  leftArm.add(leftCuff, leftSleeve);
+  const supportHand = loadHand(leftHand, LEFT_HAND_SUPPORT);
 
-  // Forearm in a jacket sleeve, running back and down out of view.
-  const arm = new THREE.Group();
-  arm.position.set(0.011, -0.031, 0.118);
-  arm.rotation.set(0.3, -0.2, 0);
-  root.add(arm);
-  const tube = (
-    radiusFront: number,
-    radiusBack: number,
-    length: number,
-    material: THREE.Material,
-    z: number,
-  ) => {
-    const mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(radiusBack, radiusFront, length, 22),
-      material,
-    );
-    mesh.rotation.x = Math.PI / 2;
-    mesh.position.z = z;
-    arm.add(mesh);
+  const forwardAxis = new THREE.Vector3(0, 0, 1);
+  // The glove ends just inside the sleeve, like a combat shirt cuff worn over a glove. The sleeve opening
+  // is only a little wider than the wrist, and the forearm barely widens from there.
+  const CUFF = 0.56;
+  const SLEEVE_START = 0.012;
+  const SLEEVE_RADIUS = 0.0265;
+  const sleeveProfile = Array.from({ length: 36 }, (_, i) => {
+    const t = i / 35;
+    const radius = SLEEVE_RADIUS - t * 0.005 + Math.sin(t * Math.PI * 13) * 0.0008 * Math.sin(t * Math.PI);
+    return new THREE.Vector2(radius, t);
+  });
+  const sleeveGeometry = new THREE.LatheGeometry(sleeveProfile, 28);
+  // The source wrist cut is slightly oval/irregular. The glove cuff covers its seam.
+  const cuffGeometry = new THREE.CylinderGeometry(0.043 * CUFF, 0.037 * CUFF, 0.080, 28);
+  const bandGeometry = new THREE.TorusGeometry(SLEEVE_RADIUS, 0.0016, 6, 28);
+  const makeArm = () => {
+    const rig = new THREE.Group(); root.add(rig);
+    const cuff = new THREE.Mesh(cuffGeometry, sleeveCuff);
+    cuff.rotation.x = Math.PI / 2; cuff.position.z = 0.002; rig.add(cuff);
+    const cloth = new THREE.Mesh(sleeveGeometry, sleeve);
+    cloth.rotation.x = Math.PI / 2; cloth.position.z = SLEEVE_START; rig.add(cloth);
+    // The rolled hem at the end of the sleeve.
+    const band = new THREE.Mesh(bandGeometry, sleeve);
+    band.position.z = SLEEVE_START; rig.add(band);
+    return { rig, cloth };
   };
-  tube(0.039, 0.04, 0.02, sleeveCuff, 0.012);
-  tube(0.037, 0.04, 0.36, sleeve, 0.2);
+  const rightArm = makeArm();
+  const leftArm = makeArm();
+  rightArm.rig.name = 'Primary tactical sleeve and glove gauntlet';
+  leftArm.rig.name = 'Support tactical sleeve and glove gauntlet';
+  const rightWrist = new THREE.Vector3();
+  const leftWrist = new THREE.Vector3();
+  const armDirection = new THREE.Vector3();
+  const elbow = new THREE.Vector3();
+  const syncArm = (arm: ReturnType<typeof makeArm>, wrist: THREE.Vector3, side: number, bodycam: number) => {
+    elbow.set(side * (0.29 + bodycam * 0.05), -0.22, 0.65);
+    armDirection.copy(elbow).sub(wrist);
+    arm.rig.position.copy(wrist);
+    arm.rig.quaternion.setFromUnitVectors(forwardAxis, armDirection.clone().normalize());
+    arm.cloth.scale.y = Math.max(0.15, armDirection.length() - SLEEVE_START);
+  };
 
   // Muzzle flash: a soft glowing burst, shown for a moment after each shot.
   const flashMaterial = new THREE.SpriteMaterial({
@@ -404,10 +449,12 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
   let seenShotTick = -1;
   let flashLeft = 0;
-  let kick = 0;
+
   let slideKick = 0;
   let triggerPull = 0;
   let wasReloading = false;
+  let reloadWasEmpty = false;
+  let bodycamAmount = 0;
   let aimProgress = 0;
   let aim = 0;
   const basePosition = new THREE.Vector3();
@@ -418,15 +465,25 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   let swayPitch = 0;
   let lastYaw: number | null = null;
   let lastPitch = 0;
+  let recoil = 0;
+  let recoilVelocity = 0;
+  let lastVerticalSpeed = 0;
+  let landing = 0;
 
   return {
-    update(player, pose, frameSeconds) {
+    update(player, pose, frameSeconds, preview = false) {
+      if (currentOutfit !== appearance.outfit) {
+        currentOutfit = appearance.outfit;
+        sleeve.map = sleeve.bumpMap = outfitTexture(currentOutfit); sleeve.needsUpdate = true;
+      }
+      sleeveCuff.color.set(selectedGloves().color);
+      gloveStrap.color.set(selectedGloves().accent);
       time += frameSeconds;
 
       if (player.lastShotTick !== seenShotTick) {
         seenShotTick = player.lastShotTick;
         if (seenShotTick >= 0) {
-          kick = 1;
+          recoilVelocity += 2.2;
           slideKick = 1;
           triggerPull = 1;
           flashLeft = FLASH_SECONDS;
@@ -434,14 +491,22 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
           flash.scale.setScalar(FLASH_SIZE * (0.8 + Math.random() * 0.5));
         }
       }
+      // Integrate a damped spring in short steps so 30 Hz and 144 Hz settle alike.
+      for (let elapsed = 0; elapsed < frameSeconds;) {
+        const dt = Math.min(1 / 120, frameSeconds - elapsed); elapsed += dt;
+        recoilVelocity += (-240 * recoil - 24 * recoilVelocity) * dt;
+        recoil += recoilVelocity * dt;
+      }
+      if (player.onGround && lastVerticalSpeed < -1.5) landing = Math.min(0.025, -lastVerticalSpeed * 0.003);
+      lastVerticalSpeed = player.vy;
+      landing *= Math.exp(-frameSeconds * 12);
       flashLeft = Math.max(0, flashLeft - frameSeconds);
-      kick = Math.max(0, kick - frameSeconds * 9);
       slideKick = Math.max(0, slideKick - frameSeconds * 14);
       triggerPull = Math.max(0, triggerPull - frameSeconds * 9);
       trigger.rotation.x = -TRIGGER_TRAVEL * triggerPull;
       rightHand.pullIndex(triggerPull);
-      flash.visible = flashLeft > 0;
-      flashLight.intensity = flashLeft > 0 ? 0.6 : 0;
+      flash.visible = !settings.reducedFlashing && flashLeft > 0;
+      flashLight.intensity = !settings.reducedFlashing && flashLeft > 0 ? 0.6 : 0;
 
       // The gun lags behind when you turn, then settles.
       if (lastYaw !== null) {
@@ -463,6 +528,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       const bobX = Math.sin(bobPhase) * 0.006 * walking;
       const bobY = Math.cos(bobPhase * 2) * 0.004 * walking;
       const breathing = Math.sin(time * 1.7) * 0.0015;
+      const motion = settings.cameraMotion ? 1 : 0;
 
       // Reload: the empty magazine falls away, the left hand brings up a fresh one and seats it
       // with a push, then lets go, and the slide is released if the gun was empty.
@@ -472,6 +538,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       const stage = (from: number, to: number) => smooth(clamp((progress - from) / (to - from), 0, 1));
 
       if (reloading && !wasReloading) {
+        reloadWasEmpty = player.ammo === 0;
         magazine.getWorldPosition(droppedMagazine.position);
         magazine.getWorldQuaternion(droppedMagazine.quaternion);
         magazine.getWorldScale(droppedMagazine.scale);
@@ -487,18 +554,50 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         if (droppedMagazine.position.y < -1.5) droppedMagazine.visible = false;
       }
 
-      leftHand.visible = reloading && progress > 0.1;
+      leftHand.visible = true;
+      leftHand.position.set(0, 0, 0);
       if (reloading) {
-        magazine.position
-          .copy(MAGAZINE_AWAY)
-          .lerp(MAGAZINE_READY, stage(0.18, 0.55))
-          .multiplyScalar(1 - stage(0.55, 0.72));
-        leftHand.position.copy(magazine.position).lerp(MAGAZINE_AWAY, stage(0.76, 1));
+        // Keep both hands joined as the pistol rolls inward, then bring a fresh
+        // magazine up from the belt, insert it, work the slide and rebuild the grip.
+        magazine.visible = progress > 0.22;
+        magazine.position.copy(MAGAZINE_AWAY)
+          .lerp(MAGAZINE_READY, stage(0.22, 0.49))
+          .multiplyScalar(1 - stage(0.49, 0.66));
+        if (progress < 0.22) {
+          supportHand.blendPose(LEFT_HAND_SUPPORT, LEFT_HAND_ON_MAGAZINE, stage(0.04, 0.18));
+          leftHand.position.copy(MAGAZINE_AWAY).multiplyScalar(stage(0.06, 0.22));
+        } else if (progress < 0.66) {
+          supportHand.blendPose(LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_MAGAZINE, 0);
+          leftHand.position.copy(magazine.position);
+        } else if (reloadWasEmpty && progress < 0.86) {
+          supportHand.blendPose(LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, stage(0.66, 0.76));
+          leftHand.position.z = SLIDE_TRAVEL * stage(0.76, 0.82) * (1 - stage(0.82, 0.86));
+        } else {
+          supportHand.blendPose(reloadWasEmpty ? LEFT_HAND_ON_SLIDE : LEFT_HAND_ON_MAGAZINE, LEFT_HAND_SUPPORT,
+            stage(reloadWasEmpty ? 0.86 : 0.66, 0.98));
+        }
       } else {
+        magazine.visible = true;
         magazine.position.set(0, 0, 0);
+        supportHand.blendPose(LEFT_HAND_SUPPORT, LEFT_HAND_SUPPORT, 0);
       }
+      // Track the hand-model wrists, including reload pose changes, instead of
+      // guessing sleeve attachment points and leaving gaps at the cuffs.
+      if (rightHand.getWrist(rightWrist)) {
+        rightWrist.applyMatrix4(grip.matrix);
+      } else rightWrist.set(0.01, -0.035, 0.13);
+      if (supportHand.getWrist(leftWrist)) {
+        leftHand.updateMatrix();
+        leftWrist.applyMatrix4(leftHand.matrix).applyMatrix4(grip.matrix);
+      } else leftWrist.set(-0.08, -0.045, 0.10);
+      const bodycamTarget = settings.cameraStyle === 'bodycam' && !preview ? 1 : 0;
+      bodycamAmount += (bodycamTarget - bodycamAmount) * (1 - Math.exp(-frameSeconds * 12));
+      if (frameSeconds === 0) bodycamAmount = bodycamTarget;
+      syncArm(rightArm, rightWrist, 1, bodycamAmount);
+      syncArm(leftArm, leftWrist, -1, bodycamAmount);
+
       // The gun jolts up a little as the magazine is pushed home.
-      const seat = stage(0.7, 0.74) * (1 - stage(0.74, 0.84));
+      const seat = stage(0.64, 0.68) * (1 - stage(0.68, 0.74));
 
       // An empty gun keeps the slide locked back until the reload is nearly done.
       const slideLocked = player.ammo === 0 && !(reloading && progress > 0.85);
@@ -509,22 +608,28 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       aimProgress = clamp(aimProgress + (player.aiming ? aimStep : -aimStep), 0, 1);
       aim = smooth(aimProgress);
       const loose = 1 - aim * 0.8;
-      basePosition.copy(REST_POSITION).lerp(AIM_POSITION, aim);
+      basePosition.copy(REST_POSITION).lerp(BODYCAM_POSITION, bodycamAmount).lerp(AIM_POSITION, aim);
 
       root.position.set(
-        basePosition.x + bobX * loose - tilt * 0.03,
-        basePosition.y + (bobY + breathing) * loose + tilt * 0.03 + seat * 0.012 - lowered * 0.35,
-        basePosition.z + kick * 0.045 * (1 - aim * 0.5),
+        basePosition.x + bobX * loose * motion - tilt * 0.03,
+        basePosition.y + (bobY + breathing) * loose * motion - landing + tilt * 0.03 + seat * 0.012 - lowered * 0.35,
+        basePosition.z + recoil * 0.25 * (1 - aim * 0.5),
       );
       root.rotation.set(
-        REST_PITCH + (AIM_PITCH - REST_PITCH) * aim + swayPitch * loose + kick * 0.09 * (1 - aim * 0.6) + tilt * 0.3,
-        REST_YAW * (1 - aim) + swayYaw * loose,
-        -tilt * 0.35,
+        REST_PITCH + (AIM_PITCH - REST_PITCH) * aim + swayPitch * loose + recoil * 0.75 * (1 - aim * 0.6) + tilt * 0.3,
+        REST_YAW * (1 - bodycamAmount) * (1 - aim) + swayYaw * loose,
+        -tilt * 0.5 + Math.sin(bobPhase) * walking * 0.012 * loose * motion,
       );
+      if (preview) {
+        root.position.set(0.01, -0.07, -0.58);
+        root.rotation.set(0.02, -0.6, -0.13);
+      }
       root.updateMatrixWorld(true);
     },
 
     aimAmount: () => aim,
+
+    getEjection(out) { return ejection.getWorldPosition(out); },
 
     getMuzzle(out) {
       return muzzle.getWorldPosition(out);

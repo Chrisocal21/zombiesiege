@@ -1,3 +1,7 @@
+import { bakeStaticMeshes } from './bake';
+import { buildDressing } from './dressing';
+import { settings } from '../client/settings';
+import { buildArchitecture } from './architecture';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { GameState } from '../game/state';
@@ -11,7 +15,7 @@ import {
   tileMeters,
 } from './materials';
 import { buildGate, buildStreet } from './street';
-import { asphaltMaterial, buildingMaterial, hazardMaterial, labelTexture } from './streetTextures';
+import { asphaltMaterial, hazardMaterial, labelTexture } from './streetTextures';
 import { buildCartons, buildPillar, buildVehicle } from './vehicles';
 
 export interface World {
@@ -81,6 +85,7 @@ function buildBoxObject(box: LevelBox, index: number): THREE.Object3D | null {
   const surface = box.surface ?? 'plain';
   if (surface === 'board' || surface === 'gate' || surface === 'step') return null;
   if (surface === 'car' || surface === 'van') return buildVehicle(box);
+  if (surface === 'building' || surface === 'crate') return buildArchitecture(box);
   if (surface === 'cartons') return buildCartons(box);
   if (surface === 'pillar') return buildPillar(box, surfaceMaterial('plain', box.color), index);
 
@@ -98,12 +103,12 @@ function buildBoxObject(box: LevelBox, index: number): THREE.Object3D | null {
     : new THREE.BoxGeometry(box.size.x, box.size.y, box.size.z);
   let tile = tileMeters(surface);
   // A crate is sized in whole panels, so its picture lines up with its corners.
-  if (surface === 'crate') tile = box.size.y / Math.max(1, Math.round(box.size.y));
+
   boxMapUVs(geometry, box, tile);
 
   let material: THREE.Material | THREE.Material[];
   if (surface === 'slab') material = slabMaterials;
-  else if (surface === 'building') material = buildingMaterial(box.color);
+
   else material = surfaceMaterial(surface, box.color);
 
   const mesh = new THREE.Mesh(geometry, material);
@@ -187,7 +192,7 @@ function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THRE
     const halo = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: glowMap, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.6 }),
     );
-    halo.scale.set(2.6, 1.3, 1);
+    halo.scale.set(1.8, 0.42, 1);
     halo.position.y = 0.0;
     group.add(halo);
     parent.add(group);
@@ -312,10 +317,10 @@ function buildDoors(scene: THREE.Scene, level: Level, glowMap: THREE.Texture): (
   }
 
   // A bundle of boards on the floor, with a soft pillar of light so it can be found in the dark.
-  const beamGeometry = new THREE.CylinderGeometry(0.22, 0.34, 3.2, 16, 1, true);
+  const beamGeometry = new THREE.CylinderGeometry(0.06, 0.12, 0.55, 12, 1, true);
   const beamColors = new Float32Array(beamGeometry.attributes.position.count * 3);
   for (let i = 0; i < beamGeometry.attributes.position.count; i++) {
-    const brightness = 1 - (beamGeometry.attributes.position.getY(i) + 1.6) / 3.2;
+    const brightness = 1 - (beamGeometry.attributes.position.getY(i) + 0.275) / 0.55;
     beamColors.set([brightness, 0.78 * brightness, 0.35 * brightness], i * 3);
   }
   beamGeometry.setAttribute('color', new THREE.BufferAttribute(beamColors, 3));
@@ -346,12 +351,12 @@ function buildDoors(scene: THREE.Scene, level: Level, glowMap: THREE.Texture): (
       group.add(strap);
     }
     const beam = new THREE.Mesh(beamGeometry, beamMaterial.clone());
-    beam.position.y = 1.7;
+    beam.position.y = 0.6;
     group.add(beam);
     const halo = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: glowMap, color: 0xffc860, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.55 }),
     );
-    halo.scale.setScalar(2.2);
+    halo.scale.setScalar(0.9);
     halo.position.y = 0.2;
     group.add(halo);
     scene.add(group);
@@ -373,7 +378,7 @@ function buildDoors(scene: THREE.Scene, level: Level, glowMap: THREE.Texture): (
     });
     bundles.forEach(({ group, beam }, index) => {
       group.visible = !state.pickups[index].taken;
-      (beam.material as THREE.MeshBasicMaterial).opacity = 0.4 + 0.15 * Math.sin(time * 2.4 + index);
+      (beam.material as THREE.MeshBasicMaterial).opacity = settings.reducedFlashing ? 0.22 : 0.2 + 0.08 * Math.sin(time * 2.4 + index);
     });
   };
 }
@@ -535,10 +540,13 @@ function buildGarageDressing(scene: THREE.Scene, level: Level): void {
 // Builds the level from the level file: the garage, the ramp and the street above it, the lamps,
 // decals, doors, gate, and the night sky.
 export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.Texture): World {
+  const staticProps = new THREE.Group();
+  scene.add(staticProps);
   level.boxes.forEach((box, index) => {
     const object = buildBoxObject(box, index);
-    if (object) scene.add(object);
+    if (object) staticProps.add(object);
   });
+  bakeStaticMeshes(staticProps);
   for (const ladder of level.ladders) scene.add(buildLadder(ladder));
 
   // Ground beyond everything, so there is no void.
@@ -589,6 +597,9 @@ export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.
   }
 
   buildGarageDressing(scene, level);
+  const detailProps = new THREE.Group(); scene.add(detailProps);
+  const animateDressing = buildDressing(detailProps, level);
+  bakeStaticMeshes(detailProps);
 
   const lampGroup = new THREE.Group();
   scene.add(lampGroup);
@@ -602,18 +613,19 @@ export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.
 
   return {
     update(time, state) {
+      animateDressing(time);
       syncDoors(state, time);
       syncGate(state, time);
       for (const lamp of lamps) {
         let brightness = 1;
-        if (lamp.flicker) {
+        if (lamp.flicker && !settings.reducedFlashing) {
           // Mostly steady, with short bursts of stutter.
           const burst = Math.sin(time * 1.3 + lamp.seed) > 0.82;
           brightness = burst ? 0.25 + 0.75 * Math.abs(Math.sin(time * 47 + lamp.seed)) : 1;
           if (Math.sin(time * 0.37 + lamp.seed) > 0.97) brightness = 0.08;
         }
         lamp.light.intensity = lamp.base * brightness;
-        lamp.glow.material.opacity = 0.7 * brightness;
+        lamp.glow.material.opacity = 0.22 * brightness;
         lamp.bulb.color.copy(lamp.light.color).multiplyScalar(0.25 + 0.75 * brightness);
       }
     },

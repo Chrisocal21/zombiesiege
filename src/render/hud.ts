@@ -1,3 +1,4 @@
+import { drawTacticalMap } from './tacticalMap';
 import { bindings, keyLabel } from '../client/bindings';
 import { settings } from '../client/settings';
 import { config } from '../config';
@@ -11,6 +12,7 @@ import type { Menu } from './menu';
 import { COLOR, clamp, keycap, measure, panel, roundedRect, text } from './ui';
 
 export interface Hud {
+  toggleMap(): void;
   draw(state: GameState, player: Player, time: number): void;
 }
 
@@ -47,6 +49,12 @@ export function createHud(level: Level, menu: Menu): Hud {
   document.body.appendChild(canvas);
   const context = canvas.getContext('2d')!;
 
+  let mapOpen = false;
+  let previousTick = 0;
+  let killAt = -10;
+  window.addEventListener('keydown', event => {
+    if (event.code === bindings.map && !event.repeat && !menu.isOpen() && document.pointerLockElement) { event.preventDefault(); mapOpen = !mapOpen; }
+  });
   let seenShotTick = -1;
   let hitUntil = 0;
   let hitIsKill = false;
@@ -59,6 +67,7 @@ export function createHud(level: Level, menu: Menu): Hud {
   let lastTime = 0;
 
   return {
+    toggleMap() { mapOpen = !mapOpen; },
     draw(state, player, time) {
       const dpr = window.devicePixelRatio || 1;
       const width = window.innerWidth;
@@ -72,6 +81,9 @@ export function createHud(level: Level, menu: Menu): Hud {
       const frame = Math.min(0.1, time - lastTime);
       lastTime = time;
 
+      if (state.tick < previousTick) { marks.length = 0; ghostHealth = player.health; hitUntil = 0; killAt = -10; }
+      previousTick = state.tick;
+      if (menu.isOpen()) mapOpen = false;
       // Reacting to what just happened in the game.
       if (player.lastShotTick !== seenShotTick) {
         seenShotTick = player.lastShotTick;
@@ -80,6 +92,7 @@ export function createHud(level: Level, menu: Menu): Hud {
           if (player.lastShotZombie) {
             hitUntil = time + (player.lastShotKill ? KILL_MARKER_SECONDS : HIT_MARKER_SECONDS);
             hitIsKill = player.lastShotKill;
+            if (hitIsKill) killAt = time;
           }
         }
       }
@@ -93,6 +106,7 @@ export function createHud(level: Level, menu: Menu): Hud {
       ghostHealth = Math.max(player.health, ghostHealth - 28 * frame);
 
       if (!menu.onTitle()) drawGame(width, height, state, player, time);
+      if (mapOpen && !menu.isOpen()) drawTacticalMap(context, width, height, state, player);
       menu.draw(context, width, height, time);
     },
   };
@@ -123,18 +137,28 @@ export function createHud(level: Level, menu: Menu): Hud {
   }
 
   function drawGame(width: number, height: number, state: GameState, player: Player, time: number): void {
-    const unit = height / 1080;
+    const unit = Math.min(height / 1080, width / 1500);
     const margin = 48 * unit;
     const points = waypoints(state, player);
 
     drawVignette(width, height, player, time);
     drawDamageMarks(width, height, player, time, unit);
     if (!player.aiming && !player.ladder && !player.mantle) drawCrosshair(width, height, player, time, unit);
+    drawHitMarker(width, height, unit, time);
     if (settings.showCompass) drawCompass(width, unit, player, points);
     drawObjective(margin, unit, state, player, points);
     drawRadar(margin, height, unit, state, player, points);
     drawHealth(margin, height, unit, player, time);
     drawAmmo(width, height, margin, unit, player, time);
+    drawStatus(width, height, margin, unit, state, player, time);
+    if (settings.cameraStyle === 'bodycam') {
+      const elapsed = Math.floor(state.tick / config.ticksPerSecond);
+      const timestamp = `${String(Math.floor(elapsed / 3600)).padStart(2, '0')}:${String(Math.floor(elapsed / 60) % 60).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+      const rx = width - margin - 248 * unit;
+      context.fillStyle = Math.floor(time * 2) % 2 ? COLOR.danger : '#7c3330';
+      context.beginPath(); context.arc(rx + 6 * unit, margin + 140 * unit, 4 * unit, 0, Math.PI * 2); context.fill();
+      text(context, `REC / BODY 01   ${timestamp}`, rx + 18 * unit, margin + 145 * unit, { size: 13 * unit, color: COLOR.dim, spacing: 1 * unit });
+    }
     drawPrompt(width, height, unit, state, player);
     drawBanner(width, height, unit, state, time);
 
@@ -149,10 +173,10 @@ export function createHud(level: Level, menu: Menu): Hud {
 
   function drawVignette(width: number, height: number, player: Player, time: number): void {
     const sinceHurt = time - hurtAt;
-    const flash = sinceHurt < 0.6 ? 1 - sinceHurt / 0.6 : 0;
+    const flash = settings.reducedFlashing ? 0 : sinceHurt < 0.6 ? 1 - sinceHurt / 0.6 : 0;
     const low = Math.max(0, 1 - player.health / config.player.maxHealth - 0.2);
-    const beat = low > 0 ? 0.75 + 0.25 * Math.sin(time * (3 + low * 6)) : 1;
-    const alpha = Math.min(0.9, flash * 0.65 + low * 0.55 * beat);
+    const beat = low > 0 && !settings.reducedFlashing ? 0.75 + 0.25 * Math.sin(time * (3 + low * 6)) : 1;
+    const alpha = settings.reducedFlashing ? low * 0.2 : Math.min(0.9, flash * 0.65 + low * 0.55 * beat);
     if (alpha <= 0.01) return;
     const gradient = context.createRadialGradient(width / 2, height / 2, height * 0.32, width / 2, height / 2, height * 0.98);
     gradient.addColorStop(0, 'rgba(140,0,0,0)');
@@ -213,13 +237,17 @@ export function createHud(level: Level, menu: Menu): Hud {
     }
     context.restore();
 
+  }
+
+  function drawHitMarker(width: number, height: number, unit: number, time: number): void {
+    const cx = width / 2, cy = height / 2;
     if (settings.showHitMarkers && time < hitUntil) {
       const total = hitIsKill ? KILL_MARKER_SECONDS : HIT_MARKER_SECONDS;
       const t = (hitUntil - time) / total;
       const inner = (hitIsKill ? 13 : 11) * unit + (1 - t) * 4 * unit;
       const outer = inner + (hitIsKill ? 14 : 10) * unit;
       context.save();
-      context.globalAlpha = Math.min(1, t * 1.6);
+      context.globalAlpha = Math.min(settings.reducedFlashing ? 0.65 : 1, t * 1.6);
       context.lineCap = 'round';
       for (const pass of [0, 1]) {
         context.strokeStyle = pass === 0 ? 'rgba(0,0,0,0.55)' : hitIsKill ? COLOR.danger : '#ffffff';
@@ -334,13 +362,13 @@ export function createHud(level: Level, menu: Menu): Hud {
         break;
       case 'cleared':
         title = 'Level cleared';
-        detail = 'The stairwell is open';
+        detail = 'All five waves survived';
         break;
     }
 
     const x = margin;
     const y = margin;
-    const w = 430 * unit;
+    const w = 410 * unit;
     const h = 118 * unit;
     panel(context, x, y, w, h);
     context.fillStyle = COLOR.accent;
@@ -350,8 +378,8 @@ export function createHud(level: Level, menu: Menu): Hud {
     text(context, detail, x + 26 * unit, y + 95 * unit, { size: 18 * unit, color: COLOR.dim });
     if (timer !== null) {
       const urgent = timer < 10 && waves.phase === 'prep';
-      text(context, clock(timer), x + w - 22 * unit, y + 78 * unit, {
-        size: 46 * unit,
+      text(context, clock(timer), x + w - 22 * unit, y + 32 * unit, {
+        size: 23 * unit,
         weight: 800,
         align: 'right',
         color: urgent ? COLOR.danger : COLOR.text,
@@ -450,6 +478,7 @@ export function createHud(level: Level, menu: Menu): Hud {
     context.fill();
     context.restore();
 
+    text(context, player.y > 3 ? 'NORTHLINE / STREET' : 'B1 / PARKING & FREIGHT', margin, cy - radius - 18 * unit, { size: 14 * unit, color: COLOR.dim, spacing: 2 * unit });
     // The ring, with north marked on it.
     context.beginPath();
     context.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -470,7 +499,8 @@ export function createHud(level: Level, menu: Menu): Hud {
     const fraction = clamp(player.health / config.player.maxHealth, 0, 1);
     const ghost = clamp(ghostHealth / config.player.maxHealth, 0, 1);
 
-    text(context, 'HEALTH', x, y - 12 * unit, { size: 15 * unit, color: COLOR.dim, spacing: 4 * unit, weight: 700 });
+    panel(context, x - 16 * unit, y - 52 * unit, w + 32 * unit, 98 * unit, 'rgba(10,20,26,0.68)', 8 * unit);
+    text(context, 'VITALS', x, y - 12 * unit, { size: 15 * unit, color: COLOR.dim, spacing: 4 * unit, weight: 700 });
     text(context, String(Math.ceil(player.health)), x + w, y - 8 * unit, { size: 30 * unit, weight: 800, align: 'right', color: fraction < 0.3 ? COLOR.danger : COLOR.text });
     roundedRect(context, x, y, w, h, 3 * unit);
     context.fillStyle = 'rgba(0,0,0,0.6)';
@@ -480,7 +510,7 @@ export function createHud(level: Level, menu: Menu): Hud {
     context.clip();
     context.fillStyle = 'rgba(255,255,255,0.7)';
     context.fillRect(x, y, w * ghost, h);
-    const pulse = fraction < 0.3 ? 0.75 + 0.25 * Math.sin(time * 9) : 1;
+    const pulse = fraction < 0.3 && !settings.reducedFlashing ? 0.75 + 0.25 * Math.sin(time * 9) : 1;
     const gradient = context.createLinearGradient(x, 0, x + w, 0);
     gradient.addColorStop(0, fraction < 0.3 ? COLOR.danger : '#3fae6d');
     gradient.addColorStop(1, fraction < 0.3 ? '#ff7a63' : COLOR.good);
@@ -501,9 +531,10 @@ export function createHud(level: Level, menu: Menu): Hud {
     const reloading = player.reloadLeft > 0;
     const low = player.ammo <= Math.ceil(magazine / 3);
 
-    text(context, 'PISTOL', right, baseY - 100 * unit, { size: 17 * unit, color: COLOR.dim, align: 'right', spacing: 6 * unit, weight: 700 });
+    panel(context, right - 278 * unit, baseY - 142 * unit, 300 * unit, 200 * unit, 'rgba(10,20,26,0.62)', 8 * unit);
+    text(context, 'P9 / 9 x 19', right, baseY - 100 * unit, { size: 17 * unit, color: COLOR.dim, align: 'right', spacing: 6 * unit, weight: 700 });
     if (reloading) {
-      text(context, 'RELOADING', right, baseY - 10 * unit, { size: 44 * unit, weight: 800, align: 'right', color: COLOR.accent, spacing: 4 * unit });
+      text(context, 'RELOADING', right, baseY - 10 * unit, { size: 36 * unit, weight: 800, align: 'right', color: COLOR.accent, spacing: 4 * unit });
       const w = 260 * unit;
       const progress = 1 - player.reloadLeft / config.pistol.reloadSeconds;
       roundedRect(context, right - w, baseY + 8 * unit, w, 6 * unit, 3 * unit);
@@ -513,7 +544,7 @@ export function createHud(level: Level, menu: Menu): Hud {
       context.fillStyle = COLOR.accent;
       context.fill();
     } else {
-      const blink = player.ammo === 0 ? 0.55 + 0.45 * Math.sin(time * 10) : 1;
+      const blink = player.ammo === 0 && !settings.reducedFlashing ? 0.55 + 0.45 * Math.sin(time * 10) : 1;
       context.save();
       context.globalAlpha = blink;
       const infinity = measure(context, '/ ∞', 30 * unit, 700, 1 * unit);
@@ -539,6 +570,31 @@ export function createHud(level: Level, menu: Menu): Hud {
     else if (player.cover) stance = 'IN COVER';
     else if (player.crouch > 0.5) stance = 'CROUCHING';
     if (stance) text(context, stance, right, baseY - 130 * unit, { size: 16 * unit, color: COLOR.accent, align: 'right', spacing: 5 * unit, weight: 700 });
+  }
+
+  function drawStatus(width: number, height: number, margin: number, unit: number, state: GameState, player: Player, time: number): void {
+    const x = width - margin - 248 * unit;
+    panel(context, x, margin, 248 * unit, 112 * unit);
+    text(context, 'SURVIVAL / SOLO', x + 20 * unit, margin + 28 * unit, { size: 13 * unit, spacing: 3 * unit, color: COLOR.dim });
+    text(context, String(state.waves.number).padStart(2, '0'), x + 20 * unit, margin + 84 * unit, { size: 52 * unit, weight: 800, color: COLOR.accent });
+    text(context, '/ 05 WAVES', x + 93 * unit, margin + 77 * unit, { size: 16 * unit, color: COLOR.dim });
+    for (let i = 0; i < TOTAL_WAVES; i++) {
+      context.fillStyle = i < state.waves.number - (state.waves.phase === 'cleared' ? 0 : 1) ? COLOR.good : 'rgba(255,255,255,.12)';
+      context.fillRect(x + (20 + i * 43) * unit, margin + 99 * unit, 35 * unit, 3 * unit);
+    }
+    if (time - killAt < 1.3) {
+      text(context, 'HOSTILE DOWN', width / 2, height / 2 + 77 * unit, { size: 16 * unit, align: 'center', color: COLOR.accent, spacing: 3 * unit, alpha: Math.min(1, (1.3 - time + killAt) * 3) });
+    }
+    const hintY = height - margin;
+    const hints = [[bindings.map, 'MAP'], [bindings.reload, 'RELOAD'], [bindings.cover, 'COVER']];
+    let hx = width / 2 - 185 * unit;
+    for (const [key, label] of hints) {
+      const kw = keycap(context, keyLabel(key), hx, hintY, 25 * unit);
+      text(context, label, hx + kw + 7 * unit, hintY - 3 * unit, { size: 12 * unit, color: COLOR.dim, spacing: 1 * unit });
+      hx += 130 * unit;
+    }
+    if (player.bars > 0) text(context, `BOARDS ${player.bars} / ${config.doors.carryLimit}`, margin, height - margin + 29 * unit, { size: 13 * unit, color: COLOR.accent, spacing: 2 * unit });
+    if (player.ammo <= 3 && player.reloadLeft <= 0) text(context, player.ammo === 0 ? 'EMPTY / RELOAD' : 'LOW MAGAZINE', width - margin, height - margin + 28 * unit, { size: 14 * unit, align: 'right', color: COLOR.danger, spacing: 2 * unit });
   }
 
   // A line of keycaps and a verb, low in the middle of the screen.

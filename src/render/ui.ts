@@ -3,15 +3,21 @@
 
 export const FONT = "'Bahnschrift', 'Segoe UI Semibold', 'Arial Narrow', sans-serif";
 
+export function outfitPreviewRect(width: number, height: number): { x: number; y: number; w: number; h: number } {
+  const u = height / 1080;
+  const panelWidth = Math.min(width * 0.84, 1180 * u);
+  return { x: (width - panelWidth) / 2 + panelWidth * 0.59, y: height * 0.13 + 140 * u, w: panelWidth * 0.36, h: 420 * u };
+}
+
 export const COLOR = {
   text: '#f2f4f7',
   dim: 'rgba(242,244,247,0.62)',
   faint: 'rgba(242,244,247,0.32)',
-  accent: '#f5a524',
+  accent: '#e8b866',
   danger: '#e5483c',
-  good: '#5ccf8b',
-  panel: 'rgba(9,11,15,0.6)',
-  panelSolid: 'rgba(9,11,15,0.86)',
+  good: '#80c7b4',
+  panel: 'rgba(10,20,26,0.76)',
+  panelSolid: 'rgba(10,18,24,0.94)',
   border: 'rgba(255,255,255,0.14)',
 };
 
@@ -64,6 +70,9 @@ export function panel(context: CanvasRenderingContext2D, x: number, y: number, w
   roundedRect(context, x, y, w, h, radius);
   context.fillStyle = fill;
   context.fill();
+  const sheen = context.createLinearGradient(0, y, 0, y + h);
+  sheen.addColorStop(0, 'rgba(164,202,211,0.055)'); sheen.addColorStop(1, 'rgba(0,0,0,0.04)');
+  context.fillStyle = sheen; context.fill();
   context.strokeStyle = COLOR.border;
   context.lineWidth = 1;
   context.stroke();

@@ -23,6 +23,11 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     // You can't look down the sights mid-reload, or while hanging off a ladder or a ledge.
     player.aiming = input.aim && player.reloadLeft === 0 && !player.ladder && !player.mantle;
     moveBody(player, input, dt, level);
+    player.cameraStyle = input.cameraStyle === 'bodycam' ? 'bodycam' : 'standard';
+    const targetDrop = player.cameraStyle === 'bodycam' && !player.aiming && !player.ladder && !player.mantle
+      ? config.view.bodycamDrop * (1 - player.crouch * 0.45) : 0;
+    const cameraStep = config.view.bodycamDrop * dt / config.player.aimSeconds;
+    player.cameraDrop += Math.max(-cameraStep, Math.min(cameraStep, targetDrop - player.cameraDrop));
     lean(player, input, dt, level);
     weapon(state, player, input, dt, level);
   }
@@ -108,7 +113,7 @@ function weapon(
     y: Math.sin(player.pitch),
     z: -Math.cos(player.yaw) * cosPitch,
   };
-  // The shot starts from the head, so leaning round a corner lets you shoot round it.
+  // The shot starts at the active camera height, including the chest-camera preset.
   const origin = {
     x: player.x + Math.cos(player.yaw) * player.leanOffset,
     y: eyeY(player),

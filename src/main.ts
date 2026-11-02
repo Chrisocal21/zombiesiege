@@ -28,9 +28,15 @@ const effects = createEffects(view.scene, view.camera, viewmodel);
 const zombieViews = createZombieViews(view.scene);
 
 const tickSeconds = 1 / config.ticksPerSecond;
+let reviewing = false;
 let leftover = 0;
 let lastTime = performance.now();
 let previous = startPose();
+let gaitPhase = 0;
+let visualRecoil = 0;
+let renderedShot = -1;
+let bodycamRoll = 0;
+let bodycamLastYaw: number | null = null;
 
 function startPose() {
   const player = state.players[0];
@@ -38,10 +44,10 @@ function startPose() {
 }
 
 // The title screen and the pause menu both end by capturing the mouse and going back to the game.
-function enterGame(): void {
-  menu.close();
+async function enterGame(): Promise<void> {
   input.reset();
-  input.lock();
+  if (!(await input.lock())) return;
+  menu.close();
   lastTime = performance.now();
 }
 
@@ -68,7 +74,7 @@ view.renderer.setAnimationLoop((now) => {
   lastTime = now;
   const paused = menu.isOpen();
 
-  if (!paused) {
+  if (!paused && !reviewing) {
     leftover += frameSeconds;
     while (leftover >= tickSeconds) {
       const before = state.players[0];
@@ -109,13 +115,42 @@ view.renderer.setAnimationLoop((now) => {
     };
   }
 
-  syncCamera(view.camera, pose);
-  if (!onTitle) viewmodel.update(player, pose, paused ? 0 : frameSeconds);
+  const speed = player.onGround ? Math.hypot(player.vx, player.vz) : 0;
+  gaitPhase += speed * frameSeconds * 1.5;
+  if (player.lastShotTick !== renderedShot) {
+    renderedShot = player.lastShotTick;
+    if (renderedShot >= 0) visualRecoil = 0.006;
+  }
+  visualRecoil *= Math.exp(-frameSeconds * 16);
+  const motion = settings.cameraMotion && !paused ? 1 : 0;
+  const gait = Math.min(1, speed / config.player.moveSpeed) * (player.aiming ? 0.3 : 1) * motion;
+  const chest = settings.cameraStyle === 'bodycam' && !onTitle;
+  const yawChange = bodycamLastYaw === null ? 0 : Math.atan2(Math.sin(pose.yaw - bodycamLastYaw), Math.cos(pose.yaw - bodycamLastYaw));
+  bodycamLastYaw = pose.yaw;
+  const rollTarget = chest && motion ? Math.max(-0.035, Math.min(0.035, -yawChange * 0.4)) : 0;
+  bodycamRoll += (rollTarget - bodycamRoll) * (1 - Math.exp(-frameSeconds * 12));
+  syncCamera(view.camera, { ...pose,
+    y: pose.y + Math.sin(gaitPhase * 2) * (chest ? 0.022 : 0.012) * gait,
+    pitch: pose.pitch + visualRecoil * motion,
+    roll: pose.roll + Math.sin(gaitPhase) * (chest ? 0.008 : 0.002) * gait + bodycamRoll,
+  });
+  const outfitPreview = menu.screen() === 'character';
+  if (!onTitle || outfitPreview) viewmodel.update(player, pose, paused ? 0 : frameSeconds, outfitPreview);
   view.setAim(onTitle ? 0 : viewmodel.aimAmount());
   view.animate(now / 1000, state);
   input.setLookScale(view.camera.fov / settings.fieldOfView);
-  effects.update(player, paused ? 0 : frameSeconds);
+  effects.update(player, paused ? 0 : frameSeconds, state.level);
   zombieViews.update(state, paused ? 0 : frameSeconds);
   view.render(!onTitle);
+  if (outfitPreview) view.renderOutfitPreview();
   hud.draw(state, player, now / 1000);
 });
+
+// Opt-in development review harness; excluded from production builds.
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('review')) {
+  import('./client/review').then(({ installReview }) => installReview({
+    level, menu, hud, view,
+    replace(next) { state = next; previous = startPose(); leftover = 0; reviewing = true; },
+    state: () => state,
+  }));
+}

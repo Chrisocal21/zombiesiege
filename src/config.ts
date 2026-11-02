@@ -5,6 +5,7 @@ export const config = {
   ticksPerSecond: 120,
 
   view: {
+    bodycamDrop: 0.28,
     fieldOfView: 75,
     aimFieldOfView: 55,
     // How strong the lens warp is. 0 is a flat picture.

@@ -477,17 +477,17 @@ export function surfaceMaterial(surface: Surface, color: string): THREE.MeshStan
   switch (surface) {
     case 'floor': {
       const map = paintTexture(1024, 11, paintFloor);
-      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 2.2, roughness: 0.92, color });
+      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.0132, roughness: 0.92, color });
       break;
     }
     case 'wall': {
       const map = paintTexture(1024, 12, paintWall);
-      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 2.2, roughness: 0.95, color });
+      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.0132, roughness: 0.95, color });
       break;
     }
     case 'crate': {
       const map = paintTexture(512, 13, paintCrate);
-      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 1.6, roughness: 0.88, color });
+      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.0096, roughness: 0.88, color });
       break;
     }
     case 'container': {
@@ -495,7 +495,7 @@ export function surfaceMaterial(surface: Surface, color: string): THREE.MeshStan
       material = new THREE.MeshStandardMaterial({
         map,
         bumpMap: map,
-        bumpScale: 4,
+        bumpScale: 0.024,
         roughness: 0.55,
         metalness: 0.35,
         color,
@@ -504,12 +504,12 @@ export function surfaceMaterial(surface: Surface, color: string): THREE.MeshStan
     }
     case 'barrel': {
       const map = paintTexture(512, 15, paintBarrel);
-      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 1.4, roughness: 0.5, metalness: 0.45, color });
+      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.0084, roughness: 0.5, metalness: 0.45, color });
       break;
     }
     default: {
       const map = paintTexture(512, 16, (context, size, random) => concreteBase(context, size, random, '#9a9c9f'));
-      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 2, roughness: 0.93, color });
+      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.012, roughness: 0.93, color });
     }
   }
   cache.set(key, material);
@@ -517,7 +517,7 @@ export function surfaceMaterial(surface: Surface, color: string): THREE.MeshStan
 }
 
 const paintSkin: Painter = (context, size, random) => {
-  context.fillStyle = '#6f7e5a';
+  context.fillStyle = '#9b968b';
   context.fillRect(0, 0, size, size);
   blobs(context, size, random, 24, size * 0.05, size * 0.2, '70,60,90', 0.28);
   blobs(context, size, random, 18, size * 0.04, size * 0.16, '60,80,50', 0.3);
@@ -600,5 +600,5 @@ const paintPlank: Painter = (context, size, random) => {
 // Rough, weathered planks, for boarding doors and for the bundles on the floor.
 export function plankMaterial(): THREE.MeshStandardMaterial {
   const map = paintTexture(256, 31, paintPlank);
-  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 1.5, roughness: 0.9 });
+  return new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.009000000000000001, roughness: 0.9 });
 }

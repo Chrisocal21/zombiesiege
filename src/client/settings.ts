@@ -12,6 +12,10 @@ export interface Settings {
   showRadar: boolean;
   showCompass: boolean;
   showHitMarkers: boolean;
+  bloom: boolean;
+  cameraMotion: boolean;
+  cameraStyle: 'standard' | 'bodycam';
+  reducedFlashing: boolean;
 }
 
 export const SETTING_RANGES = {
@@ -27,6 +31,10 @@ const DEFAULTS: Settings = {
   showRadar: true,
   showCompass: true,
   showHitMarkers: true,
+  bloom: true,
+  cameraMotion: true,
+  cameraStyle: 'standard',
+  reducedFlashing: true,
 };
 
 const STORAGE_KEY = 'zombiesiege.settings';
@@ -40,8 +48,14 @@ export function loadSettings(): void {
     const parsed = JSON.parse(saved) as Partial<Settings>;
     for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
       const value = parsed[key];
+      if (typeof value === 'number' && !Number.isFinite(value)) continue;
       if (typeof value === typeof DEFAULTS[key]) (settings as unknown as Record<string, unknown>)[key] = value;
     }
+    for (const key of Object.keys(SETTING_RANGES) as (keyof typeof SETTING_RANGES)[]) {
+      const range = SETTING_RANGES[key];
+      settings[key] = Math.max(range.min, Math.min(range.max, settings[key]));
+    }
+    if (settings.cameraStyle !== 'standard' && settings.cameraStyle !== 'bodycam') settings.cameraStyle = 'standard';
   } catch {
     // Storage can be blocked. The defaults are fine.
   }

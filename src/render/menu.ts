@@ -1,8 +1,10 @@
+import { GLOVES, OUTFITS, appearance, saveAppearance, selectedGloves, selectedOutfit } from '../client/appearance';
 import { ACTIONS, type Action, bindings, keyLabel, rebind, resetBindings } from '../client/bindings';
 import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } from '../client/settings';
-import { COLOR, clamp, keycap, measure, panel, roundedRect, text } from './ui';
+import { outfitTexture } from './gearTextures';
+import { COLOR, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
 
-export type Screen = 'main' | 'pause' | 'controls' | 'settings';
+export type Screen = 'main' | 'pause' | 'controls' | 'settings' | 'character';
 
 export interface MenuCallbacks {
   // Start the game from the title screen.
@@ -17,7 +19,7 @@ export interface Menu {
   screen(): Screen | null;
   // True on the title screen and on the controls and settings screens opened from it.
   onTitle(): boolean;
-  open(screen: 'main' | 'pause'): void;
+  open(screen: Screen): void;
   close(): void;
   draw(context: CanvasRenderingContext2D, width: number, height: number, time: number): void;
 }
@@ -38,9 +40,13 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   let parent: 'main' | 'pause' = 'main';
   let rebinding: Action | null = null;
   let dragging: string | null = null;
+  let focusedItem = 0;
+  let keyboardMode = false;
+  let activate = false;
   const mouse: Mouse = { x: 0, y: 0, down: false, clicked: false };
 
   window.addEventListener('mousemove', (event) => {
+    keyboardMode = false;
     mouse.x = event.clientX;
     mouse.y = event.clientY;
   });
@@ -72,7 +78,28 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         rebinding = null;
         return;
       }
-      if (event.code === 'Escape' && (current === 'controls' || current === 'settings')) current = parent;
+      if ((current === 'main' || current === 'pause') && ['ArrowUp', 'ArrowDown', 'Enter'].includes(event.code)) {
+        event.preventDefault(); keyboardMode = true;
+        const count = current === 'main' ? 3 : 4;
+        if (event.code === 'ArrowUp') focusedItem = (focusedItem + count - 1) % count;
+        if (event.code === 'ArrowDown') focusedItem = (focusedItem + 1) % count;
+        if (event.code === 'Enter') activate = true;
+      }
+      if (current === 'character' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.code)) {
+        event.preventDefault();
+        const shirt = event.code === 'ArrowLeft' || event.code === 'ArrowRight';
+        const direction = event.code === 'ArrowLeft' || event.code === 'ArrowUp' ? -1 : 1;
+        if (shirt) {
+          const index = OUTFITS.findIndex((outfit) => outfit.id === appearance.outfit);
+          appearance.outfit = OUTFITS[(index + direction + OUTFITS.length) % OUTFITS.length].id;
+        } else {
+          const index = GLOVES.findIndex((gloves) => gloves.id === appearance.gloves);
+          appearance.gloves = GLOVES[(index + direction + GLOVES.length) % GLOVES.length].id;
+        }
+        saveAppearance();
+      }
+      if (current === 'character' && event.code === 'Enter') { event.preventDefault(); callbacks.play(); }
+      if (event.code === 'Escape'  && (current === 'controls' || current === 'settings' || current === 'character')) current = parent;
     },
     true,
   );
@@ -83,7 +110,8 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
     onTitle: () => current !== null && parent === 'main',
     open(screen) {
       current = screen;
-      parent = screen;
+      if (screen === 'main' || screen === 'pause') parent = screen;
+      focusedItem = 0;
       rebinding = null;
     },
     close() {
@@ -100,11 +128,11 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
 
       // A line of the main menu: big text on the left, with an amber bar when pointed at.
-      const item = (label: string, x: number, y: number): boolean => {
+      const item = (label: string, x: number, y: number, index: number): boolean => {
         const size = 40 * unit;
         const w = Math.max(measure(context, label, size, 600, 3 * unit) + 60 * unit, 360 * unit);
         const h = size * 1.5;
-        const hover = inside(x - 24 * unit, y - size, w, h);
+        const hover = keyboardMode ? focusedItem === index : inside(x - 24 * unit, y - size, w, h);
         if (hover) hovering = true;
         if (hover) {
           context.fillStyle = COLOR.accent;
@@ -116,7 +144,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           context.fillRect(x - 24 * unit, y - size * 0.9, w, size * 1.15);
         }
         text(context, label, x + (hover ? 10 * unit : 0), y, { size, color: hover ? COLOR.text : COLOR.dim, spacing: 3 * unit });
-        return hover && mouse.clicked;
+        return hover && (keyboardMode ? activate : mouse.clicked);
       };
 
       // A rectangular button, for the bottom of the controls and settings panels.
@@ -159,14 +187,23 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         text(context, 'SIEGE', left, height * 0.32 + 112 * unit, { size: 118 * unit, weight: 800, spacing: 10 * unit });
         context.fillStyle = COLOR.accent;
         context.fillRect(left, height * 0.32 + 138 * unit, 150 * unit, 5 * unit);
-        text(context, 'LEVEL 0  /  THE GARAGE', left, height * 0.32 + 184 * unit, { size: 22 * unit, color: COLOR.dim, spacing: 6 * unit });
+        text(context, 'NIGHTFALL  /  B1 OPERATIONS', left, height * 0.32 + 184 * unit, { size: 22 * unit, color: COLOR.dim, spacing: 6 * unit });
 
+        // Briefing stays off the combat HUD and makes the first run's sequence clear.
+        const bx = width * 0.68, by = height * 0.56;
+        const bw = width * 0.255;
+        panel(context, bx, by, bw, 285 * unit, 'rgba(10,20,26,0.76)', 8 * unit);
+        text(context, 'OPERATION 001', bx + 26 * unit, by + 37 * unit, { size: 15 * unit, color: COLOR.accent, spacing: 4 * unit });
+        text(context, 'HOLD THE GARAGE', bx + 26 * unit, by + 78 * unit, { size: 27 * unit, weight: 800 });
+        ['Enter from the street.', 'Seal the gate. Find the boards.', 'Survive all five waves.'].forEach((line, i) => text(context, line, bx + 26 * unit, by + (119 + i * 31) * unit, { size: 18 * unit, color: COLOR.dim }));
+        context.fillStyle = COLOR.border; context.fillRect(bx + 26 * unit, by + 218 * unit, bw - 52 * unit, 1);
+        text(context, 'SOLO  /  5 WAVES  /  P9', bx + 26 * unit, by + 254 * unit, { size: 14 * unit, color: COLOR.accent, spacing: 2 * unit });
         let y = height * 0.66;
         const step = 62 * unit;
         const entries: [string, () => void][] =
           current === 'main'
             ? [
-                ['PLAY', () => callbacks.play()],
+                ['PLAY', () => (current = 'character')],
                 ['CONTROLS', () => (current = 'controls')],
                 ['SETTINGS', () => (current = 'settings')],
               ]
@@ -179,11 +216,11 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         if (current === 'pause') {
           text(context, 'PAUSED', left, y - step * 0.9, { size: 20 * unit, color: COLOR.dim, spacing: 8 * unit });
         }
-        for (const [label, action] of entries) {
-          if (item(label, left, y)) action();
+        for (const [index, [label, action]] of entries.entries()) {
+          if (item(label, left, y, index)) action();
           y += step;
         }
-        text(context, 'Esc opens this menu in the game', left, height - 80 * unit, { size: 17 * unit, color: COLOR.faint, spacing: 1 * unit });
+        text(context, 'Arrows Select   /   Enter Confirm   /   Esc Pause', left, height - 80 * unit, { size: 17 * unit, color: COLOR.faint, spacing: 1 * unit });
       } else {
         // The controls and settings screens share a centred panel.
         const panelWidth = Math.min(width * 0.84, 1180 * unit);
@@ -191,14 +228,60 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         const px = (width - panelWidth) / 2;
         const py = height * 0.13;
         panel(context, px, py, panelWidth, panelHeight, COLOR.panelSolid, 10 * unit);
-        text(context, current === 'controls' ? 'CONTROLS' : 'SETTINGS', px + 44 * unit, py + 70 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
+        text(context, current === 'controls' ? 'CONTROLS' : current === 'character' ? 'YOUR SURVIVOR' : 'SETTINGS', px + 44 * unit, py + 70 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
         context.fillStyle = COLOR.accent;
         context.fillRect(px + 44 * unit, py + 90 * unit, 90 * unit, 4 * unit);
 
         const buttonHeight = 54 * unit;
         const buttonY = py + panelHeight - buttonHeight - 30 * unit;
 
-        if (current === 'controls') {
+        if (current === 'character') {
+          text(context, 'CAMOUFLAGE', px + 44 * unit, py + 160 * unit, { size: 24 * unit, color: COLOR.dim });
+          text(context, 'GLOVES', px + 44 * unit, py + 310 * unit, { size: 24 * unit, color: COLOR.dim });
+          const swatchSize = 64 * unit;
+          const outline = (x: number, y: number, chosen: boolean) => {
+            context.strokeStyle = chosen ? COLOR.accent : COLOR.border;
+            context.lineWidth = chosen ? 4 : 1;
+            context.strokeRect(x, y, swatchSize, swatchSize);
+          };
+          OUTFITS.forEach((outfit, i) => {
+            const x = px + (44 + i * 85) * unit;
+            const y = py + 185 * unit;
+            // The same cloth that is on the sleeve in the preview.
+            context.drawImage(outfitTexture(outfit.id).image as HTMLCanvasElement, 0, 0, 320, 320, x, y, swatchSize, swatchSize);
+            outline(x, y, appearance.outfit === outfit.id);
+            if (inside(x, y, swatchSize, swatchSize)) {
+              hovering = true;
+              if (mouse.clicked) { appearance.outfit = outfit.id; saveAppearance(); }
+            }
+          });
+          GLOVES.forEach((gloves, i) => {
+            const x = px + (44 + i * 85) * unit;
+            const y = py + 335 * unit;
+            context.fillStyle = gloves.color;
+            context.fillRect(x, y, swatchSize, swatchSize);
+            context.fillStyle = gloves.accent;
+            context.fillRect(x, y + swatchSize * 0.72, swatchSize, swatchSize * 0.28);
+            outline(x, y, appearance.gloves === gloves.id);
+            if (inside(x, y, swatchSize, swatchSize)) {
+              hovering = true;
+              if (mouse.clicked) { appearance.gloves = gloves.id; saveAppearance(); }
+            }
+          });
+          const preview = outfitPreviewRect(width, height);
+          context.clearRect(preview.x, preview.y, preview.w, preview.h);
+          context.strokeStyle = COLOR.border; context.lineWidth = 1;
+          context.strokeRect(preview.x, preview.y, preview.w, preview.h);
+          text(context, 'FIRST-PERSON PREVIEW', preview.x + 18 * unit, preview.y + 28 * unit, { size: 13 * unit, color: COLOR.accent, spacing: 2 * unit });
+          text(context, 'P9 / ' + selectedOutfit().name.toUpperCase() + ' / ' + selectedGloves().name.toUpperCase(), preview.x + 18 * unit, preview.y + preview.h - 18 * unit, { size: 13 * unit, color: COLOR.dim, spacing: 1 * unit });
+          text(context, selectedOutfit().name.toUpperCase(), px + 489 * unit, py + 160 * unit, { size: 15 * unit, spacing: 2 * unit, color: COLOR.accent, align: 'right' });
+          text(context, selectedGloves().name.toUpperCase(), px + 489 * unit, py + 310 * unit, { size: 15 * unit, spacing: 2 * unit, color: COLOR.accent, align: 'right' });
+          text(context, 'FIELD KIT', px + 44 * unit, py + 470 * unit, { size: 14 * unit, color: COLOR.accent, spacing: 3 * unit });
+          text(context, 'P9 service pistol / 12 rounds', px + 44 * unit, py + 506 * unit, { size: 22 * unit, color: COLOR.text });
+          text(context, selectedOutfit().description + '.', px + 44 * unit, py + 541 * unit, { size: 16 * unit, color: COLOR.dim });
+          text(context, 'Left and right change camouflage, up and down change gloves. Enter to deploy.', px + 44 * unit, buttonY - 40 * unit, { size: 20 * unit, color: COLOR.dim });
+          if (button('ENTER THE GARAGE', px + 44 * unit, buttonY, 370 * unit, buttonHeight, true)) callbacks.play();
+        } else if (current === 'controls') {
           const columnWidth = (panelWidth - 132 * unit) / 2;
           const rowHeight = 50 * unit;
           const groups = ['Movement', 'Combat', 'Interaction'];
@@ -251,10 +334,17 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           );
           if (button('RESET TO DEFAULTS', px + 44 * unit, buttonY, 300 * unit, buttonHeight)) resetBindings();
         } else {
-          // Settings: three sliders and three switches.
+          // Camera style is a saved preset; presentation switches remain independent.
           const x = px + 44 * unit;
           const trackWidth = Math.min(520 * unit, panelWidth * 0.46);
-          let y = py + 170 * unit;
+          text(context, 'Camera style', x, py + 154 * unit, { size: 25 * unit, color: COLOR.dim, shadow: false });
+          for (const [index, style] of (['standard', 'bodycam'] as const).entries()) {
+            if (button(style === 'standard' ? 'STANDARD' : 'BODYCAM', x + (380 + index * 202) * unit, py + 122 * unit, 188 * unit, 46 * unit, settings.cameraStyle === style)) {
+              settings.cameraStyle = style; saveSettings();
+            }
+          }
+          text(context, settings.cameraStyle === 'bodycam' ? 'Chest mounted. Wide lens. Aim to raise the sights to eye level.' : 'Eye level. Conventional first-person framing.', x, py + 198 * unit, { size: 17 * unit, color: COLOR.dim, shadow: false });
+          let y = py + 246 * unit;
           const slider = (id: keyof typeof SETTING_RANGES, label: string, format: (value: number) => string): void => {
             const range = SETTING_RANGES[id];
             const value = settings[id];
@@ -280,13 +370,13 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             context.fillStyle = COLOR.text;
             context.fill();
             text(context, format(value), trackX + trackWidth + 36 * unit, y, { size: 24 * unit, color: COLOR.text, shadow: false });
-            y += 74 * unit;
+            y += 58 * unit;
           };
           slider('sensitivity', 'Mouse sensitivity', (value) => value.toFixed(2));
           slider('fieldOfView', 'Field of view', (value) => `${Math.round(value)}`);
           slider('fisheye', 'Lens warp', (value) => (value === 0 ? 'Off' : value.toFixed(2)));
 
-          const toggle = (key: 'showRadar' | 'showCompass' | 'showHitMarkers', label: string): void => {
+          const toggle = (key: 'showRadar' | 'showCompass' | 'showHitMarkers' | 'bloom' | 'cameraMotion', label: string): void => {
             text(context, label, x, y, { size: 25 * unit, color: COLOR.dim, shadow: false });
             const w = 84 * unit;
             const h = 38 * unit;
@@ -307,11 +397,13 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             context.fillStyle = on ? '#15110a' : COLOR.text;
             context.fill();
             text(context, on ? 'On' : 'Off', tx + w + 22 * unit, y, { size: 22 * unit, color: COLOR.dim, shadow: false });
-            y += 66 * unit;
+            y += 50 * unit;
           };
           toggle('showRadar', 'Radar');
           toggle('showCompass', 'Compass');
           toggle('showHitMarkers', 'Hit markers');
+          toggle('bloom', 'Light diffusion');
+          toggle('cameraMotion', 'Camera motion');
           if (button('RESET TO DEFAULTS', x, buttonY, 300 * unit, buttonHeight)) resetSettings();
         }
         if (button('BACK', px + panelWidth - 44 * unit - 220 * unit, buttonY, 220 * unit, buttonHeight, true)) current = parent;
@@ -319,6 +411,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
 
       document.body.style.cursor = hovering ? 'pointer' : 'default';
       mouse.clicked = false;
+      activate = false;
     },
   };
 }

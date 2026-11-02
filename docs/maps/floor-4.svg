@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 900">
+<rect width="800" height="900" fill="#101820"/>
+<text x="45" y="55" fill="#f1e8d4" font-family="sans-serif" font-size="28">04 / Roof / proposed</text>
+<text x="45" y="88" fill="#aebbc7" font-family="sans-serif" font-size="14">Freight stair &gt; HVAC loop &gt; signal point &gt; helipad holdout</text>
+<rect x="60" y="120" width="680" height="680" fill="#202d36" stroke="#81919d" stroke-width="6"/>
+<rect x="180" y="340" width="140" height="180" rx="4" fill="#45535a" stroke="#85969a"/>
+<text x="250.0" y="430.0" text-anchor="middle" fill="#e5dcc7" font-family="sans-serif" font-size="12">HVAC</text>
+<rect x="500" y="340" width="140" height="180" rx="4" fill="#45535a" stroke="#85969a"/>
+<text x="570.0" y="430.0" text-anchor="middle" fill="#e5dcc7" font-family="sans-serif" font-size="12">HVAC</text>
+<rect x="300" y="600" width="200" height="160" rx="4" fill="#45535a" stroke="#85969a"/>
+<text x="400.0" y="680.0" text-anchor="middle" fill="#e5dcc7" font-family="sans-serif" font-size="12">HELIPAD</text>
+<rect x="340" y="200" width="120" height="80" rx="4" fill="#45535a" stroke="#85969a"/>
+<text x="400.0" y="240.0" text-anchor="middle" fill="#e5dcc7" font-family="sans-serif" font-size="12">SIGNAL</text>
+<polyline points="640,760 660,580 400,560 400,300 400,680" fill="none" stroke="#e6b34f" stroke-width="5" stroke-dasharray="10 7"/>
+<circle cx="640" cy="760" r="9" fill="#79c8bb"/>
+<text x="640" y="745" text-anchor="middle" fill="#79c8bb" font-family="sans-serif" font-size="13">ENTRY</text>
+<circle cx="400" cy="680" r="9" fill="#e6b34f"/>
+<text x="400" y="665" text-anchor="middle" fill="#e6b34f" font-family="sans-serif" font-size="13">Extraction</text>
+<text x="60" y="843" fill="#aebbc7" font-family="sans-serif" font-size="16">N UP /  Schematic: zones and circulation, not collision dimensions</text>
+<text x="60" y="872" fill="#e6b34f" font-family="sans-serif" font-size="15">Dashed line: primary route / Keep a second loop around major cover</text>
+</svg>

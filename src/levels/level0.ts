@@ -168,18 +168,24 @@ export const level0: Level = {
 
     // The tower over the garage, and the buildings that close in the street.
     { position: { x: 0, y: STREET + 32, z: -3 }, size: { x: 80, y: 64, z: 27 }, color: BUILDING, surface: 'building' },
-    { position: { x: -33, y: STREET + 20, z: 29 }, size: { x: 14, y: 40, z: 38 }, color: BUILDING, surface: 'building' },
-    { position: { x: 33, y: STREET + 20, z: 29 }, size: { x: 14, y: 40, z: 38 }, color: BUILDING, surface: 'building' },
+    ...[-33, 33].flatMap((x): LevelBox[] => [
+      onStreet(x, 22.75, 14, 40, 25.5, BUILDING, 'building'),
+      { position: { x, y: STREET + 24, z: 41.75 }, size: { x: 14, y: 32, z: 12.5 }, color: BUILDING, surface: 'building' },
+      onStreet(x, 47.25, 14, 8, 1.5, BUILDING, 'wall'),
+      onStreet(x < 0 ? -33.5 : 33.5, 41, 0.5, 2.2, 10, BARRIER, 'plain'),
+    ]),
+
     { position: { x: 0, y: STREET + 20, z: 54 }, size: { x: 80, y: 40, z: 12 }, color: BUILDING, surface: 'building' },
 
-    // Street: cars parked and wrecked across the road, and barriers to run between.
-    onStreet(-15, 38.6, 4.4, 1.45, 1.9, '#7a1f1f', 'car'),
-    onStreet(-8.5, 44, 4.4, 1.45, 1.9, '#2e4a35', 'car'),
-    onStreet(10, 41, 2, 1.95, 5, '#cfcfca', 'van'),
-    onStreet(18, 37.5, 4.4, 1.45, 1.9, '#c9a227', 'car'),
+    // Both road lanes follow x. Keep the marked crossing and the ramp approach clear.
+    onStreet(-16, 38.2, 4.55, 1.48, 1.86, '#7a3030', 'car'),
+    onStreet(-8.5, 44.0, 4.55, 1.48, 1.86, '#344e41', 'car'),
+    onStreet(14, 43.7, 5.45, 2.45, 2.04, '#c5c8c5', 'van'),
+    onStreet(20.5, 38.2, 4.55, 1.48, 1.86, '#b68c39', 'car'),
     onStreet(-3, 40, 3.2, 1.2, 0.6, BARRIER, 'plain'),
-    onStreet(-19, 29, 4.4, 1.45, 1.9, '#27415e', 'car'),
-    onStreet(14, 24, 2, 1.95, 5, '#8c2f2f', 'van'),
+    // Surface-lot vehicles sit fully within the painted 5 m bays, noses toward the aisle.
+    onStreet(-20.5, 27.35, 4.55, 1.48, 1.86, '#354e67', 'car'),
+    onStreet(19.5, 21.35, 4.9, 2.35, 1.98, '#873d3b', 'van'),
 
     // Shipping container against the north wall. The roof is at 2.6 m.
     inGarage(0, -8.78, 6.1, 2.6, 2.44, CONTAINER, 'container'),
@@ -207,7 +213,7 @@ export const level0: Level = {
     // Cars in the bays.
     inGarage(-8.7, 0.5, 1.9, 1.45, 4.4, '#7a1f1f', 'car'),
     inGarage(-8.7, 5.6, 1.9, 1.45, 4.4, '#d6d6d2', 'car'),
-    inGarage(8.7, -1, 2, 1.95, 5, '#d9d9d6', 'van'),
+    inGarage(8.7, -1, 2, 2.35, 5, '#cbd0cc', 'van'),
     inGarage(-3.2, 8.4, 4.4, 1.45, 1.9, '#27415e', 'car'),
 
     inGarage(7.2, -5.6, 0.9, 1.1, 0.9, BARREL, 'barrel'),

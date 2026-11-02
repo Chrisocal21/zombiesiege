@@ -14,6 +14,9 @@ export interface Mantle {
 }
 
 export interface Player {
+  cameraStyle: 'standard' | 'bodycam';
+  // Smoothed chest-camera offset, also used by hitscan so the image and shot agree.
+  cameraDrop: number;
   id: number;
   x: number;
   // Height of the feet above the floor.
@@ -142,6 +145,8 @@ export interface GameState {
 
 export function createPlayer(id: number, spawn: Vec3): Player {
   return {
+    cameraStyle: 'standard',
+    cameraDrop: 0,
     id,
     x: spawn.x,
     y: spawn.y,
@@ -203,8 +208,8 @@ export function createGameState(level: Level): GameState {
   };
 }
 
-// Where the eyes are above the floor, lower when crouched.
+// Active camera height: crouch and the smoothed chest-camera preset also affect shot origin.
 export function eyeY(player: Player): number {
   const { eyeHeight, crouchEyeHeight } = config.player;
-  return player.y + eyeHeight + (crouchEyeHeight - eyeHeight) * player.crouch;
+  return player.y + eyeHeight + (crouchEyeHeight - eyeHeight) * player.crouch - player.cameraDrop;
 }

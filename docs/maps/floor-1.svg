@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 900">
+<rect width="800" height="900" fill="#101820"/>
+<text x="45" y="55" fill="#f1e8d4" font-family="sans-serif" font-size="28">01 / Lobby / proposed</text>
+<text x="45" y="88" fill="#aebbc7" font-family="sans-serif" font-size="14">Service stair &gt; reception &gt; split atrium loop &gt; east stair</text>
+<rect x="60" y="120" width="680" height="680" fill="#202d36" stroke="#81919d" stroke-width="6"/>
+<rect x="300" y="580" width="200" height="60" rx="4" fill="#45535a" stroke="#85969a"/>
+<text x="400.0" y="610.0" text-anchor="middle" fill="#e5dcc7" font-family="sans-serif" font-size="12">RECEPTION</text>
+<rect x="300" y="320" width="200" height="180" rx="4" fill="#45535a" stroke="#85969a"/>
+<text x="400.0" y="410.0" text-anchor="middle" fill="#e5dcc7" font-family="sans-serif" font-size="12">ATRIUM</text>
+<rect x="100" y="200" width="140" height="140" rx="4" fill="#45535a" stroke="#85969a"/>
+<text x="170.0" y="270.0" text-anchor="middle" fill="#e5dcc7" font-family="sans-serif" font-size="12">SECURITY</text>
+<rect x="560" y="440" width="120" height="160" rx="4" fill="#45535a" stroke="#85969a"/>
+<text x="620.0" y="520.0" text-anchor="middle" fill="#e5dcc7" font-family="sans-serif" font-size="12">LOUNGE</text>
+<polyline points="400,760 220,660 220,400 220,340 540,340 640,240" fill="none" stroke="#e6b34f" stroke-width="5" stroke-dasharray="10 7"/>
+<circle cx="400" cy="760" r="9" fill="#79c8bb"/>
+<text x="400" y="745" text-anchor="middle" fill="#79c8bb" font-family="sans-serif" font-size="13">ENTRY</text>
+<circle cx="640" cy="240" r="9" fill="#e6b34f"/>
+<text x="640" y="225" text-anchor="middle" fill="#e6b34f" font-family="sans-serif" font-size="13">East stair</text>
+<text x="60" y="843" fill="#aebbc7" font-family="sans-serif" font-size="16">N UP /  Schematic: zones and circulation, not collision dimensions</text>
+<text x="60" y="872" fill="#e6b34f" font-family="sans-serif" font-size="15">Dashed line: primary route / Keep a second loop around major cover</text>
+</svg>

@@ -13,7 +13,7 @@ export interface LocalInput {
   setLookScale(scale: number): void;
   isLocked(): boolean;
   // Captures the mouse. Has to be called from a click or key press.
-  lock(): void;
+  lock(): Promise<boolean>;
   // Forgets everything held or pressed, for when the game was paused.
   reset(): void;
   // Calls back when the mouse is released by the browser (Esc), so the menu can open.
@@ -76,11 +76,19 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     onUnlock(callback) {
       unlockCallback = callback;
     },
-    lock() {
+    async lock() {
       // Raw mouse movement skips the operating system's mouse acceleration.
       // Not every browser allows it, so fall back to the normal lock.
-      const request = element.requestPointerLock({ unadjustedMovement: true }) as Promise<void> | undefined;
-      request?.catch(() => element.requestPointerLock());
+      try {
+        await element.requestPointerLock({ unadjustedMovement: true });
+      } catch {
+        try {
+          await element.requestPointerLock();
+        } catch {
+          return false;
+        }
+      }
+      return isLocked();
     },
     reset() {
       down.clear();
@@ -95,6 +103,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     },
     poll(playerId) {
       const message: InputMessage = {
+        cameraStyle: settings.cameraStyle,
         playerId,
         moveForward: (held('forward') ? 1 : 0) - (held('back') ? 1 : 0),
         moveRight: (held('right') ? 1 : 0) - (held('left') ? 1 : 0),

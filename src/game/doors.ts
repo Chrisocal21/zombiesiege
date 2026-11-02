@@ -55,7 +55,7 @@ export function interactionTarget(state: GameState, player: Player): Interaction
 }
 
 // A solid box that fills a doorway, so nothing can walk or shoot through boards.
-function boardBox(door: Door): LevelBox {
+export function boardBox(door: Door): LevelBox {
   const alongX = door.normal.z !== 0;
   return {
     position: { x: door.position.x, y: door.height / 2, z: door.position.z },
@@ -85,7 +85,7 @@ export function useAction(state: GameState, player: Player): void {
 }
 
 // Closing the gate shuts the way out and starts the countdown for boarding up doors.
-function closeGate(state: GameState): void {
+export function closeGate(state: GameState): void {
   const gate = state.level.gate;
   const alongX = gate.normal.z !== 0;
   state.gate = { closed: true, closedTick: state.tick };
