@@ -68,6 +68,10 @@ export const config = {
     boardRange: 2.6,
     // How many bundles can be carried at once.
     carryLimit: 2,
+    // How close to the gate control you must be to close the gate.
+    gateRange: 1.8,
+    // How long the gate takes to come down, for the picture only.
+    gateSeconds: 2.5,
     // How far inside the room a zombie walks before it goes after you.
     entryDistance: 1.8,
   },
@@ -93,8 +97,9 @@ export const config = {
   waves: {
     zombiesPerWave: [3, 5, 7, 9, 12],
     secondsBetweenSpawns: 1.5,
-    breakSeconds: 10,
-    // The opening time to find the bars and board up doors, before wave 1.
+    // The rest between waves, long enough for buying weapons once there is something to buy.
+    breakSeconds: 25,
+    // The countdown, starting when the gate is closed, to find the bars and board up doors.
     prepSeconds: 30,
     // The short pause before the same wave starts again after dying.
     startDelaySeconds: 3,

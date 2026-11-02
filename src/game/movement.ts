@@ -118,11 +118,11 @@ function fall(player: Player, input: InputMessage, dt: number, level: Level): vo
   const ground = groundHeight(level, player.x, player.z, radius, player.y);
 
   if (player.onGround) {
-    if (ground < player.y - 0.02) {
+    if (ground < player.y - 0.02 && player.y - ground > config.player.stepHeight) {
       // Walked off an edge.
       player.onGround = false;
     } else {
-      // Small steps are walked straight up.
+      // Small steps are walked straight up or down, which is what makes a ramp smooth.
       player.y = ground;
       player.vy = 0;
     }

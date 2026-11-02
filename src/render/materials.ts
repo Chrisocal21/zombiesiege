@@ -4,7 +4,7 @@ import type { Surface } from '../levels/types';
 // Every texture here is painted on a canvas when the page loads, so there are no image files to
 // download or license. Each one tiles seamlessly.
 
-type Painter = (context: CanvasRenderingContext2D, size: number, random: () => number) => void;
+export type Painter = (context: CanvasRenderingContext2D, size: number, random: () => number) => void;
 
 function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
@@ -17,7 +17,7 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function paintTexture(size: number, seed: number, paint: Painter, color = true): THREE.CanvasTexture {
+export function paintTexture(size: number, seed: number, paint: Painter, color = true): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   paint(canvas.getContext('2d')!, size, seededRandom(seed));
@@ -29,7 +29,7 @@ function paintTexture(size: number, seed: number, paint: Painter, color = true):
 }
 
 // Draws something at a spot and again at every wrapped copy of it, so it tiles seamlessly.
-function wrapped(size: number, x: number, y: number, reach: number, draw: (x: number, y: number) => void): void {
+export function wrapped(size: number, x: number, y: number, reach: number, draw: (x: number, y: number) => void): void {
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
       const px = x + dx * size;
@@ -39,7 +39,7 @@ function wrapped(size: number, x: number, y: number, reach: number, draw: (x: nu
   }
 }
 
-function blobs(
+export function blobs(
   context: CanvasRenderingContext2D,
   size: number,
   random: () => number,
@@ -62,7 +62,7 @@ function blobs(
   }
 }
 
-function specks(
+export function specks(
   context: CanvasRenderingContext2D,
   size: number,
   random: () => number,
@@ -79,7 +79,7 @@ function specks(
   }
 }
 
-function cracks(context: CanvasRenderingContext2D, size: number, random: () => number, count: number): void {
+export function cracks(context: CanvasRenderingContext2D, size: number, random: () => number, count: number): void {
   context.lineCap = 'round';
   for (let i = 0; i < count; i++) {
     let x = random() * size;
@@ -100,7 +100,7 @@ function cracks(context: CanvasRenderingContext2D, size: number, random: () => n
   }
 }
 
-function concreteBase(context: CanvasRenderingContext2D, size: number, random: () => number, tone: string): void {
+export function concreteBase(context: CanvasRenderingContext2D, size: number, random: () => number, tone: string): void {
   context.fillStyle = tone;
   context.fillRect(0, 0, size, size);
   blobs(context, size, random, 40, size * 0.05, size * 0.2, '40,42,46', 0.1);
@@ -356,15 +356,46 @@ export function floorDecalTexture(): THREE.CanvasTexture {
     blobs(context, size, random, 30, size * 0.02, size * 0.07, '10,9,8', 0.3);
     blobs(context, size, random, 12, size * 0.015, size * 0.04, '6,5,4', 0.55);
 
-    // A dashed yellow lane line around the middle of the yard.
-    context.strokeStyle = 'rgba(214,170,36,0.75)';
-    context.lineWidth = 0.14 * scale;
-    context.setLineDash([1.4 * scale, 0.9 * scale]);
-    context.strokeRect(meters(-6.5), meters(-5), 13 * scale, 12.5 * scale);
-    context.setLineDash([]);
-    // A stop line near the south wall.
-    context.fillStyle = 'rgba(224,224,218,0.7)';
-    context.fillRect(meters(-8), meters(8.2), 16 * scale, 0.2 * scale);
+    // Parking bays: white lines out from the west and east walls and the south wall, a stop line
+    // at the foot of the ramp, arrows, and yellow hatching under the loading dock.
+    context.strokeStyle = 'rgba(226,226,220,0.8)';
+    context.lineWidth = 0.12 * scale;
+    const line = (x0: number, z0: number, x1: number, z1: number) => {
+      context.beginPath();
+      context.moveTo(meters(x0), meters(z0));
+      context.lineTo(meters(x1), meters(z1));
+      context.stroke();
+    };
+    for (const z of [-2.7, 3.05, 8.2]) line(-10, z, -7.4, z);
+    line(-7.4, -2.7, -7.4, 8.2);
+    for (const z of [-3.7, 1.8]) line(7.4, z, 10, z);
+    line(7.4, -3.7, 7.4, 1.8);
+    for (const x of [-5.8, -0.6]) line(x, 7.3, x, 10);
+    line(-5.8, 7.3, -0.6, 7.3);
+    // A stop line at the foot of the ramp, and arrows pointing up the ramp.
+    context.fillStyle = 'rgba(226,226,220,0.8)';
+    context.fillRect(meters(0.9), meters(8.9), 4.2 * scale, 0.25 * scale);
+    for (const x of [2.2, 3.8]) {
+      context.beginPath();
+      context.moveTo(meters(x), meters(6.1));
+      context.lineTo(meters(x - 0.45), meters(6.9));
+      context.lineTo(meters(x - 0.15), meters(6.9));
+      context.lineTo(meters(x - 0.15), meters(7.9));
+      context.lineTo(meters(x + 0.15), meters(7.9));
+      context.lineTo(meters(x + 0.15), meters(6.9));
+      context.lineTo(meters(x + 0.45), meters(6.9));
+      context.closePath();
+      context.fill();
+    }
+    // Yellow hatching where the loading dock keeps clear.
+    context.save();
+    context.beginPath();
+    context.rect(meters(-3.6), meters(-7.4), 7.2 * scale, 1.2 * scale);
+    context.clip();
+    context.strokeStyle = 'rgba(214,170,36,0.8)';
+    context.lineWidth = 0.18 * scale;
+    for (let i = -20; i < 40; i++) line(-3.6 + i * 0.45, -7.4, -3.6 + i * 0.45 + 1.2, -6.2);
+    context.restore();
     // Worn: knock the paint back with dirt.
     specks(context, size, random, size * 9, 5, 0, 0.5);
 
@@ -421,6 +452,14 @@ const TILE_METERS: Record<Surface, number> = {
   barrel: 1,
   plain: 2,
   board: 1,
+  pillar: 2,
+  cartons: 1,
+  car: 1,
+  van: 1,
+  slab: 4,
+  building: 12,
+  gate: 1,
+  step: 1,
 };
 
 export function tileMeters(surface: Surface): number {

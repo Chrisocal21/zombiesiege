@@ -16,6 +16,9 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     return;
   }
 
+  // Nothing happens until the players are in and the gate is closed.
+  if (waves.phase === 'entry') return;
+
   if (waves.phase === 'prep' || waves.phase === 'break') {
     waves.timer -= dt;
     if (waves.timer <= 0) startWave(state);
@@ -25,12 +28,12 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.phase === 'cleared') {
     waves.timer -= dt;
     if (waves.timer <= 0) {
-      // A fresh run: the boards come off and there is a new opening to choose doors in.
+      // A fresh run: the gate and boards come off and the players are back out in the street.
       resetDoors(state);
       state.zombies = [];
+      state.players = state.players.map((player) => createPlayer(player.id, level.streetSpawns[player.id]));
       waves.number = 1;
-      waves.phase = 'prep';
-      waves.timer = config.waves.prepSeconds;
+      waves.phase = 'entry';
     }
     return;
   }
@@ -76,7 +79,7 @@ function startWave(state: GameState): void {
 // wave again after a short pause.
 function restartWave(state: GameState, level: Level): void {
   state.zombies = [];
-  state.players = state.players.map((player) => createPlayer(player.id, level));
+  state.players = state.players.map((player) => createPlayer(player.id, level.playerSpawns[player.id]));
   const waves = state.waves;
   waves.phase = 'break';
   waves.timer = config.waves.startDelaySeconds;

@@ -117,6 +117,7 @@ function weapon(
   const wallDistance = raycastBoxes(level, origin, direction, pistol.range);
   const zombieHit = raycastZombies(state, origin, direction, wallDistance ?? pistol.range);
   if (zombieHit) damageZombie(state, zombieHit.zombie, pistol.damage);
+  player.lastShotKill = zombieHit !== null && zombieHit.zombie.dead;
 
   const hitDistance = zombieHit ? zombieHit.distance : wallDistance;
   const distance = hitDistance ?? pistol.range;

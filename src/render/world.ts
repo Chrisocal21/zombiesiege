@@ -10,6 +10,9 @@ import {
   surfaceMaterial,
   tileMeters,
 } from './materials';
+import { buildGate, buildStreet } from './street';
+import { asphaltMaterial, buildingMaterial, hazardMaterial, labelTexture } from './streetTextures';
+import { buildCartons, buildPillar, buildVehicle } from './vehicles';
 
 export interface World {
   // Call every frame with the running time in seconds and the game state, for flickering lamps,
@@ -63,14 +66,26 @@ function barrelGeometry(): THREE.BufferGeometry {
   return new THREE.LatheGeometry(outline.map(([r, y]) => new THREE.Vector2(r, y)), 24);
 }
 
-function buildBox(box: LevelBox): THREE.Mesh {
+const slabMaterials = (() => {
+  const concrete = surfaceMaterial('wall', '#8a8d90');
+  const ceiling = surfaceMaterial('floor', '#7a7d82');
+  const top = asphaltMaterial();
+  // Right, left, top, bottom, front, back.
+  return [concrete, concrete, top, ceiling, concrete, concrete];
+})();
+
+// What a box looks like. A few kinds are built from several parts, and a few are never drawn
+// as boxes at all: boards and the gate are drawn from the game state, and steps are only there
+// for walking on.
+function buildBoxObject(box: LevelBox, index: number): THREE.Object3D | null {
   const surface = box.surface ?? 'plain';
-  const material = surfaceMaterial(surface, box.color);
-  let geometry: THREE.BufferGeometry;
+  if (surface === 'board' || surface === 'gate' || surface === 'step') return null;
+  if (surface === 'car' || surface === 'van') return buildVehicle(box);
+  if (surface === 'cartons') return buildCartons(box);
+  if (surface === 'pillar') return buildPillar(box, surfaceMaterial('plain', box.color), index);
 
   if (surface === 'barrel') {
-    geometry = barrelGeometry();
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(barrelGeometry(), surfaceMaterial(surface, box.color));
     mesh.scale.set(box.size.x, box.size.y, box.size.z);
     mesh.position.set(box.position.x, box.position.y, box.position.z);
     mesh.castShadow = mesh.receiveShadow = true;
@@ -78,13 +93,18 @@ function buildBox(box: LevelBox): THREE.Mesh {
   }
 
   const bevel = BEVEL[surface];
-  geometry = bevel
+  const geometry = bevel
     ? new RoundedBoxGeometry(box.size.x, box.size.y, box.size.z, 3, bevel)
     : new THREE.BoxGeometry(box.size.x, box.size.y, box.size.z);
   let tile = tileMeters(surface);
   // A crate is sized in whole panels, so its picture lines up with its corners.
   if (surface === 'crate') tile = box.size.y / Math.max(1, Math.round(box.size.y));
   boxMapUVs(geometry, box, tile);
+
+  let material: THREE.Material | THREE.Material[];
+  if (surface === 'slab') material = slabMaterials;
+  else if (surface === 'building') material = buildingMaterial(box.color);
+  else material = surfaceMaterial(surface, box.color);
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(box.position.x, box.position.y, box.position.z);
@@ -138,11 +158,41 @@ interface Lamp {
   seed: number;
 }
 
-function buildLamp(config: LevelLight, glowMap: THREE.Texture, parent: THREE.Group): Lamp {
-  const { x, y, z } = config.position;
-  const color = new THREE.Color(config.color);
+function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THREE.Group): Lamp {
+  const { x, y, z } = lightConfig.position;
+  const color = new THREE.Color(lightConfig.color);
   const group = new THREE.Group();
   group.position.set(x, y, z);
+
+  if (y >= 4) {
+    // A fluorescent fitting hanging from the ceiling.
+    const housing = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.09, 0.3, 2, 0.03), DARK_STEEL);
+    housing.position.y = 0.16;
+    group.add(housing);
+    const tubes = new THREE.MeshBasicMaterial({ color });
+    for (const side of [-1, 1]) {
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.18, 8), tubes);
+      tube.rotation.z = Math.PI / 2;
+      tube.position.set(0, 0.1, side * 0.08);
+      group.add(tube);
+    }
+    for (const end of [-0.5, 0.5]) {
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 4), DARK_STEEL);
+      chain.position.set(end, 0.35, 0);
+      group.add(chain);
+    }
+    const lamp = new THREE.PointLight(color, lightConfig.intensity, 18, 2);
+    lamp.position.y = -0.5;
+    group.add(lamp);
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: glowMap, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.6 }),
+    );
+    halo.scale.set(2.6, 1.3, 1);
+    halo.position.y = 0.0;
+    group.add(halo);
+    parent.add(group);
+    return { light: lamp, glow: halo, bulb: tubes, base: lightConfig.intensity, flicker: lightConfig.flicker === true, seed: x * 3.1 + z * 1.7 };
+  }
 
   // The fitting hangs off whichever wall is closest, or stands on a pole if there is none near.
   const wallX = Math.abs(x) > 9 ? -Math.sign(x) : 0;
@@ -170,7 +220,7 @@ function buildLamp(config: LevelLight, glowMap: THREE.Texture, parent: THREE.Gro
     group.add(pole);
   }
 
-  const light = new THREE.PointLight(color, config.intensity, 24, 2);
+  const light = new THREE.PointLight(color, lightConfig.intensity, 24, 2);
   light.position.y = -0.4;
   group.add(light);
 
@@ -193,8 +243,8 @@ function buildLamp(config: LevelLight, glowMap: THREE.Texture, parent: THREE.Gro
     light,
     glow,
     bulb,
-    base: config.intensity,
-    flicker: config.flicker === true,
+    base: lightConfig.intensity,
+    flicker: lightConfig.flicker === true,
     seed: x * 3.1 + z * 1.7,
   };
 }
@@ -385,7 +435,7 @@ function buildSky(scene: THREE.Scene): void {
   const moon = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: glowTexture(), color: 0xc9d8ff, fog: false, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending }),
   );
-  moon.position.set(-45, 70, 40);
+  moon.position.set(-27, 79, 18);
   moon.scale.setScalar(26);
   scene.add(moon);
   const disc = new THREE.Mesh(
@@ -403,9 +453,9 @@ function buildSky(scene: THREE.Scene): void {
   const windowGeometry = new THREE.PlaneGeometry(0.9, 1.2);
   for (let i = 0; i < 40; i++) {
     const angle = (i / 40) * Math.PI * 2 + random() * 0.1;
-    const distance = 52 + random() * 22;
+    const distance = 88 + random() * 14;
     const width = 6 + random() * 10;
-    const height = 6 + random() * 18;
+    const height = 14 + random() * 34;
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, height, width * (0.6 + random() * 0.5)), buildingMaterial);
     building.position.set(Math.cos(angle) * distance, height / 2 - 1, Math.sin(angle) * distance);
     building.lookAt(0, building.position.y, 0);
@@ -421,12 +471,77 @@ function buildSky(scene: THREE.Scene): void {
   scene.add(skyline);
 }
 
-// Builds the yard from the level file: surfaces, ladders, lamps, decals, and the night sky.
+// Pipes, ducts and signs along the garage ceiling and walls.
+function buildGarageDressing(scene: THREE.Scene, level: Level): void {
+  const duct = new THREE.MeshStandardMaterial({ color: 0x8b9096, roughness: 0.5, metalness: 0.7 });
+  const pipeRed = new THREE.MeshStandardMaterial({ color: 0x9c2a22, roughness: 0.5, metalness: 0.5 });
+  const ceilingY = 4.5;
+
+  // Two big pipes and a duct running across the ceiling.
+  for (const [z, material, radius] of [[-3.6, pipeRed, 0.11], [3.4, DARK_STEEL, 0.14]] as const) {
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 19.6, 14), material);
+    pipe.rotation.z = Math.PI / 2;
+    pipe.position.set(0, ceilingY - 0.3, z);
+    pipe.castShadow = true;
+    scene.add(pipe);
+    for (let x = -9; x <= 9; x += 3) {
+      const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.25, 0.05), STEEL);
+      hanger.position.set(x, ceilingY - 0.15, z);
+      scene.add(hanger);
+    }
+  }
+  const ductBox = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.42, 19.4, 2, 0.03), duct);
+  ductBox.position.set(-7, ceilingY - 0.32, 0);
+  ductBox.castShadow = true;
+  scene.add(ductBox);
+  for (let z = -8; z <= 8; z += 4) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.48, 0.08), STEEL);
+    band.position.set(-7, ceilingY - 0.32, z);
+    scene.add(band);
+  }
+  // A cable tray along the east side.
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 19.4), DARK_STEEL);
+  tray.position.set(7, ceilingY - 0.2, 0);
+  scene.add(tray);
+
+  // A hazard-striped skirting along the foot of the walls, broken at each opening, is left to the
+  // wall texture; the signs are separate.
+  const sign = (text: string, sub: string, background: string, x: number, y: number, z: number, rotation: number, w: number, h: number) => {
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ map: labelTexture([{ text, size: 90, color: '#ffffff' }, { text: sub, size: 44, color: '#ffd24a' }], background, 768, 256, '#ffffff') }),
+    );
+    face.position.set(x, y, z);
+    face.rotation.y = rotation;
+    scene.add(face);
+  };
+  // Over the gate, pointing up the ramp, and on the east wall by the loading dock.
+  sign('EXIT', 'RAMP  \u25B2  STREET', '#0f3a24', level.gate.position.x, 3.85, 9.97, Math.PI, 2.4, 0.8);
+  sign('LOADING DOCK', 'DELIVERIES ONLY', '#1d3f73', 9.97, 3.5, -6, -Math.PI / 2, 2.6, 0.9);
+  sign('B1', 'PARKING', '#1d3f73', -9.97, 3.5, 2, Math.PI / 2, 1.6, 0.8);
+
+  // Roller shutters on the east wall, shut, with yellow bumpers: the dock doors.
+  const shutter = new THREE.MeshStandardMaterial({ color: 0x8b9096, roughness: 0.5, metalness: 0.6 });
+  for (const z of [-8.4]) {
+    const door = new THREE.Mesh(new RoundedBoxGeometry(0.1, 2.9, 3, 2, 0.02), shutter);
+    door.position.set(9.92, 1.7, z + 2.6);
+    scene.add(door);
+    const hazard = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.18, 3.1), hazardMaterial());
+    hazard.position.set(9.9, 0.35, z + 2.6);
+    scene.add(hazard);
+  }
+}
+
+// Builds the level from the level file: the garage, the ramp and the street above it, the lamps,
+// decals, doors, gate, and the night sky.
 export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.Texture): World {
-  for (const box of level.boxes) scene.add(buildBox(box));
+  level.boxes.forEach((box, index) => {
+    const object = buildBoxObject(box, index);
+    if (object) scene.add(object);
+  });
   for (const ladder of level.ladders) scene.add(buildLadder(ladder));
 
-  // Ground beyond the walls, seen from the container roof.
+  // Ground beyond everything, so there is no void.
   const outside = new THREE.Mesh(
     new THREE.PlaneGeometry(400, 400),
     new THREE.MeshBasicMaterial({ color: 0x090c10 }),
@@ -465,7 +580,7 @@ export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.
     polygonOffset: true,
     polygonOffsetFactor: -4,
   });
-  for (const [x, z, size] of [[-1.5, 3.5, 3.2], [6.5, -6, 2.6], [-6.5, -6.5, 2.2], [1, -3.5, 2.4]]) {
+  for (const [x, z, size] of [[-1.5, 6.5, 3.2], [6.5, 0, 2.6], [-3.5, -8, 2.2], [1, -3.5, 2.4]]) {
     const puddle = new THREE.Mesh(new THREE.PlaneGeometry(size, size), puddleMaterial);
     puddle.rotation.x = -Math.PI / 2;
     puddle.rotation.z = x * 1.7;
@@ -473,24 +588,7 @@ export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.
     scene.add(puddle);
   }
 
-  // A cap along the top of each wall, and a pipe run along the west wall.
-  const coping = new THREE.MeshStandardMaterial({ color: 0x6d7074, roughness: 0.9 });
-  for (const [x, z, w, d] of [[0, -10.25, 21.4, 0.8], [0, 10.25, 21.4, 0.8], [-10.25, 0, 0.8, 20.8], [10.25, 0, 0.8, 20.8]]) {
-    const cap = new THREE.Mesh(new RoundedBoxGeometry(w, 0.2, d, 2, 0.04), coping);
-    cap.position.set(x, 4.1, z);
-    cap.castShadow = cap.receiveShadow = true;
-    scene.add(cap);
-  }
-  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 19.6, 14), DARK_STEEL);
-  pipe.rotation.x = Math.PI / 2;
-  pipe.position.set(-9.85, 2.7, 0);
-  pipe.castShadow = true;
-  scene.add(pipe);
-  for (let z = -9; z <= 9; z += 3) {
-    const clamp = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.26, 0.08), STEEL);
-    clamp.position.set(-9.9, 2.7, z);
-    scene.add(clamp);
-  }
+  buildGarageDressing(scene, level);
 
   const lampGroup = new THREE.Group();
   scene.add(lampGroup);
@@ -498,11 +596,14 @@ export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.
   const lamps = level.lights.map((light) => buildLamp(light, glowMap, lampGroup));
 
   buildSky(scene);
+  buildStreet(scene, level, glowMap);
   const syncDoors = buildDoors(scene, level, glowMap);
+  const syncGate = buildGate(scene, level, glowMap);
 
   return {
     update(time, state) {
       syncDoors(state, time);
+      syncGate(state, time);
       for (const lamp of lamps) {
         let brightness = 1;
         if (lamp.flicker) {
@@ -512,7 +613,7 @@ export function buildWorld(scene: THREE.Scene, level: Level, environment: THREE.
           if (Math.sin(time * 0.37 + lamp.seed) > 0.97) brightness = 0.08;
         }
         lamp.light.intensity = lamp.base * brightness;
-        lamp.glow.material.opacity = 0.8 * brightness;
+        lamp.glow.material.opacity = 0.7 * brightness;
         lamp.bulb.color.copy(lamp.light.color).multiplyScalar(0.25 + 0.75 * brightness);
       }
     },

@@ -72,29 +72,32 @@ export function createView(level: Level): View {
   scene.background = new THREE.Color(NIGHT);
   scene.fog = new THREE.Fog(NIGHT, 8, 42);
 
-  // Moonlight is the only thing that casts shadows across the whole yard. The lamps add pools of
-  // colour, and the hemisphere keeps the shadows from going pitch black.
-  scene.add(new THREE.HemisphereLight(0x6f86b8, 0x242a33, 1.1));
-  const moon = new THREE.DirectionalLight(0xaec4ff, 2.2);
-  moon.position.set(-12, 18, 10.5);
+  // Moonlight is the only thing that casts shadows over the whole street, and the slab over the
+  // garage stops it reaching inside. The lamps add pools of colour, and the hemisphere keeps the
+  // shadows from going pitch black.
+  scene.add(new THREE.HemisphereLight(0x6f86b8, 0x242a33, 0.5));
+  const moon = new THREE.DirectionalLight(0xaec4ff, 2.4);
+  const moonTarget = new THREE.Vector3(0, 0, 20);
+  moon.target.position.copy(moonTarget);
+  moon.position.copy(moonTarget).add(new THREE.Vector3(-0.3, 0.88, 0.2).multiplyScalar(55));
   moon.castShadow = true;
   moon.shadow.mapSize.set(4096, 4096);
-  moon.shadow.camera.left = -17;
-  moon.shadow.camera.right = 17;
-  moon.shadow.camera.top = 17;
-  moon.shadow.camera.bottom = -17;
+  moon.shadow.camera.left = -42;
+  moon.shadow.camera.right = 42;
+  moon.shadow.camera.top = 42;
+  moon.shadow.camera.bottom = -42;
   moon.shadow.camera.near = 1;
-  moon.shadow.camera.far = 60;
+  moon.shadow.camera.far = 120;
   moon.shadow.bias = -0.0003;
-  moon.shadow.normalBias = 0.03;
-  scene.add(moon);
+  moon.shadow.normalBias = 0.04;
+  scene.add(moon, moon.target);
   // A studio-style environment gives the metal something to reflect.
   const environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04);
   const world = buildWorld(scene, level, environment.texture);
 
   const aspect = window.innerWidth / window.innerHeight;
   const camera = new THREE.PerspectiveCamera(config.view.fieldOfView, aspect, 0.1, 130);
-  const spawn = level.playerSpawns[0];
+  const spawn = level.streetSpawns[0];
   camera.position.set(spawn.x, spawn.y + config.player.eyeHeight, spawn.z);
 
   // The view camera never moves. The weapon is placed relative to it, which is the same as
@@ -121,7 +124,7 @@ export function createView(level: Level): View {
   viewScene.environmentIntensity = 0.4;
   // The yard gets the same reflections, much fainter, so the metal and the puddles pick up a sky.
   scene.environment = environment.texture;
-  scene.environmentIntensity = 0.1;
+  scene.environmentIntensity = 0.2;
 
   // Both scenes are drawn into this, then the lens pass puts it on screen.
   const bufferSize = renderer.getDrawingBufferSize(new THREE.Vector2());

@@ -46,8 +46,10 @@ export interface Player {
   ladder: Ladder | null;
   mantle: Mantle | null;
   health: number;
-  // Tick of the last hit taken, or -1.
+  // Tick of the last hit taken, or -1, and where the zombie that hit was standing.
   lastHurtTick: number;
+  lastHurtX: number;
+  lastHurtZ: number;
   ammo: number;
   // Seconds until the next shot is allowed.
   cooldown: number;
@@ -58,8 +60,9 @@ export interface Player {
   lastShotEnd: Vec3;
   // False when the shot flew its full range without hitting anything.
   lastShotHit: boolean;
-  // True when the last shot hit a zombie rather than the level.
+  // True when the last shot hit a zombie rather than the level, and when it killed it.
   lastShotZombie: boolean;
+  lastShotKill: boolean;
   // Bundles of boards being carried.
   bars: number;
 }
@@ -85,8 +88,9 @@ export interface Zombie {
   deadLeft: number;
 }
 
-// 'prep' is the opening time to board up doors, 'break' the rest between waves.
-export type WavePhase = 'prep' | 'break' | 'active' | 'cleared';
+// 'entry' is the run from the street into the garage, ending when the gate is closed. 'prep' is
+// the countdown to board up doors, 'break' the rest between waves.
+export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared';
 
 export interface Waves {
   // The wave being fought, or the one coming up during a break. Starts at 1.
@@ -109,6 +113,12 @@ export interface DoorState {
   boardedTick: number;
 }
 
+export interface GateState {
+  closed: boolean;
+  // Tick it was closed, for the renderer's animation. -1 while open.
+  closedTick: number;
+}
+
 export interface BarPickup {
   x: number;
   z: number;
@@ -121,6 +131,7 @@ export interface GameState {
   level: Level;
   // A testing aid: while true, zombies and the wave clock stand still.
   frozen: boolean;
+  gate: GateState;
   doors: DoorState[];
   pickups: BarPickup[];
   players: Player[];
@@ -129,8 +140,7 @@ export interface GameState {
   waves: Waves;
 }
 
-export function createPlayer(id: number, level: Level): Player {
-  const spawn = level.playerSpawns[id];
+export function createPlayer(id: number, spawn: Vec3): Player {
   return {
     id,
     x: spawn.x,
@@ -153,6 +163,8 @@ export function createPlayer(id: number, level: Level): Player {
     mantle: null,
     health: config.player.maxHealth,
     lastHurtTick: -1,
+    lastHurtX: 0,
+    lastHurtZ: 0,
     ammo: config.pistol.magazineSize,
     cooldown: 0,
     reloadLeft: 0,
@@ -160,17 +172,19 @@ export function createPlayer(id: number, level: Level): Player {
     lastShotEnd: { x: 0, y: 0, z: 0 },
     lastShotHit: false,
     lastShotZombie: false,
+    lastShotKill: false,
     bars: 0,
   };
 }
 
 export function createGameState(level: Level): GameState {
   const players: Player[] = [];
-  for (let id = 0; id < config.playerCount; id++) players.push(createPlayer(id, level));
+  for (let id = 0; id < config.playerCount; id++) players.push(createPlayer(id, level.streetSpawns[id]));
   return {
     tick: 0,
     level: { ...level, boxes: [...level.boxes] },
     frozen: false,
+    gate: { closed: false, closedTick: -1 },
     doors: level.doors.map(() => ({ boarded: false, boardedTick: -1 })),
     pickups: level.barricadeBars.map((bar) => ({ x: bar.x, z: bar.z, taken: false })),
     players,
@@ -178,8 +192,8 @@ export function createGameState(level: Level): GameState {
     nextZombieId: 0,
     waves: {
       number: 1,
-      phase: 'prep',
-      timer: config.waves.prepSeconds,
+      phase: 'entry',
+      timer: 0,
       toSpawn: 0,
       spawnTimer: 0,
       spawnIndex: 0,

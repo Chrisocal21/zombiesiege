@@ -2,7 +2,11 @@ import { config } from '../config';
 import type { Door, LevelBox } from '../levels/types';
 import type { GameState, Player } from './state';
 
-export type Interaction = { kind: 'pickup'; index: number } | { kind: 'door'; index: number } | null;
+export type Interaction =
+  | { kind: 'pickup'; index: number }
+  | { kind: 'door'; index: number }
+  | { kind: 'gate' }
+  | null;
 
 // The spot a player stands at to board a door up, a little way inside the room.
 function doorSide(door: Door): { x: number; z: number } {
@@ -12,6 +16,11 @@ function doorSide(door: Door): { x: number; z: number } {
 // What pressing the use key would do right now: pick up a bundle of boards, or board up a door.
 // Only possible in the opening prep time, so the choice of doors is made before the first wave.
 export function interactionTarget(state: GameState, player: Player): Interaction {
+  if (state.waves.phase === 'entry') {
+    const panel = state.level.gate.panel;
+    const near = Math.hypot(panel.x - player.x, panel.z - player.z) <= config.doors.gateRange;
+    return near && player.y < 1 ? { kind: 'gate' } : null;
+  }
   if (state.waves.phase !== 'prep') return null;
 
   if (player.bars < config.doors.carryLimit) {
@@ -60,6 +69,11 @@ export function useAction(state: GameState, player: Player): void {
   const target = interactionTarget(state, player);
   if (!target) return;
 
+  if (target.kind === 'gate') {
+    closeGate(state);
+    return;
+  }
+
   if (target.kind === 'pickup') {
     state.pickups[target.index].taken = true;
     player.bars++;
@@ -70,9 +84,25 @@ export function useAction(state: GameState, player: Player): void {
   state.level.boxes.push(boardBox(state.level.doors[target.index]));
 }
 
+// Closing the gate shuts the way out and starts the countdown for boarding up doors.
+function closeGate(state: GameState): void {
+  const gate = state.level.gate;
+  const alongX = gate.normal.z !== 0;
+  state.gate = { closed: true, closedTick: state.tick };
+  state.level.boxes.push({
+    position: { x: gate.position.x, y: gate.height / 2, z: gate.position.z },
+    size: { x: alongX ? gate.width : 0.4, y: gate.height, z: alongX ? 0.4 : gate.width },
+    color: '#000000',
+    surface: 'gate',
+  });
+  state.waves.phase = 'prep';
+  state.waves.timer = config.waves.prepSeconds;
+}
+
 // Takes the boards off every door and puts the bundles back on the floor.
 export function resetDoors(state: GameState): void {
-  state.level.boxes = state.level.boxes.filter((box) => box.surface !== 'board');
+  state.level.boxes = state.level.boxes.filter((box) => box.surface !== 'board' && box.surface !== 'gate');
+  state.gate = { closed: false, closedTick: -1 };
   state.doors = state.level.doors.map(() => ({ boarded: false, boardedTick: -1 }));
   state.pickups.forEach((pickup) => (pickup.taken = false));
   for (const player of state.players) player.bars = 0;

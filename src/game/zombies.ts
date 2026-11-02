@@ -79,6 +79,8 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
         zombie.attackCooldown = zombieConfig.secondsBetweenAttacks;
         zombie.lastAttackTick = state.tick;
         hurtPlayer(state, target, zombieConfig.attackDamage);
+        target.lastHurtX = zombie.x;
+        target.lastHurtZ = zombie.z;
       }
     } else {
       // A zombie that has only just arrived winds up before its first swing.
