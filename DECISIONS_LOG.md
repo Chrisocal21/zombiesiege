@@ -20,6 +20,8 @@ Decisions made during the build, and every open question.
 | Nov 1, 2026 | Game runs on a fixed 60 ticks per second, separate from the screen frame rate | Coding Claude |
 | Nov 1, 2026 | Mouse look is sent as turn amounts per tick, not absolute angles, so a networked player can send the same message | Coding Claude |
 | Nov 1, 2026 | Click the game to capture the mouse; Esc releases it | Coding Claude |
+| Nov 1, 2026 | Pistol fires while the mouse button is held, up to 4 shots per second; R reloads; pulling the trigger on an empty magazine reloads automatically | Coding Claude |
+| Nov 1, 2026 | Shots are instant hits along the aim line, not travelling bullets | Coding Claude |
 
 ---
 

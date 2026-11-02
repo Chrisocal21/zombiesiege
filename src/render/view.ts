@@ -42,6 +42,8 @@ export function createView(level: Level): View {
   }
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+  // The camera is in the scene so the gun attached to it gets drawn.
+  scene.add(camera);
   const spawn = level.playerSpawns[0];
   camera.position.set(spawn.x, spawn.y + config.player.eyeHeight, spawn.z);
 

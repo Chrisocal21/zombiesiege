@@ -11,21 +11,34 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   const keys = new Set<string>();
   let yaw = 0;
   let pitch = 0;
+  let firing = false;
 
   window.addEventListener('keydown', (event) => keys.add(event.code));
   window.addEventListener('keyup', (event) => keys.delete(event.code));
-  window.addEventListener('blur', () => keys.clear());
+  window.addEventListener('blur', () => {
+    keys.clear();
+    firing = false;
+  });
 
   const isLocked = () => document.pointerLockElement === element;
 
   element.addEventListener('click', () => {
     if (!isLocked()) element.requestPointerLock();
   });
+  document.addEventListener('pointerlockchange', () => {
+    if (!isLocked()) firing = false;
+  });
 
   window.addEventListener('mousemove', (event) => {
     if (!isLocked()) return;
     yaw -= event.movementX * config.player.lookSensitivity;
     pitch -= event.movementY * config.player.lookSensitivity;
+  });
+  window.addEventListener('mousedown', (event) => {
+    if (isLocked() && event.button === 0) firing = true;
+  });
+  window.addEventListener('mouseup', (event) => {
+    if (event.button === 0) firing = false;
   });
 
   return {
@@ -37,6 +50,8 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         moveRight: (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0),
         lookYaw: yaw,
         lookPitch: pitch,
+        fire: firing,
+        reload: keys.has('KeyR'),
       };
       yaw = 0;
       pitch = 0;

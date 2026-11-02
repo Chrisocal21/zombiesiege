@@ -8,4 +8,7 @@ export interface InputMessage {
   // Radians turned since the last message. Positive turns left and up.
   lookYaw: number;
   lookPitch: number;
+  // True while the button is held.
+  fire: boolean;
+  reload: boolean;
 }

@@ -3,6 +3,7 @@ import { config } from './config';
 import { createGameState } from './game/state';
 import { step } from './game/update';
 import { level0 } from './levels/level0';
+import { createEffects } from './render/effects';
 import { createHud } from './render/hud';
 import { createView, syncCamera } from './render/view';
 
@@ -15,6 +16,7 @@ const state = createGameState(level);
 const { scene, camera, renderer } = createView(level);
 const input = createLocalInput(renderer.domElement);
 const hud = createHud();
+const effects = createEffects(scene, camera);
 
 const tickSeconds = 1 / config.ticksPerSecond;
 let leftover = 0;
@@ -22,15 +24,18 @@ let lastTime = performance.now();
 
 renderer.setAnimationLoop((now) => {
   // Capped so a hidden tab does not trigger a flood of catch-up ticks.
-  leftover += Math.min((now - lastTime) / 1000, 0.1);
+  const frameSeconds = Math.min((now - lastTime) / 1000, 0.1);
   lastTime = now;
+  leftover += frameSeconds;
 
   while (leftover >= tickSeconds) {
     step(state, [input.poll(0)], tickSeconds, level);
     leftover -= tickSeconds;
   }
 
-  syncCamera(camera, state.players[0]);
+  const player = state.players[0];
+  syncCamera(camera, player);
+  effects.update(player, frameSeconds);
   renderer.render(scene, camera);
-  hud.draw(input.isLocked());
+  hud.draw(input.isLocked(), player);
 });
