@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { config } from '../config';
 import type { Player } from '../game/state';
+import { loadHand } from './hand';
 import type { CameraPose } from './view';
 
 // Everything here is in meters. The gun points down -z, +x is right, +y is up.
@@ -53,50 +53,6 @@ function box(
   return mesh;
 }
 
-// A rounded bar, like a finger segment. Its length runs along the given axis.
-function capsule(
-  parent: THREE.Object3D,
-  radius: number,
-  length: number,
-  material: THREE.Material,
-  position: [number, number, number],
-  axis: 'x' | 'z',
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 6, 14), material);
-  mesh.position.set(...position);
-  if (axis === 'x') mesh.rotation.z = Math.PI / 2;
-  else mesh.rotation.x = Math.PI / 2;
-  parent.add(mesh);
-  return mesh;
-}
-
-function ball(
-  parent: THREE.Object3D,
-  radius: number,
-  material: THREE.Material,
-  position: [number, number, number],
-  stretch: [number, number, number] = [1, 1, 1],
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 18, 14), material);
-  mesh.position.set(...position);
-  mesh.scale.set(...stretch);
-  parent.add(mesh);
-  return mesh;
-}
-
-function softBox(
-  parent: THREE.Object3D,
-  size: [number, number, number],
-  radius: number,
-  material: THREE.Material,
-  position: [number, number, number],
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new RoundedBoxGeometry(...size, 4, radius), material);
-  mesh.position.set(...position);
-  parent.add(mesh);
-  return mesh;
-}
-
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -107,13 +63,12 @@ function angleDelta(a: number, b: number): number {
   return difference;
 }
 
-// A blocky pistol held in a gloved right hand, with a forearm in a jacket sleeve.
+// A blocky pistol held in a right hand, with a forearm in a jacket sleeve.
 export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const grain = noiseTexture();
   const slideMetal = new THREE.MeshStandardMaterial({ color: 0x3b4048, metalness: 0.9, roughness: 0.32 });
   const darkMetal = new THREE.MeshStandardMaterial({ color: 0x16181c, metalness: 0.8, roughness: 0.5 });
   const polymer = new THREE.MeshStandardMaterial({ color: 0x202328, roughness: 0.85, metalness: 0.05, map: grain });
-  const glove = new THREE.MeshStandardMaterial({ color: 0x7d6a4e, roughness: 0.9, map: grain });
   const sleeve = new THREE.MeshStandardMaterial({ color: 0x55653f, roughness: 1, map: grain });
   const sleeveCuff = new THREE.MeshStandardMaterial({ color: 0x323d29, roughness: 1, map: grain });
   const sight = new THREE.MeshStandardMaterial({
@@ -168,33 +123,12 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   box(magazine, [0.028, 0.1, 0.042], darkMetal, [0, -0.058, 0]);
   box(magazine, [0.034, 0.01, 0.056], polymer, [0, -0.113, 0.002]);
 
-  // The right hand, all rounded: a soft palm and heel, then three fingers that wrap round the
-  // front of the grip and curl back along the left side, each with a knuckle joint.
-  softBox(grip, [0.026, 0.078, 0.04], 0.01, glove, [0.028, -0.047, 0.0]);
-  softBox(grip, [0.046, 0.066, 0.02], 0.009, glove, [0.012, -0.047, 0.034]);
-  ball(grip, 0.015, glove, [-0.02, -0.026, 0.028], [0.8, 1.3, 1]);
-  const fingers = [
-    { y: -0.028, radius: 0.0092 },
-    { y: -0.0475, radius: 0.0092 },
-    { y: -0.066, radius: 0.0082 },
-  ];
-  for (const { y, radius } of fingers) {
-    const frontZ = -0.025 - radius;
-    capsule(grip, radius, 0.05, glove, [0.008, y, frontZ], 'x');
-    capsule(grip, radius, 0.016, glove, [-0.0255, y, frontZ + 0.012], 'z');
-    ball(grip, radius, glove, [-0.0255, y, frontZ]);
-  }
-  // Trigger finger along the frame, thumb on the other side.
-  capsule(root, 0.0095, 0.05, glove, [0.026, 0.006, -0.045], 'z');
-  capsule(root, 0.0085, 0.02, glove, [0.012, -0.007, -0.002], 'x');
-  capsule(root, 0.0105, 0.04, glove, [-0.0265, 0.017, 0.012], 'z');
-  ball(root, 0.0107, glove, [-0.0265, 0.017, -0.0095]);
-  capsule(root, 0.0095, 0.02, glove, [-0.0262, 0.0175, -0.0335], 'z');
+  loadHand(grip);
 
   // Forearm in a jacket sleeve, running back and down out of view.
   const arm = new THREE.Group();
-  arm.position.set(0.04, -0.05, 0.1);
-  arm.rotation.x = 0.38;
+  arm.position.set(0.011, -0.039, 0.118);
+  arm.rotation.set(0.3, -0.2, 0);
   root.add(arm);
   const tube = (
     radiusFront: number,
@@ -211,9 +145,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     mesh.position.z = z;
     arm.add(mesh);
   };
-  tube(0.026, 0.028, 0.03, glove, 0.015);
-  tube(0.036, 0.036, 0.016, sleeveCuff, 0.038);
-  tube(0.034, 0.036, 0.34, sleeve, 0.216);
+  tube(0.039, 0.04, 0.02, sleeveCuff, 0.012);
+  tube(0.037, 0.04, 0.36, sleeve, 0.2);
 
   // Muzzle flash: a bright core with four spikes, shown for a moment after each shot.
   const flash = new THREE.Group();
