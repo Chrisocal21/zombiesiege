@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { config } from '../config';
 import type { Player } from '../game/state';
 import { loadHand } from './hand';
@@ -35,10 +37,84 @@ function noiseTexture(): THREE.CanvasTexture {
   }
   context.putImageData(image, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
-  texture.magFilter = THREE.NearestFilter;
-  texture.minFilter = THREE.NearestFilter;
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
   return texture;
+}
+
+// One corner of a side profile: forward along the gun, up, and how much to round the corner.
+type Corner = [number, number, number];
+
+function trace<T extends THREE.Path>(path: T, corners: Corner[]): T {
+  const point = (i: number) => {
+    const [x, y] = corners[(i + corners.length) % corners.length];
+    return new THREE.Vector2(x, y);
+  };
+  corners.forEach(([, , radius], i) => {
+    const here = point(i);
+    const entry = point(i - 1).sub(here).normalize().multiplyScalar(radius).add(here);
+    const exit = point(i + 1).sub(here).normalize().multiplyScalar(radius).add(here);
+    if (i === 0) path.moveTo(entry.x, entry.y);
+    else path.lineTo(entry.x, entry.y);
+    path.quadraticCurveTo(here.x, here.y, exit.x, exit.y);
+  });
+  path.closePath();
+  return path;
+}
+
+// Turns a side profile into a solid part with bevelled edges, centered across the gun.
+function profile(
+  parent: THREE.Object3D,
+  corners: Corner[],
+  width: number,
+  bevel: number,
+  material: THREE.Material,
+  hole?: Corner[],
+): THREE.Mesh {
+  const shape = trace(new THREE.Shape(), corners);
+  if (hole) shape.holes.push(trace(new THREE.Path(), hole));
+  const depth = width - bevel * 2;
+  const extruded = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelOffset: -bevel,
+    bevelSegments: 4,
+    curveSegments: 10,
+  });
+  extruded.translate(0, 0, -depth / 2);
+  extruded.rotateY(Math.PI / 2);
+  const mesh = new THREE.Mesh(toCreasedNormals(extruded, Math.PI / 4), material);
+  parent.add(mesh);
+  return mesh;
+}
+
+function softBox(
+  parent: THREE.Object3D,
+  size: [number, number, number],
+  radius: number,
+  material: THREE.Material,
+  position: [number, number, number],
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(new RoundedBoxGeometry(...size, 3, radius), material);
+  mesh.position.set(...position);
+  parent.add(mesh);
+  return mesh;
+}
+
+function barrelPart(
+  parent: THREE.Object3D,
+  radius: number,
+  length: number,
+  material: THREE.Material,
+  position: [number, number, number],
+): void {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 24), material);
+  mesh.rotation.x = Math.PI / 2;
+  mesh.position.set(...position);
+  parent.add(mesh);
 }
 
 function box(
@@ -66,9 +142,20 @@ function angleDelta(a: number, b: number): number {
 // A blocky pistol held in a right hand, with a forearm in a jacket sleeve.
 export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const grain = noiseTexture();
-  const slideMetal = new THREE.MeshStandardMaterial({ color: 0x3b4048, metalness: 0.9, roughness: 0.32 });
-  const darkMetal = new THREE.MeshStandardMaterial({ color: 0x16181c, metalness: 0.8, roughness: 0.5 });
-  const polymer = new THREE.MeshStandardMaterial({ color: 0x202328, roughness: 0.85, metalness: 0.05, map: grain });
+  const stipple = grain.clone();
+  stipple.repeat.set(30, 30);
+  stipple.needsUpdate = true;
+  const slideMetal = new THREE.MeshStandardMaterial({ color: 0x33363c, metalness: 0.85, roughness: 0.36 });
+  const brightMetal = new THREE.MeshStandardMaterial({ color: 0x8a8d92, metalness: 1, roughness: 0.3 });
+  const darkMetal = new THREE.MeshStandardMaterial({ color: 0x101114, metalness: 0.7, roughness: 0.5 });
+  const polymer = new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.62, metalness: 0.05 });
+  const gripPolymer = new THREE.MeshStandardMaterial({
+    color: 0x1b1c20,
+    roughness: 0.82,
+    metalness: 0.05,
+    bumpMap: stipple,
+    bumpScale: 2,
+  });
   const sleeve = new THREE.MeshStandardMaterial({ color: 0x55653f, roughness: 1, map: grain });
   const sleeveCuff = new THREE.MeshStandardMaterial({ color: 0x323d29, roughness: 1, map: grain });
   const sight = new THREE.MeshStandardMaterial({
@@ -85,43 +172,119 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   // The slide is its own group so it can slide back on each shot.
   const slide = new THREE.Group();
   root.add(slide);
-  box(slide, [0.034, 0.036, 0.2], slideMetal, [0, 0.045, -0.035]);
-  box(slide, [0.022, 0.006, 0.19], slideMetal, [0, 0.066, -0.035]);
-  for (const z of [0.032, 0.04, 0.048, 0.056]) box(slide, [0.0355, 0.024, 0.004], darkMetal, [0, 0.046, z]);
-  for (const z of [-0.106, -0.114]) box(slide, [0.0355, 0.024, 0.004], darkMetal, [0, 0.046, z]);
-  box(slide, [0.0025, 0.014, 0.05], darkMetal, [0.0175, 0.052, -0.02]);
-  box(slide, [0.016, 0.016, 0.012], darkMetal, [0, 0.04, -0.141]);
-  box(slide, [0.008, 0.008, 0.002], new THREE.MeshBasicMaterial({ color: 0x000000 }), [0, 0.04, -0.1475]);
-  box(slide, [0.006, 0.011, 0.008], sight, [0, 0.0735, -0.122]);
-  box(slide, [0.006, 0.009, 0.01], darkMetal, [-0.01, 0.0715, 0.058]);
-  box(slide, [0.006, 0.009, 0.01], darkMetal, [0.01, 0.0715, 0.058]);
-  box(slide, [0.0035, 0.0035, 0.002], sight, [-0.01, 0.0735, 0.0535]);
-  box(slide, [0.0035, 0.0035, 0.002], sight, [0.01, 0.0735, 0.0535]);
+  profile(
+    slide,
+    [
+      [-0.065, 0.029, 0.001],
+      [-0.0635, 0.067, 0.002],
+      [0.128, 0.067, 0.003],
+      [0.135, 0.059, 0.002],
+      [0.135, 0.036, 0.003],
+      [0.124, 0.029, 0.002],
+    ],
+    0.03,
+    0.0028,
+    slideMetal,
+  );
+  // Cocking grooves cut across both sides at the back and front of the slide.
+  const grooves = [...Array(7).keys()].map((i) => 0.024 + i * 0.0052);
+  const frontGrooves = [...Array(4).keys()].map((i) => -0.098 - i * 0.0052);
+  for (const z of [...grooves, ...frontGrooves]) {
+    box(slide, [0.0304, 0.027, 0.0022], darkMetal, [0, 0.046, z]).rotation.x = 0.16;
+  }
+  // Ejection port with the barrel hood showing through it.
+  box(slide, [0.0172, 0.0012, 0.05], darkMetal, [0.0028, 0.0671, -0.016]);
+  box(slide, [0.0145, 0.0014, 0.024], brightMetal, [-0.0002, 0.0672, -0.03]);
+  // The firing pin plate on the back of the slide, and the muzzle at the front.
+  softBox(slide, [0.011, 0.017, 0.0014], 0.0006, slideMetal, [0, 0.048, 0.065]);
+  barrelPart(slide, 0.0014, 0.001, brightMetal, [0, 0.051, 0.0656]);
+  barrelPart(slide, 0.0078, 0.006, brightMetal, [0, 0.0475, -0.1345]);
+  barrelPart(slide, 0.0048, 0.0012, darkMetal, [0, 0.0475, -0.1376]);
+  barrelPart(slide, 0.0034, 0.0012, darkMetal, [0, 0.0345, -0.1352]);
+  // Sights, with three white dots to line up.
+  softBox(slide, [0.0044, 0.0062, 0.01], 0.001, darkMetal, [0, 0.0695, -0.12]);
+  box(slide, [0.0024, 0.0024, 0.0008], sight, [0, 0.0705, -0.1148]);
+  softBox(slide, [0.02, 0.0035, 0.01], 0.001, darkMetal, [0, 0.0683, 0.052]);
+  for (const x of [-0.0066, 0.0066]) {
+    softBox(slide, [0.0056, 0.0068, 0.009], 0.001, darkMetal, [x, 0.0728, 0.052]);
+    box(slide, [0.0024, 0.0024, 0.0008], sight, [x, 0.0732, 0.0568]);
+  }
 
   const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, 0.04, -0.15);
+  muzzle.position.set(0, 0.0475, -0.14);
   slide.add(muzzle);
 
-  // Frame, trigger guard, and trigger.
-  box(root, [0.03, 0.026, 0.175], polymer, [0, 0.012, -0.025]);
-  box(root, [0.026, 0.008, 0.092], polymer, [0, -0.0245, -0.006]);
-  box(root, [0.026, 0.026, 0.008], polymer, [0, -0.012, -0.05]);
-  box(root, [0.008, 0.022, 0.008], darkMetal, [0, -0.01, 0.002]);
-  box(root, [0.004, 0.008, 0.026], slideMetal, [-0.0165, 0.024, -0.012]);
-  box(root, [0.004, 0.01, 0.01], darkMetal, [-0.0165, 0.0, 0.042]);
+  // The polymer frame, drawn as one piece with the trigger guard as a real opening.
+  profile(
+    root,
+    [
+      [-0.067, 0.03, 0.002],
+      [0.122, 0.03, 0.001],
+      [0.124, 0.012, 0.003],
+      [0.118, 0.006, 0.001],
+      [0.047, 0.006, 0.006],
+      [0.044, -0.028, 0.009],
+      [-0.015, -0.028, 0.006],
+      [-0.024, -0.012, 0.004],
+      [-0.03, -0.03, 0.001],
+      [-0.074, -0.03, 0.001],
+      [-0.0715, 0.012, 0.003],
+      [-0.0775, 0.0185, 0.004],
+    ],
+    0.0275,
+    0.0028,
+    polymer,
+    [
+      [-0.016, -0.001, 0.003],
+      [0.037, -0.001, 0.004],
+      [0.037, -0.0215, 0.006],
+      [-0.01, -0.0215, 0.004],
+    ],
+  );
+  // Accessory rail grooves under the front of the frame.
+  for (const z of [-0.082, -0.09, -0.098, -0.106]) box(root, [0.028, 0.0052, 0.0028], darkMetal, [0, 0.0105, z]);
+  // A curved trigger, slide stop, takedown lever, and magazine release.
+  profile(
+    root,
+    [
+      [-0.003, 0.001, 0.0005],
+      [0.006, 0.001, 0.0005],
+      [0.0035, -0.008, 0.003],
+      [0.0065, -0.0165, 0.001],
+      [0.0025, -0.0165, 0.001],
+      [-0.0005, -0.008, 0.003],
+    ],
+    0.0058,
+    0.0009,
+    darkMetal,
+  );
+  softBox(root, [0.0024, 0.0048, 0.021], 0.0009, darkMetal, [-0.0145, 0.0262, -0.01]);
+  softBox(root, [0.0024, 0.0034, 0.011], 0.0009, darkMetal, [-0.0145, 0.0195, -0.038]);
+  softBox(root, [0.0026, 0.0095, 0.0085], 0.001, darkMetal, [-0.0148, -0.009, 0.0305]);
 
-  // The grip leans back. The magazine and most of the hand are attached to it.
+  // The grip with its stippled texture, drawn at its lean. The group is tilted to match, so
+  // the magazine and the hand can work along the grip's own axis.
+  profile(
+    root,
+    [
+      [-0.0235, -0.004, 0.003],
+      [-0.0491, -0.1109, 0.004],
+      [-0.0999, -0.0995, 0.006],
+      [-0.0744, 0.0055, 0.004],
+    ],
+    0.033,
+    0.0058,
+    gripPolymer,
+  );
   const grip = new THREE.Group();
   grip.position.set(0, 0, 0.05);
   grip.rotation.x = -0.22;
   root.add(grip);
-  box(grip, [0.032, 0.105, 0.05], polymer, [0, -0.0525, 0]);
-  for (const y of [-0.03, -0.05, -0.07]) box(grip, [0.0345, 0.004, 0.004], darkMetal, [0, y, -0.0255]);
 
   const magazine = new THREE.Group();
   grip.add(magazine);
-  box(magazine, [0.028, 0.1, 0.042], darkMetal, [0, -0.058, 0]);
-  box(magazine, [0.034, 0.01, 0.056], polymer, [0, -0.113, 0.002]);
+  box(magazine, [0.024, 0.1, 0.04], darkMetal, [0, -0.058, 0]);
+  softBox(magazine, [0.03, 0.0095, 0.052], 0.003, polymer, [0, -0.1135, 0.001]);
 
   loadHand(grip);
 
