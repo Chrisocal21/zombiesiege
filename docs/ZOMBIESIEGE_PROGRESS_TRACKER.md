@@ -4,7 +4,7 @@
 
 ## Zombie Siege
 
-**Overall progress:** 5% (2/41)
+**Overall progress:** 10% (4/41)
 **Last updated:** November 1, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
@@ -24,11 +24,11 @@
 
 ### Step Zero — Solo Loop
 
-**Progress:** 0% (0/8)
+**Progress:** 25% (2/8)
 **Done when:** Chris plays waves 1 to 5 and wants another run.
 
-- [ ] Level file format (boxes, player spawns, zombie spawns, checkpoint, kit spot)
-- [ ] One config file for all tuning numbers
+- [x] Level file format (boxes, player spawns, zombie spawns, checkpoint, kit spot)
+- [x] One config file for all tuning numbers
 - [ ] Load and render one small room from the level file
 - [ ] Host-owned game state fed by input messages, separate from rendering
 - [ ] First person movement and mouselook
@@ -119,6 +119,7 @@
 | Nov 1, 2026 | Project opened, working title set, design settled, plan and handoff brief written | 0% |
 | Nov 1, 2026 | Build order changed to solo first, then 2, then 4; co-op work moved to Phase 2 | 0% |
 | Nov 1, 2026 | Project scaffolded on localhost:3000; DECISIONS_LOG.md and ASSET_LICENSES.md added | 5% |
+| Nov 1, 2026 | Level file format, Level 0 room data, and config file added | 10% |
 
 ---
 
