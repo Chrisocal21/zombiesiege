@@ -1,4 +1,4 @@
-import type { Door, Elevator, Gate, Level, LevelBox, Ramp, Surface } from './types';
+import type { Door, Elevator, Gate, Level, LevelBox, Ramp, Station, Surface } from './types';
 
 const FLOOR = '#6b6e72';
 const WALL = '#8a8d90';
@@ -154,9 +154,28 @@ const trenchRight = ramp.x + half;
 // in the street, run across it and down a ramp, and close the metal gate behind them. A doorway
 // in each wall is where the zombies come from. The tower above is the way up, in later levels,
 // to the roof and the helicopter.
+// Wall stations stand on the floor against the wall.
+const stations: Station[] = [
+  { kind: 'ammo', position: { x: -9.95, y: 1.25, z: 8.8 }, normal: { x: 1, z: 0 } },
+  // The weapon wall, on the east side between the two doors.
+  { kind: 'shotgun', position: { x: 9.95, y: 1.25, z: -1 }, normal: { x: -1, z: 0 } },
+];
+
+// An undrawn solid in front of each station, so it cannot be walked through, and is too tall to climb.
+const stationBoxes: LevelBox[] = stations.map((station) => {
+  const alongX = station.normal.z !== 0;
+  return {
+    position: { x: station.position.x + station.normal.x * 0.15, y: 1.5, z: station.position.z + station.normal.z * 0.15 },
+    size: { x: alongX ? 1.1 : 0.3, y: 3, z: alongX ? 0.3 : 1.1 },
+    color: '#000000',
+    surface: 'step',
+  };
+});
+
 export const level0: Level = {
   name: 'Level 0',
   boxes: [
+    ...stationBoxes,
     { position: { x: 0, y: -0.25, z: 0 }, size: { x: 21, y: 0.5, z: 21 }, color: FLOOR, surface: 'floor' },
 
     ...wall('x', -10.25, -10.5, 10.5),
@@ -248,12 +267,7 @@ export const level0: Level = {
   doors,
   gate,
   elevator,
-  // Resupply on the west wall, near the south-west corner and out of the way of the doors.
-  stations: [
-    { kind: 'ammo', position: { x: -9.95, y: 1.25, z: 8.8 }, normal: { x: 1, z: 0 } },
-    // The weapon wall, on the east side between the two doors.
-    { kind: 'shotgun', position: { x: 9.95, y: 1.25, z: -1 }, normal: { x: -1, z: 0 } },
-  ],
+  stations,
   ramp,
   // Two bundles of boards, far apart, so finding them takes some of the opening time.
   barricadeBars: [
