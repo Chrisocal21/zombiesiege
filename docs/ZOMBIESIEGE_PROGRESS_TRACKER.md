@@ -4,7 +4,7 @@
 
 ## Zombie Siege
 
-**Overall progress:** 12% (5/41)
+**Overall progress:** 17% (7/41)
 **Last updated:** November 1, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
@@ -24,14 +24,14 @@
 
 ### Step Zero — Solo Loop
 
-**Progress:** 38% (3/8)
+**Progress:** 63% (5/8)
 **Done when:** Chris plays waves 1 to 5 and wants another run.
 
 - [x] Level file format (boxes, player spawns, zombie spawns, checkpoint, kit spot)
 - [x] One config file for all tuning numbers
 - [x] Load and render one small room from the level file
-- [ ] Host-owned game state fed by input messages, separate from rendering
-- [ ] First person movement and mouselook
+- [x] Host-owned game state fed by input messages, separate from rendering
+- [x] First person movement and mouselook
 - [ ] Pistol: shoot and reload
 - [ ] Zombie that chases the nearest player and hits
 - [ ] Waves: slow ramp and timed break
@@ -121,6 +121,7 @@
 | Nov 1, 2026 | Project scaffolded on localhost:3000; DECISIONS_LOG.md and ASSET_LICENSES.md added | 5% |
 | Nov 1, 2026 | Level file format, Level 0 room data, and config file added | 10% |
 | Nov 1, 2026 | Level 0 room renders from the level file with night lighting and fog | 12% |
+| Nov 1, 2026 | Game state, input messages, walking with wall and crate collision, mouselook, canvas HUD | 17% |
 
 ---
 

@@ -17,6 +17,10 @@ Decisions made during the build, and every open question.
 | Nov 1, 2026 | Level 0 checkpoint is a placeholder at the north wall until the real spot is chosen | Coding Claude |
 | Nov 1, 2026 | Wave sizes are 3, 5, 7, 9, 12, with all tuning numbers placeholders in `src/config.ts` | Coding Claude |
 
+| Nov 1, 2026 | Game runs on a fixed 60 ticks per second, separate from the screen frame rate | Coding Claude |
+| Nov 1, 2026 | Mouse look is sent as turn amounts per tick, not absolute angles, so a networked player can send the same message | Coding Claude |
+| Nov 1, 2026 | Click the game to capture the mouse; Esc releases it | Coding Claude |
+
 ---
 
 ## Open Questions
