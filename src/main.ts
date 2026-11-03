@@ -1,5 +1,6 @@
 import { loadBindings } from './client/bindings';
 import { createAudio } from './client/audio';
+import { joinRoom } from './client/coop';
 import { createLocalInput } from './client/localInput';
 import { createLocalSession } from './client/session';
 import { loadSettings, settings } from './client/settings';
@@ -12,6 +13,7 @@ import { level0 } from './levels/level0';
 import { createEffects } from './render/effects';
 import { createHud } from './render/hud';
 import { createMenu } from './render/menu';
+import { createRemotePlayers } from './render/remotePlayers';
 import { createView, syncCamera } from './render/view';
 import { createViewmodel } from './render/viewmodel';
 import { createZombieViews } from './render/zombies';
@@ -37,6 +39,15 @@ const viewmodel = createViewmodel(view.viewScene);
 const effects = createEffects(view.scene, view.camera, viewmodel);
 const zombieViews = createZombieViews(view.scene);
 const audio = createAudio();
+
+// Co-op testing: ?room=CODE joins that room on the co-op server, and the other players in it
+// show up as boxes. A host and join menu replaces this later.
+const roomCode = import.meta.env.DEV ? new URLSearchParams(location.search).get('room') : null;
+const coop = roomCode ? joinRoom(roomCode) : null;
+const remotePlayers = coop ? createRemotePlayers(view.scene) : null;
+// Positions go out 20 times a second.
+const POSE_SECONDS = 0.05;
+let poseTimer = 0;
 
 let reviewing = false;
 let lastTime = performance.now();
@@ -121,8 +132,9 @@ input.onUnlock(() => {
 });
 
 view.renderer.setAnimationLoop((now) => {
-  // Capped so a hidden tab does not trigger a flood of catch-up ticks.
-  const frameSeconds = Math.min((now - lastTime) / 1000, 0.1);
+  // Capped so a hidden tab does not trigger a flood of catch-up ticks. The first frame can be
+  // stamped from before the game finished loading, so time never runs backwards either.
+  const frameSeconds = Math.max(0, Math.min((now - lastTime) / 1000, 0.1));
   lastTime = now;
   const paused = menu.isOpen();
 
@@ -192,6 +204,14 @@ view.renderer.setAnimationLoop((now) => {
   if (!onTitle || outfitPreview) viewmodel.update(player, pose, paused ? 0 : frameSeconds, outfitPreview);
   view.setAim(onTitle ? 0 : viewmodel.aimAmount());
   view.setFlashlight(!onTitle && player.flashlight && player.health > 0);
+  if (coop && remotePlayers) {
+    poseTimer -= frameSeconds;
+    if (poseTimer <= 0) {
+      poseTimer = POSE_SECONDS;
+      coop.sendPose({ floor: state.floor, x: player.x, y: player.y, z: player.z, yaw: player.yaw });
+    }
+    remotePlayers.update(coop.others(), state.floor);
+  }
   view.animate(now / 1000, state);
   input.setLookScale(view.camera.fov / settings.fieldOfView);
   effects.update(player, paused ? 0 : frameSeconds, state.level);
