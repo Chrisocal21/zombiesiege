@@ -134,6 +134,14 @@ function respawn(old: Player, level: Level, keepGuns: boolean): Player {
 // Wave 1 of the current floor: boards off, zombies gone, everyone back at full health, and the
 // countdown to board up doors. The street gate is shut for good, so it goes straight back down
 // with no animation.
+// Starts a new game on any elevator stop, as if just arrived there, for testing a floor.
+export function startOnFloor(state: GameState, floor: number): void {
+  state.floor = floor;
+  startFloor(state, false);
+  openLift(state);
+  state.waves.arrivedTick = state.tick;
+}
+
 function startFloor(state: GameState, keepGuns: boolean): void {
   const level = levelForFloor(state.floor);
   enterLevel(state, level);

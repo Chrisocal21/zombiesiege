@@ -1,6 +1,7 @@
 import { GLOVES, OUTFITS, appearance, saveAppearance, selectedGloves, selectedOutfit } from '../client/appearance';
 import { ACTIONS, type Action, bindings, keyLabel, rebind, resetBindings } from '../client/bindings';
 import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } from '../client/settings';
+import { config } from '../config';
 import { stops, storeyLabel } from '../game/tower';
 import { outfitTexture } from './gearTextures';
 import { COLOR, FONT, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
@@ -21,6 +22,8 @@ export type MenuSound = 'move' | 'select' | 'back' | 'start';
 export interface MenuCallbacks {
   // Start the game from the title screen.
   play(): void;
+  // Start a new game straight onto one of the elevator stops, for testing.
+  playFloor(floor: number): void;
   // Go back to the game from the pause menu.
   resume(): void;
   restart(): void;
@@ -505,7 +508,12 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
           ], left, height * 0.5, 0.1);
           drawSurvivorCard(context, width - left, 70 * unit, unit, ease((since - 0.15) / 0.5));
-          drawOperationCard(context, width - left, height * 0.3, unit, ease((since - 0.2) / 0.55));
+          const picked = drawOperationCard(context, width - left, height * 0.3, unit, ease((since - 0.2) / 0.55), config.testing.floorSelect ? { inside, clicked: mouse.clicked } : null);
+          if (picked.hovering) hovering = true;
+          if (picked.floor >= 0) {
+            sound('select');
+            callbacks.playFloor(picked.floor);
+          }
           promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);
         } else if (current === 'pause') {
           list([
@@ -773,8 +781,16 @@ function drawSurvivorCard(context: CanvasRenderingContext2D, right: number, top:
 }
 
 // Right of the main menu: the operation, with the tower drawn as a route from the garage to the
-// roof, every stop and its waves.
-function drawOperationCard(context: CanvasRenderingContext2D, right: number, top: number, unit: number, appear: number): void {
+// roof, every stop and its waves. With a pointer passed in, each stop can be clicked to start
+// there; the floor clicked is returned.
+interface CardPointer {
+  inside(x: number, y: number, w: number, h: number): boolean;
+  clicked: boolean;
+}
+
+function drawOperationCard(context: CanvasRenderingContext2D, right: number, top: number, unit: number, appear: number, pointer: CardPointer | null): { floor: number; hovering: boolean } {
+  let picked = -1;
+  let hovering = false;
   const w = 430 * unit;
   const pad = 32 * unit;
   const rowH = 46 * unit;
@@ -812,7 +828,7 @@ function drawOperationCard(context: CanvasRenderingContext2D, right: number, top
   context.fillRect(x + pad, top + 160 * unit, w - pad * 2, 1);
 
   // The route, roof at the top. A line runs down through a node for each stop.
-  text(context, 'ROUTE', x + pad, top + 194 * unit, { size: 12 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint, shadow: false });
+  text(context, pointer ? 'ROUTE  ·  CLICK A FLOOR TO START' : 'ROUTE', x + pad, top + 194 * unit, { size: 12 * unit, weight: 700, spacing: 4 * unit, color: pointer ? COLOR.accent : COLOR.faint, shadow: false });
   const routeTop = top + 222 * unit;
   const lineX = x + pad + 9 * unit;
   context.fillStyle = 'rgba(232,184,102,0.35)';
@@ -822,6 +838,17 @@ function drawOperationCard(context: CanvasRenderingContext2D, right: number, top
     const roof = floor >= stops.length;
     const y = routeTop + i * rowH;
     const middle = y + rowH / 2;
+    // The roof has no floor of its own yet, so it cannot be picked.
+    const hover = !roof && appear > 0.9 && pointer !== null && pointer.inside(x + pad - 8 * unit, y + 2 * unit, w - pad * 2 + 16 * unit, rowH - 4 * unit);
+    if (hover) {
+      hovering = true;
+      if (pointer!.clicked) picked = floor;
+      const wash = context.createLinearGradient(x + pad, 0, x + w - pad, 0);
+      wash.addColorStop(0, 'rgba(232,184,102,0.24)');
+      wash.addColorStop(1, 'rgba(232,184,102,0.04)');
+      context.fillStyle = wash;
+      context.fillRect(x + pad - 8 * unit, y + 2 * unit, w - pad * 2 + 16 * unit, rowH - 4 * unit);
+    }
     context.fillStyle = roof ? COLOR.accent : '#0b1015';
     context.strokeStyle = COLOR.accent;
     context.lineWidth = 2 * unit;
@@ -836,7 +863,8 @@ function drawOperationCard(context: CanvasRenderingContext2D, right: number, top
     context.fill();
     text(context, label, boxX + 26 * unit, middle + 6 * unit, { size: 15 * unit, weight: 800, spacing: 1 * unit, align: 'center', color: roof ? COLOR.accent : COLOR.text, shadow: false });
     text(context, roof ? 'Helipad' : stops[floor].name, boxX + 68 * unit, middle + 7 * unit, { size: 19 * unit, weight: 600, color: roof ? COLOR.accent : COLOR.text, shadow: false });
-    text(context, roof ? 'EXTRACT' : `${stops[floor].waves} WAVES`, x + w - pad, middle + 5 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: roof ? COLOR.accent : COLOR.faint, align: 'right', shadow: false });
+    const tag = roof ? 'EXTRACT' : hover ? 'START HERE  ▶' : `${stops[floor].waves} WAVES`;
+    text(context, tag, x + w - pad, middle + 5 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: roof || hover ? COLOR.accent : COLOR.faint, align: 'right', shadow: false });
   }
 
   // The run at a glance.
@@ -852,4 +880,5 @@ function drawOperationCard(context: CanvasRenderingContext2D, right: number, top
     text(context, label, fx, footY + 70 * unit, { size: 11 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, shadow: false });
   });
   context.restore();
+  return { floor: picked, hovering };
 }

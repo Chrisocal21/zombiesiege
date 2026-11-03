@@ -171,4 +171,8 @@ export const config = {
     // The pause on the floor-cleared message before the elevator opens.
     levelClearedSeconds: 4,
   },
+  testing: {
+    // Floors on the main menu's route can be clicked to start the game there. Off for release.
+    floorSelect: true,
+  },
 } as const;

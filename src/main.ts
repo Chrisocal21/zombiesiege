@@ -5,6 +5,7 @@ import { loadSettings, settings } from './client/settings';
 import { config } from './config';
 import { createGameState, eyeY, type GameState } from './game/state';
 import { MAX_PITCH, step } from './game/update';
+import { startOnFloor } from './game/waves';
 import { spawnZombie } from './game/zombies';
 import { level0 } from './levels/level0';
 import { createEffects } from './render/effects';
@@ -91,6 +92,15 @@ const menu = createMenu({
     enterGame();
   },
   sound: (kind) => audio.ui(kind),
+  playFloor(floor) {
+    state = createGameState(level);
+    // The garage starts out in the street as usual; the floors start just out of the elevator.
+    if (floor > 0) startOnFloor(state, floor);
+    dressed = false;
+    previous = startPose();
+    leftover = 0;
+    enterGame();
+  },
   resume: enterGame,
   restart() {
     state = createGameState(level);
