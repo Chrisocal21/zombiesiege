@@ -6,12 +6,12 @@ import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
 import { weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
-import { floorTitle, stopAt, wavesOnFloor } from '../game/tower';
+import { floorTitle, stopAt, stops, wavesOnFloor } from '../game/tower';
 import { isTopFloor, zombiesInWave } from '../game/waves';
 
 import { aliveZombies } from '../game/zombies';
 import type { Menu } from './menu';
-import { COLOR, clamp, keycap, measure, panel, roundedRect, text } from './ui';
+import { COLOR, clamp, keycap, measure, roundedRect, text } from './ui';
 
 const floorName = floorTitle;
 
@@ -61,6 +61,8 @@ export function createHud(menu: Menu): Hud {
   let shownPoints = 0;
   let gainAmount = 0;
   let gainAt = -10;
+  // The score as drawn, which rolls up toward the real one.
+  let rolledPoints = 0;
   window.addEventListener('keydown', event => {
     if (event.code === bindings.map && !event.repeat && !menu.isOpen() && document.pointerLockElement) { event.preventDefault(); mapOpen = !mapOpen; }
   });
@@ -90,7 +92,7 @@ export function createHud(menu: Menu): Hud {
       const frame = Math.min(0.1, time - lastTime);
       lastTime = time;
 
-      if (state.tick < previousTick) { marks.length = 0; ghostHealth = player.health; hitUntil = 0; killAt = -10; gainAt = -10; shownPoints = state.points[player.id] ?? 0; }
+      if (state.tick < previousTick) { marks.length = 0; ghostHealth = player.health; hitUntil = 0; killAt = -10; gainAt = -10; shownPoints = state.points[player.id] ?? 0; rolledPoints = shownPoints; }
       previousTick = state.tick;
       if (menu.isOpen()) mapOpen = false;
       // Reacting to what just happened in the game.
@@ -112,6 +114,7 @@ export function createHud(menu: Menu): Hud {
         gainAt = time;
       }
       shownPoints = points;
+      rolledPoints = points < rolledPoints ? points : Math.min(points, rolledPoints + Math.max((points - rolledPoints) * Math.min(1, frame * 9), frame * 80));
       if (player.lastHurtTick !== seenHurtTick) {
         seenHurtTick = player.lastHurtTick;
         if (seenHurtTick >= 0) {
@@ -173,7 +176,7 @@ export function createHud(menu: Menu): Hud {
     drawRadar(margin, height, unit, state, player, points);
     drawHealth(margin, height, unit, state.lives, player, time);
     drawAmmo(width, height, margin, unit, player, time);
-    drawStatus(width, height, margin, unit, state, player, time);
+    drawStatus(width, height, margin, unit, state, time);
     if (settings.cameraStyle === 'bodycam') {
       const elapsed = Math.floor(state.tick / config.ticksPerSecond);
       const timestamp = `${String(Math.floor(elapsed / 3600)).padStart(2, '0')}:${String(Math.floor(elapsed / 60) % 60).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
@@ -186,11 +189,15 @@ export function createHud(menu: Menu): Hud {
     drawBanner(width, height, unit, state, time);
 
     if (state.frozen) {
+      // A pill under the compass.
       const label = 'ZOMBIES FROZEN';
-      const w = measure(context, label, 20 * unit, 700, 3 * unit) + 90 * unit;
-      panel(context, width - margin - w, margin, w, 46 * unit, 'rgba(60,20,16,0.7)');
-      text(context, label, width - margin - w + 22 * unit, margin + 30 * unit, { size: 20 * unit, weight: 700, spacing: 3 * unit, color: COLOR.danger });
-      keycap(context, keyLabel(bindings.freeze), width - margin - 14 * unit, margin + 32 * unit, 26 * unit, 'right');
+      const w = measure(context, label, 16 * unit, 800, 3 * unit) + 76 * unit;
+      const top = 116 * unit;
+      roundedRect(context, (width - w) / 2, top, w, 36 * unit, 18 * unit);
+      context.fillStyle = 'rgba(60,20,16,0.72)';
+      context.fill();
+      text(context, label, (width - w) / 2 + 18 * unit, top + 24 * unit, { size: 16 * unit, weight: 800, spacing: 3 * unit, color: COLOR.danger, shadow: false });
+      keycap(context, keyLabel(bindings.freeze), (width + w) / 2 - 10 * unit, top + 26 * unit, 22 * unit, 'right');
     }
   }
 
@@ -360,6 +367,7 @@ export function createHud(menu: Menu): Hud {
     let title = '';
     let detail = '';
     let timer: number | null = null;
+    let total = 1;
     switch (waves.phase) {
       case 'entry':
         title = 'Get inside and close the gate';
@@ -370,17 +378,19 @@ export function createHud(menu: Menu): Hud {
         }
         break;
       case 'prep':
-        title = state.floor > 0 ? `${floorName(state.floor)}: barricade two doors` : 'Barricade two doors';
-        detail = `Boards found ${state.pickups.filter((pickup) => pickup.taken).length} of ${state.pickups.length}   Doors sealed ${state.doors.filter((door) => door.boarded).length}`;
+        title = 'Barricade two doors';
+        detail = `Boards found ${state.pickups.filter((pickup) => pickup.taken).length} of ${state.pickups.length}   ·   Doors sealed ${state.doors.filter((door) => door.boarded).length}`;
         timer = waves.timer;
+        total = config.waves.prepSeconds;
         break;
       case 'break':
         title = `Wave ${waves.number} incoming`;
         detail = 'Reload and reposition';
         timer = waves.timer;
+        total = Math.max(config.waves.breakSeconds, waves.timer);
         break;
       case 'active':
-        title = `Wave ${waves.number} of ${wavesOnFloor(state.floor)}`;
+        title = `Survive wave ${waves.number}`;
         detail = `${waves.toSpawn + aliveZombies(state)} zombies left`;
         break;
       case 'cleared':
@@ -413,23 +423,28 @@ export function createHud(menu: Menu): Hud {
 
     const x = margin;
     const y = margin;
-    const w = 410 * unit;
-    const h = 118 * unit;
-    panel(context, x, y, w, h);
+    const left = x + 18 * unit;
+    const titleSize = 28 * unit;
+    const width = Math.max(300 * unit, measure(context, title, titleSize, 700, 0.5 * unit), measure(context, detail, 17 * unit, 600, 0.5 * unit));
+    scrim(0, y - 24 * unit, x + width + 120 * unit, 140 * unit, 'left');
     context.fillStyle = COLOR.accent;
-    context.fillRect(x, y + 10 * unit, 4 * unit, h - 20 * unit);
-    text(context, 'OBJECTIVE', x + 26 * unit, y + 32 * unit, { size: 15 * unit, color: COLOR.accent, spacing: 5 * unit, weight: 700 });
-    text(context, title, x + 26 * unit, y + 66 * unit, { size: 27 * unit, weight: 700 });
-    text(context, detail, x + 26 * unit, y + 95 * unit, { size: 18 * unit, color: COLOR.dim });
+    context.fillRect(x, y + 4 * unit, 3 * unit, timer !== null ? 92 * unit : 80 * unit);
+
+    text(context, 'OBJECTIVE', left, y + 16 * unit, { size: 13 * unit, color: COLOR.accent, spacing: 4 * unit, weight: 700 });
+    text(context, title, left, y + 50 * unit, { size: titleSize, weight: 700, spacing: 0.5 * unit });
+    text(context, detail, left, y + 76 * unit, { size: 17 * unit, color: COLOR.dim, spacing: 0.5 * unit });
     if (timer !== null) {
+      // The time left, as a clock beside the heading and a bar running down under it.
       const urgent = timer < 10 && waves.phase === 'prep';
-      text(context, clock(timer), x + w - 22 * unit, y + 32 * unit, {
-        size: 23 * unit,
-        weight: 800,
-        align: 'right',
-        color: urgent ? COLOR.danger : COLOR.text,
-        spacing: 1 * unit,
-      });
+      const tone = urgent ? COLOR.danger : COLOR.text;
+      text(context, clock(timer), left + width, y + 17 * unit, { size: 19 * unit, weight: 800, align: 'right', color: tone, spacing: 1 * unit });
+      const barY = y + 90 * unit;
+      roundedRect(context, left, barY, width, 3 * unit, 1.5 * unit);
+      context.fillStyle = 'rgba(255,255,255,0.14)';
+      context.fill();
+      roundedRect(context, left, barY, width * clamp(timer / total, 0, 1), 3 * unit, 1.5 * unit);
+      context.fillStyle = urgent ? COLOR.danger : COLOR.accent;
+      context.fill();
     }
   }
 
@@ -523,7 +538,7 @@ export function createHud(menu: Menu): Hud {
     context.fill();
     context.restore();
 
-    text(context, player.y > 3 ? 'NORTHLINE / STREET' : 'B1 / PARKING & FREIGHT', margin, cy - radius - 18 * unit, { size: 14 * unit, color: COLOR.dim, spacing: 2 * unit });
+    text(context, player.y > 3 ? 'NORTHLINE / STREET' : state.level.theme === 'garage' ? 'B1 / PARKING & FREIGHT' : `${floorName(state.floor)} / ${stopAt(state.floor).name}`.toUpperCase(), margin, cy - radius - 18 * unit, { size: 14 * unit, color: COLOR.dim, spacing: 2 * unit });
     // The ring, with north marked on it.
     context.beginPath();
     context.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -535,83 +550,203 @@ export function createHud(menu: Menu): Hud {
     text(context, 'N', northX, northY + 6 * unit, { size: 17 * unit, weight: 800, align: 'center', color: COLOR.accent, shadow: false });
   }
 
-  function drawHealth(margin: number, height: number, unit: number, lives: number, player: Player, time: number): void {
-    const radius = 112 * unit;
-    const x = margin;
-    const w = radius * 2;
-    const y = height - margin - 36 * unit;
-    const h = 16 * unit;
-    const fraction = clamp(player.health / config.player.maxHealth, 0, 1);
-    const ghost = clamp(ghostHealth / config.player.maxHealth, 0, 1);
-
-    panel(context, x - 16 * unit, y - 52 * unit, w + 32 * unit, 98 * unit, 'rgba(10,20,26,0.68)', 8 * unit);
-    text(context, 'VITALS', x, y - 12 * unit, { size: 15 * unit, color: COLOR.dim, spacing: 4 * unit, weight: 700 });
-    // One pip per life, lit while it is still there.
-    for (let i = 0; i < config.player.lives; i++) {
-      context.fillStyle = i < lives ? COLOR.accent : 'rgba(255,255,255,0.14)';
-      roundedRect(context, x + 82 * unit + i * 20 * unit, y - 25 * unit, 14 * unit, 14 * unit, 3 * unit);
-      context.fill();
-    }
-    text(context, String(Math.ceil(player.health)), x + w, y - 8 * unit, { size: 30 * unit, weight: 800, align: 'right', color: fraction < 0.3 ? COLOR.danger : COLOR.text });
-    roundedRect(context, x, y, w, h, 3 * unit);
-    context.fillStyle = 'rgba(0,0,0,0.6)';
-    context.fill();
+  // A soft dark shade spreading in from one edge of the screen, so text reads over a bright room
+  // without a hard box around it.
+  function scrim(x: number, y: number, w: number, h: number, from: 'left' | 'right', alpha = 0.66): void {
+    const anchor = from === 'left' ? x : x + w;
+    const radius = h * 0.75;
     context.save();
-    roundedRect(context, x, y, w, h, 3 * unit);
-    context.clip();
-    context.fillStyle = 'rgba(255,255,255,0.7)';
-    context.fillRect(x, y, w * ghost, h);
-    const pulse = fraction < 0.3 && !settings.reducedFlashing ? 0.75 + 0.25 * Math.sin(time * 9) : 1;
-    const gradient = context.createLinearGradient(x, 0, x + w, 0);
-    gradient.addColorStop(0, fraction < 0.3 ? COLOR.danger : '#3fae6d');
-    gradient.addColorStop(1, fraction < 0.3 ? '#ff7a63' : COLOR.good);
-    context.globalAlpha = pulse;
+    context.translate(anchor, y + h / 2);
+    context.scale(w / radius, 1);
+    const gradient = context.createRadialGradient(0, 0, 0, 0, 0, radius);
+    gradient.addColorStop(0, `rgba(4,8,12,${alpha})`);
+    gradient.addColorStop(0.5, `rgba(4,8,12,${alpha * 0.62})`);
+    gradient.addColorStop(1, 'rgba(4,8,12,0)');
     context.fillStyle = gradient;
-    context.fillRect(x, y, w * fraction, h);
-    context.globalAlpha = 1;
-    // Segment marks, like a gauge.
-    context.fillStyle = 'rgba(0,0,0,0.55)';
-    for (let i = 1; i < 10; i++) context.fillRect(x + (w * i) / 10 - 1 * unit, y, 2 * unit, h);
+    context.fillRect(from === 'left' ? 0 : -radius, -radius, radius, radius * 2);
     context.restore();
   }
 
+  // One heartbeat on a monitor, for p from 0 to 1: a small bump, the sharp spike, and a slow wave.
+  function heartbeat(p: number): number {
+    const bump = (centre: number, spread: number, height: number) => height * Math.exp(-((p - centre) ** 2) / (2 * spread * spread));
+    return bump(0.12, 0.025, 0.12) - bump(0.22, 0.008, 0.18) + bump(0.25, 0.01, 1) - bump(0.285, 0.01, 0.32) + bump(0.48, 0.045, 0.24);
+  }
+
+  // A red medical cross, lit for a life still left.
+  function lifeCross(cx: number, cy: number, size: number, lit: boolean): void {
+    const arm = size * 0.34;
+    context.save();
+    context.fillStyle = lit ? '#ef4f45' : 'rgba(255,255,255,0.14)';
+    if (lit) {
+      context.shadowColor = 'rgba(239,79,69,0.7)';
+      context.shadowBlur = size * 0.6;
+    }
+    roundedRect(context, cx - arm / 2, cy - size / 2, arm, size, arm * 0.25);
+    context.fill();
+    roundedRect(context, cx - size / 2, cy - arm / 2, size, arm, arm * 0.25);
+    context.fill();
+    context.restore();
+  }
+
+  // Bottom left, under the radar: lives, health as a number and a bar, and a heart monitor that
+  // beats faster the more hurt you are.
+  function drawHealth(margin: number, height: number, unit: number, lives: number, player: Player, time: number): void {
+    const x = margin;
+    const w = 224 * unit;
+    const base = height - margin;
+    const fraction = clamp(player.health / config.player.maxHealth, 0, 1);
+    const ghost = clamp(ghostHealth / config.player.maxHealth, 0, 1);
+    const hurt = fraction < 0.3;
+    const tone = hurt ? '#ff5a4a' : '#5fd49a';
+
+    scrim(0, base - 92 * unit, x + w + 110 * unit, 120 * unit, 'left');
+    text(context, 'VITALS', x, base - 52 * unit, { size: 12 * unit, color: COLOR.dim, spacing: 4 * unit, weight: 700 });
+    for (let i = 0; i < config.player.lives; i++) {
+      lifeCross(x + w - 7 * unit - (config.player.lives - 1 - i) * 22 * unit, base - 56 * unit, 14 * unit, i < lives);
+    }
+
+    const value = String(Math.max(0, Math.ceil(player.health)));
+    const valueSize = 44 * unit;
+    text(context, value, x, base - 10 * unit, { size: valueSize, weight: 800, color: hurt ? COLOR.danger : COLOR.text });
+    const valueWidth = measure(context, value, valueSize, 800);
+
+    // The trace runs right to left, newest beat at the right-hand end.
+    const traceLeft = x + Math.max(valueWidth, 52 * unit) + 16 * unit;
+    const traceWidth = x + w - traceLeft;
+    const middle = base - 24 * unit;
+    const amplitude = 20 * unit;
+    const beatsPerSecond = (64 + (1 - fraction) * 86) / 60;
+    const window = 2.4;
+    const steps = Math.max(24, Math.floor(traceWidth / (2 * unit)));
+    const alive = player.health > 0;
+    context.save();
+    const fade = context.createLinearGradient(traceLeft, 0, traceLeft + traceWidth, 0);
+    fade.addColorStop(0, 'rgba(0,0,0,0)');
+    fade.addColorStop(0.35, tone);
+    fade.addColorStop(1, tone);
+    context.strokeStyle = fade;
+    context.lineWidth = 2 * unit;
+    context.lineJoin = 'round';
+    context.shadowColor = tone;
+    context.shadowBlur = 6 * unit;
+    context.beginPath();
+    let endY = middle;
+    for (let i = 0; i <= steps; i++) {
+      const along = i / steps;
+      const at = time - (1 - along) * window;
+      const beat = alive ? heartbeat((((at * beatsPerSecond) % 1) + 1) % 1) : 0;
+      endY = middle - beat * amplitude;
+      if (i === 0) context.moveTo(traceLeft, endY);
+      else context.lineTo(traceLeft + along * traceWidth, endY);
+    }
+    context.stroke();
+    context.fillStyle = tone;
+    context.beginPath();
+    context.arc(traceLeft + traceWidth, endY, 2.6 * unit, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+
+    // The bar, with a pale ghost of what was just lost.
+    const barY = base + 2 * unit;
+    const barH = 5 * unit;
+    roundedRect(context, x, barY, w, barH, barH / 2);
+    context.fillStyle = 'rgba(255,255,255,0.12)';
+    context.fill();
+    context.save();
+    roundedRect(context, x, barY, w, barH, barH / 2);
+    context.clip();
+    context.fillStyle = 'rgba(255,255,255,0.55)';
+    context.fillRect(x, barY, w * ghost, barH);
+    const pulse = hurt && !settings.reducedFlashing ? 0.7 + 0.3 * Math.sin(time * 9) : 1;
+    context.globalAlpha = pulse;
+    context.fillStyle = tone;
+    context.fillRect(x, barY, w * fraction, barH);
+    context.restore();
+
+    if (player.bars > 0) {
+      text(context, `BOARDS  ${player.bars} / ${config.doors.carryLimit}`, x, base + 30 * unit, { size: 13 * unit, color: COLOR.accent, spacing: 2 * unit, weight: 700 });
+    }
+  }
+
+  // A shotgun shell standing on its brass, for the magazine row.
+  function shell(x: number, y: number, w: number, h: number, loaded: boolean): void {
+    const brass = h * 0.28;
+    roundedRect(context, x, y, w, h - brass, w * 0.25);
+    context.fillStyle = loaded ? '#c8382e' : 'rgba(255,255,255,0.12)';
+    context.fill();
+    roundedRect(context, x - w * 0.08, y + h - brass, w * 1.16, brass, w * 0.12);
+    context.fillStyle = loaded ? '#d9b25c' : 'rgba(255,255,255,0.12)';
+    context.fill();
+  }
+
+  // Bottom right: the gun in hand, rounds in the magazine and spare, and the one on your back.
   function drawAmmo(width: number, height: number, margin: number, unit: number, player: Player, time: number): void {
     const stats = weaponStats(player.weapon);
     const magazine = stats.magazineSize;
     const right = width - margin;
-    const baseY = height - margin - 40 * unit;
+    const base = height - margin;
     const reloading = player.reloadLeft > 0;
     const low = player.ammo <= Math.ceil(magazine / 3);
 
-    panel(context, right - 278 * unit, baseY - 142 * unit, 300 * unit, 200 * unit, 'rgba(10,20,26,0.62)', 8 * unit);
-    text(context, player.stowed ? `${stats.name}   [${keyLabel(bindings.swap)}] SWAP` : stats.name, right, baseY - 100 * unit, { size: 17 * unit, color: COLOR.dim, align: 'right', spacing: 6 * unit, weight: 700 });
+    scrim(width - margin - 330 * unit, base - 170 * unit, 330 * unit + margin, 200 * unit, 'right');
+
+    // The weapon's name, and the other one with the key that swaps to it.
+    const nameY = base - 102 * unit;
+    text(context, stats.name, right, nameY, { size: 15 * unit, align: 'right', spacing: 5 * unit, weight: 700 });
+    const nameWidth = measure(context, stats.name, 15 * unit, 700, 5 * unit);
+    context.fillStyle = COLOR.accent;
+    context.fillRect(right - nameWidth - 18 * unit, nameY - 6 * unit, 10 * unit, 2 * unit);
+    if (player.stowed) {
+      const other = weaponStats(player.stowed.weapon).name;
+      const otherRight = right - nameWidth - 34 * unit;
+      text(context, other, otherRight, nameY, { size: 13 * unit, align: 'right', spacing: 3 * unit, color: COLOR.faint, weight: 700 });
+      const otherWidth = measure(context, other, 13 * unit, 700, 3 * unit);
+      keycap(context, keyLabel(bindings.swap), otherRight - otherWidth - 8 * unit, nameY + 1 * unit, 20 * unit, 'right');
+    }
+
     if (reloading) {
-      text(context, 'RELOADING', right, baseY - 10 * unit, { size: 36 * unit, weight: 800, align: 'right', color: COLOR.accent, spacing: 4 * unit });
-      const w = 260 * unit;
-      const progress = 1 - player.reloadLeft / stats.reloadSeconds;
-      roundedRect(context, right - w, baseY + 8 * unit, w, 6 * unit, 3 * unit);
-      context.fillStyle = 'rgba(255,255,255,0.16)';
+      text(context, 'RELOADING', right, base - 34 * unit, { size: 32 * unit, weight: 800, align: 'right', color: COLOR.accent, spacing: 4 * unit });
+      const w = 240 * unit;
+      const progress = clamp(1 - player.reloadLeft / stats.reloadSeconds, 0, 1);
+      roundedRect(context, right - w, base - 16 * unit, w, 4 * unit, 2 * unit);
+      context.fillStyle = 'rgba(255,255,255,0.14)';
       context.fill();
-      roundedRect(context, right - w, baseY + 8 * unit, w * progress, 6 * unit, 3 * unit);
+      roundedRect(context, right - w, base - 16 * unit, w * progress, 4 * unit, 2 * unit);
       context.fillStyle = COLOR.accent;
       context.fill();
     } else {
       const blink = player.ammo === 0 && !settings.reducedFlashing ? 0.55 + 0.45 * Math.sin(time * 10) : 1;
       context.save();
       context.globalAlpha = blink;
-      const reserveLabel = `/ ${player.reserve}`;
-      const infinity = measure(context, reserveLabel, 30 * unit, 700, 1 * unit);
-      text(context, reserveLabel, right, baseY - 12 * unit, { size: 30 * unit, color: player.reserve === 0 ? COLOR.danger : COLOR.dim, align: 'right', weight: 700, spacing: 1 * unit });
-      text(context, String(player.ammo), right - infinity - 14 * unit, baseY - 6 * unit, { size: 96 * unit, weight: 800, align: 'right', color: low ? COLOR.danger : COLOR.text });
+      const reserveLabel = String(player.reserve);
+      const reserveSize = 26 * unit;
+      const reserveWidth = measure(context, reserveLabel, reserveSize, 700, 1 * unit);
+      text(context, reserveLabel, right, base - 30 * unit, { size: reserveSize, color: player.reserve === 0 ? COLOR.danger : COLOR.dim, align: 'right', weight: 700, spacing: 1 * unit });
+      context.fillStyle = 'rgba(255,255,255,0.3)';
+      context.save();
+      context.translate(right - reserveWidth - 14 * unit, base - 40 * unit);
+      context.rotate(0.35);
+      context.fillRect(-1 * unit, -20 * unit, 2 * unit, 40 * unit);
       context.restore();
+      text(context, String(player.ammo), right - reserveWidth - 26 * unit, base - 24 * unit, { size: 80 * unit, weight: 800, align: 'right', color: low ? COLOR.danger : COLOR.text });
+      context.restore();
+    }
 
-      // One small mark per round in the magazine.
-      const pip = 9 * unit;
-      const gap = 5 * unit;
-      for (let i = 0; i < magazine; i++) {
-        const x = right - (magazine - i) * (pip + gap) + gap;
-        roundedRect(context, x, baseY + 6 * unit, pip, 20 * unit, 2 * unit);
-        context.fillStyle = i < player.ammo ? (low ? COLOR.danger : 'rgba(245,247,250,0.92)') : 'rgba(255,255,255,0.16)';
+    // The magazine, one mark per round: thin bars for the pistol, shells for the shotgun.
+    const shells = stats.pellets > 1;
+    const pipW = shells ? 11 * unit : 5 * unit;
+    const pipH = shells ? 24 * unit : 14 * unit;
+    const gap = shells ? 8 * unit : 4 * unit;
+    const pipY = base - (shells ? 4 : -2) * unit;
+    for (let i = 0; i < magazine; i++) {
+      const px = right - (magazine - i) * (pipW + gap) + gap;
+      const loaded = !reloading && i < player.ammo;
+      if (shells) {
+        shell(px, pipY - pipH + 14 * unit, pipW, pipH, loaded);
+      } else {
+        roundedRect(context, px, pipY, pipW, pipH, 1.5 * unit);
+        context.fillStyle = loaded ? (low ? COLOR.danger : 'rgba(245,247,250,0.9)') : 'rgba(255,255,255,0.14)';
         context.fill();
       }
     }
@@ -622,57 +757,97 @@ export function createHud(menu: Menu): Hud {
     else if (player.ladder) stance = 'ON LADDER';
     else if (player.cover) stance = 'IN COVER';
     else if (player.crouch > 0.5) stance = 'CROUCHING';
-    if (stance) text(context, stance, right, baseY - 130 * unit, { size: 16 * unit, color: COLOR.accent, align: 'right', spacing: 5 * unit, weight: 700 });
+    if (stance) text(context, stance, right, base - 150 * unit, { size: 13 * unit, color: COLOR.accent, align: 'right', spacing: 4 * unit, weight: 700 });
+
+    if (player.ammo <= 3 && !reloading) {
+      const warning = player.ammo === 0 ? (player.reserve > 0 ? 'EMPTY  ·  RELOAD' : 'NO AMMO  ·  FIND A STATION') : 'LOW MAGAZINE';
+      text(context, warning, right, base - 128 * unit, { size: 13 * unit, align: 'right', color: COLOR.danger, spacing: 2 * unit, weight: 700 });
+    }
   }
 
-  function drawStatus(width: number, height: number, margin: number, unit: number, state: GameState, player: Player, time: number): void {
-    const x = width - margin - 248 * unit;
-    panel(context, x, margin, 248 * unit, 112 * unit);
-    text(context, `SURVIVAL / SOLO / ${floorName(state.floor).toUpperCase()}`, x + 20 * unit, margin + 28 * unit, { size: 13 * unit, spacing: 3 * unit, color: COLOR.dim });
-    text(context, String(state.waves.number).padStart(2, '0'), x + 20 * unit, margin + 84 * unit, { size: 52 * unit, weight: 800, color: COLOR.accent });
-    text(context, `/ ${String(wavesOnFloor(state.floor)).padStart(2, '0')} WAVES`, x + 93 * unit, margin + 77 * unit, { size: 16 * unit, color: COLOR.dim });
-    for (let i = 0; i < wavesOnFloor(state.floor); i++) {
-      context.fillStyle = i < state.waves.number - (state.waves.phase === 'cleared' ? 0 : 1) ? COLOR.good : 'rgba(255,255,255,.12)';
-      context.fillRect(x + (20 + i * 43) * unit, margin + 99 * unit, 35 * unit, 3 * unit);
+  // Top right: where you are, the wave, and the score.
+  function drawStatus(width: number, height: number, margin: number, unit: number, state: GameState, time: number): void {
+    const right = width - margin;
+    const top = margin;
+    const count = wavesOnFloor(state.floor);
+    scrim(width - margin - 320 * unit, top - 24 * unit, 320 * unit + margin, 190 * unit, 'right');
+
+    const place = state.level.theme === 'garage' ? 'THE GARAGE' : `${floorName(state.floor)}  ·  ${stopAt(state.floor).name}`.toUpperCase();
+    text(context, place, right, top + 10 * unit, { size: 13 * unit, align: 'right', spacing: 3 * unit, color: 'rgba(242,244,247,0.86)', weight: 700 });
+
+    // The wave: a big number, out of how many, and a segment for each.
+    const totalLabel = `/ ${String(count).padStart(2, '0')}`;
+    const totalWidth = measure(context, totalLabel, 20 * unit, 700, 1 * unit);
+    text(context, totalLabel, right, top + 66 * unit, { size: 20 * unit, align: 'right', color: COLOR.dim, weight: 700, spacing: 1 * unit });
+    const number = String(state.waves.number).padStart(2, '0');
+    const numberRight = right - totalWidth - 8 * unit;
+    text(context, number, numberRight, top + 66 * unit, { size: 56 * unit, weight: 800, align: 'right', color: COLOR.accent });
+    const numberWidth = measure(context, number, 56 * unit, 800);
+    text(context, 'WAVE', numberRight - numberWidth - 12 * unit, top + 66 * unit, { size: 13 * unit, align: 'right', spacing: 4 * unit, color: COLOR.dim, weight: 700 });
+    const done = state.waves.number - (state.waves.phase === 'cleared' || state.waves.phase === 'search' || state.waves.phase === 'lift' ? 0 : 1);
+    const segment = Math.min(34 * unit, (220 * unit) / count - 6 * unit);
+    for (let i = 0; i < count; i++) {
+      const sx = right - (count - i) * (segment + 6 * unit) + 6 * unit;
+      const current = i === done && state.waves.phase === 'active';
+      const glow = current && !settings.reducedFlashing ? 0.6 + 0.4 * Math.sin(time * 4) : 1;
+      context.globalAlpha = glow;
+      context.fillStyle = i < done ? COLOR.good : current ? COLOR.accent : 'rgba(255,255,255,0.14)';
+      roundedRect(context, sx, top + 80 * unit, segment, 4 * unit, 2 * unit);
+      context.fill();
+      context.globalAlpha = 1;
     }
-    // The score, under the wave counter.
-    const scoreY = margin + 124 * unit;
-    panel(context, x, scoreY, 248 * unit, 56 * unit);
-    text(context, 'POINTS', x + 20 * unit, scoreY + 34 * unit, { size: 13 * unit, spacing: 3 * unit, color: COLOR.dim });
-    text(context, String(state.points[player.id] ?? 0), x + 228 * unit, scoreY + 40 * unit, { size: 34 * unit, weight: 800, align: 'right', color: COLOR.text });
+
+    // The score rolls up to its new value.
+    const score = String(Math.round(rolledPoints));
+    text(context, score, right, top + 132 * unit, { size: 34 * unit, weight: 800, align: 'right' });
+    const scoreWidth = measure(context, score, 34 * unit, 800);
+    text(context, 'PTS', right - scoreWidth - 10 * unit, top + 132 * unit, { size: 13 * unit, align: 'right', spacing: 3 * unit, color: COLOR.accent, weight: 700 });
     if (time - gainAt < 0.9) {
       const age = time - gainAt;
-      text(context, `+${gainAmount}`, width / 2, height / 2 + (112 + age * 18) * unit, { size: 22 * unit, weight: 700, align: 'center', color: COLOR.accent, spacing: 2 * unit, alpha: Math.min(1, (0.9 - age) * 3) });
+      const alpha = Math.min(1, (0.9 - age) * 3);
+      text(context, `+${gainAmount}`, right, top + 156 * unit + age * 10 * unit, { size: 16 * unit, weight: 800, align: 'right', color: COLOR.accent, spacing: 1 * unit, alpha });
+      text(context, `+${gainAmount}`, width / 2, height / 2 + (112 + age * 18) * unit, { size: 20 * unit, weight: 800, align: 'center', color: COLOR.accent, spacing: 2 * unit, alpha });
     }
     if (time - killAt < 1.3) {
-      text(context, killWasHead ? 'HEADSHOT' : 'HOSTILE DOWN', width / 2, height / 2 + 77 * unit, { size: 16 * unit, align: 'center', color: killWasHead ? COLOR.danger : COLOR.accent, spacing: 3 * unit, alpha: Math.min(1, (1.3 - time + killAt) * 3) });
+      text(context, killWasHead ? 'HEADSHOT' : 'KILL', width / 2, height / 2 + 80 * unit, { size: 15 * unit, weight: 800, align: 'center', color: killWasHead ? COLOR.danger : COLOR.text, spacing: 4 * unit, alpha: Math.min(1, (1.3 - time + killAt) * 3) });
     }
-    const hintY = height - margin;
+
+    // Reminders of the less obvious keys, faint along the bottom.
+    const hintY = height - margin + 26 * unit;
     const hints = [[bindings.map, 'MAP'], [bindings.reload, 'RELOAD'], [bindings.cover, 'COVER']];
-    let hx = width / 2 - 185 * unit;
-    for (const [key, label] of hints) {
-      const kw = keycap(context, keyLabel(key), hx, hintY, 25 * unit);
-      text(context, label, hx + kw + 7 * unit, hintY - 3 * unit, { size: 12 * unit, color: COLOR.dim, spacing: 1 * unit });
-      hx += 130 * unit;
-    }
-    if (player.bars > 0) text(context, `BOARDS ${player.bars} / ${config.doors.carryLimit}`, margin, height - margin + 29 * unit, { size: 13 * unit, color: COLOR.accent, spacing: 2 * unit });
-    if (player.ammo <= 3 && player.reloadLeft <= 0) text(context, player.ammo === 0 ? (player.reserve > 0 ? 'EMPTY / RELOAD' : 'NO AMMO / FIND A STATION') : 'LOW MAGAZINE', width - margin, height - margin + 28 * unit, { size: 14 * unit, align: 'right', color: COLOR.danger, spacing: 2 * unit });
+    const hintSize = 20 * unit;
+    const widths = hints.map(([key, label]) => Math.max(hintSize, measure(context, keyLabel(key), hintSize * 0.62, 700, 0.5) + hintSize * 0.7) + 6 * unit + measure(context, label, 11 * unit, 700, 2 * unit));
+    const spacing = 26 * unit;
+    let hx = width / 2 - (widths.reduce((sum, value) => sum + value, 0) + spacing * (hints.length - 1)) / 2;
+    const rowWidth = widths.reduce((sum, value) => sum + value, 0) + spacing * (hints.length - 1);
+    context.save();
+    roundedRect(context, hx - 12 * unit, hintY - 21 * unit, rowWidth + 24 * unit, 28 * unit, 14 * unit);
+    context.fillStyle = 'rgba(4,8,12,0.45)';
+    context.fill();
+    context.globalAlpha = 0.85;
+    hints.forEach(([key, label], index) => {
+      const kw = keycap(context, keyLabel(key), hx, hintY, hintSize);
+      text(context, label, hx + kw + 6 * unit, hintY - 3 * unit, { size: 11 * unit, color: COLOR.text, spacing: 2 * unit, weight: 700 });
+      hx += widths[index] + spacing;
+    });
+    context.restore();
   }
 
-  // A line of keycaps and a verb, low in the middle of the screen.
+  // What pressing use does here: a pill low in the middle of the screen with the key, what it
+  // does, and what it costs.
   function drawPrompt(width: number, height: number, unit: number, state: GameState, player: Player): void {
-    let prompt: { keys: string[]; label: string } | null = null;
+    let prompt: { keys: string[]; label: string; cost?: number; short?: boolean } | null = null;
     const interaction = interactionTarget(state, player);
     if (interaction?.kind === 'station') {
       const offer = stationOffer(state, player, interaction.index);
       prompt = offer.status === 'ok'
-        ? { keys: [bindings.use], label: `${offer.label}   ${offer.cost} pts` }
-        : offer.status === 'full' ? { keys: [], label: 'Ammo full' } : { keys: [], label: `${offer.label.replace('Buy ', '')} costs ${offer.cost} points` };
+        ? { keys: [bindings.use], label: offer.label, cost: offer.cost }
+        : offer.status === 'full' ? { keys: [], label: 'Ammo full' } : { keys: [], label: offer.label, cost: offer.cost, short: true };
     } else if (interaction?.kind === 'lock') {
       const offer = lockOffer(state, player, interaction.index);
       prompt = offer.status === 'ok'
-        ? { keys: [bindings.use], label: `Open ${offer.label.toLowerCase()}   ${offer.cost} pts` }
-        : { keys: [], label: `${offer.label} costs ${offer.cost} points` };
+        ? { keys: [bindings.use], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost }
+        : { keys: [], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost, short: true };
     } else if (interaction?.kind === 'objective') prompt = { keys: [bindings.use], label: `Take the ${state.level.objective?.label.toLowerCase() ?? 'item'}` };
     else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
     else if (interaction?.kind === 'pickup') prompt = { keys: [bindings.use], label: 'Pick up the boards' };
@@ -682,92 +857,139 @@ export function createHud(menu: Menu): Hud {
     else if (player.cover) prompt = { keys: [bindings.leanLeft, bindings.leanRight], label: 'Peek, aim to stand up' };
     if (!prompt) return;
 
-    const size = 34 * unit;
-    const labelSize = 25 * unit;
-    const labelWidth = measure(context, prompt.label, labelSize, 600, 1 * unit);
+    const size = 30 * unit;
+    const labelSize = 21 * unit;
+    const pad = 16 * unit;
+    const labelWidth = measure(context, prompt.label, labelSize, 600, 0.5 * unit);
     const keyWidths = prompt.keys.map((key) => Math.max(size, measure(context, keyLabel(key), size * 0.62, 700, 0.5) + size * 0.7) + 6 * unit);
-    const total = keyWidths.reduce((sum, value) => sum + value, 0) + labelWidth + 34 * unit;
+    const costText = prompt.cost === undefined ? '' : prompt.short ? `NEED ${prompt.cost}` : `${prompt.cost}`;
+    const costWidth = costText ? measure(context, costText, 17 * unit, 800, 1 * unit) + measure(context, ' PTS', 12 * unit, 700, 2 * unit) + 22 * unit : 0;
+    const total = pad + keyWidths.reduce((sum, value) => sum + value, 0) + (prompt.keys.length ? 6 * unit : 0) + labelWidth + (costText ? 14 * unit + costWidth : 0) + pad;
     const x = (width - total) / 2;
-    const y = height * 0.76;
-    panel(context, x, y - 28 * unit, total, 54 * unit, 'rgba(9,11,15,0.7)', 27 * unit);
-    let cursor = x + 18 * unit;
+    const y = height * 0.72;
+    const h = 48 * unit;
+    roundedRect(context, x, y - h / 2, total, h, h / 2);
+    context.fillStyle = 'rgba(6,10,14,0.78)';
+    context.fill();
+    context.strokeStyle = 'rgba(255,255,255,0.12)';
+    context.lineWidth = 1;
+    context.stroke();
+
+    let cursor = x + pad;
     prompt.keys.forEach((key, index) => {
-      keycap(context, keyLabel(key), cursor, y + 8 * unit, size);
+      keycap(context, keyLabel(key), cursor, y + size * 0.32, size);
       cursor += keyWidths[index];
     });
-    text(context, prompt.label, cursor + 6 * unit, y + 8 * unit, { size: labelSize, spacing: 1 * unit });
+    if (prompt.keys.length) cursor += 6 * unit;
+    text(context, prompt.label, cursor, y + labelSize * 0.34, { size: labelSize, spacing: 0.5 * unit, color: prompt.short ? COLOR.dim : COLOR.text, shadow: false });
+    cursor += labelWidth + 14 * unit;
+    if (costText) {
+      // The price as a chip: amber when you can pay it, red when you cannot.
+      const tone = prompt.short ? COLOR.danger : COLOR.accent;
+      const chipH = 28 * unit;
+      roundedRect(context, cursor, y - chipH / 2, costWidth, chipH, chipH / 2);
+      context.fillStyle = prompt.short ? 'rgba(229,72,60,0.16)' : 'rgba(232,184,102,0.16)';
+      context.fill();
+      context.strokeStyle = tone;
+      context.globalAlpha = 0.6;
+      context.stroke();
+      context.globalAlpha = 1;
+      const amountWidth = measure(context, costText, 17 * unit, 800, 1 * unit);
+      text(context, costText, cursor + 11 * unit, y + 6 * unit, { size: 17 * unit, weight: 800, color: tone, spacing: 1 * unit, shadow: false });
+      text(context, ' PTS', cursor + 11 * unit + amountWidth, y + 6 * unit, { size: 12 * unit, weight: 700, color: tone, spacing: 2 * unit, shadow: false });
+    }
   }
 
   function drawBanner(width: number, height: number, unit: number, state: GameState, time: number): void {
     const waves = state.waves;
     const seconds = (tick: number) => (state.tick - tick) / config.ticksPerSecond;
+    let eyebrow = '';
     let title = '';
     let detail = '';
     let color: string = COLOR.text;
     let age = 0;
 
     if (waves.phase === 'cleared' || waves.phase === 'search') {
-      title = `${floorName(state.floor).toUpperCase()} CLEARED`;
+      eyebrow = floorName(state.floor).toUpperCase();
+      title = 'CLEARED';
       detail = isTopFloor(state) ? 'Extraction is on the way' : state.objective.done ? 'The elevator is opening' : 'Find the keycard to wake the elevator';
       color = COLOR.accent;
       age = 0.5;
     } else if (waves.phase === 'lift') {
+      eyebrow = 'THE WAY UP';
       title = 'ELEVATOR READY';
       detail = 'Step inside to go up';
       color = COLOR.good;
       age = 0.5;
     } else if (waves.phase === 'ride') {
+      eyebrow = 'GOING UP';
       title = floorName(state.floor + 1).toUpperCase();
-      detail = 'Going up';
+      detail = state.floor + 1 < stops.length ? stopAt(state.floor + 1).name : 'The helipad';
       color = COLOR.accent;
       age = 0.5;
     } else if (waves.arrivedTick >= 0 && seconds(waves.arrivedTick) < BANNER_SECONDS) {
-      title = floorName(state.floor).toUpperCase();
-      detail = `${stopAt(state.floor).name}. Board up the doors`;
+      eyebrow = floorName(state.floor).toUpperCase();
+      title = stopAt(state.floor).name.toUpperCase();
+      detail = 'Board up the doors before they come';
       color = COLOR.accent;
       age = seconds(waves.arrivedTick);
     } else if (waves.diedTick >= 0 && seconds(waves.diedTick) < BANNER_SECONDS) {
-      title = waves.lostRun ? 'OUT OF LIVES' : 'YOU WERE OVERRUN';
-      detail = waves.lostRun
-        ? 'Back to wave 1 with fresh lives'
-        : `Restarting wave ${waves.number}. ${state.lives} ${state.lives === 1 ? 'life' : 'lives'} left`;
+      eyebrow = waves.lostRun ? 'NO LIVES LEFT' : `${state.lives} ${state.lives === 1 ? 'LIFE' : 'LIVES'} LEFT`;
+      title = waves.lostRun ? 'OUT OF LIVES' : 'OVERRUN';
+      detail = waves.lostRun ? 'Back to wave 1 with fresh lives' : `Restarting wave ${waves.number}`;
       color = COLOR.danger;
       age = seconds(waves.diedTick);
     } else if (state.gate.closed && seconds(state.gate.closedTick) < BANNER_SECONDS) {
+      eyebrow = 'THE GARAGE';
       title = 'GATE SEALED';
       detail = 'Choose which doors to block. The rest let them in';
       color = COLOR.good;
       age = seconds(state.gate.closedTick);
     } else if (waves.startedTick >= 0 && seconds(waves.startedTick) < BANNER_SECONDS) {
+      eyebrow = `${floorName(state.floor).toUpperCase()}  ·  ${waves.number} OF ${wavesOnFloor(state.floor)}`;
       title = `WAVE ${waves.number}`;
       detail = `${zombiesInWave(state.floor, waves.number)} zombies incoming`;
       age = seconds(waves.startedTick);
     } else if (state.tick < 4.5 * config.ticksPerSecond && waves.phase === 'entry') {
-      title = 'LEVEL 0';
-      detail = 'The garage. Get off the street';
+      eyebrow = 'LEVEL 0';
+      title = 'THE GARAGE';
+      detail = 'Get off the street';
       color = COLOR.accent;
       age = state.tick / config.ticksPerSecond;
     }
     if (!title) return;
 
-    const fade = Math.min(1, age * 3, (BANNER_SECONDS - age) * 1.6);
-    const y = height * 0.3;
+    const fade = clamp(Math.min(1, age * 3, (BANNER_SECONDS - age) * 1.6), 0, 1);
+    // The title slides in a little as it fades up.
+    const rise = (1 - Math.min(1, age * 3)) * 14 * unit;
+    const y = height * 0.3 + rise;
     context.save();
-    context.globalAlpha = clamp(fade, 0, 1);
-    const size = 92 * unit;
-    const spacing = 16 * unit;
-    const titleWidth = measure(context, title, size, 800, spacing);
-    text(context, title, width / 2 + spacing / 2, y, { size, weight: 800, align: 'center', spacing, color });
-    // Rules either side of the title.
-    context.fillStyle = color;
-    context.globalAlpha *= 0.7;
-    const ruleLength = Math.min(width * 0.2, 360 * unit);
-    context.fillRect(width / 2 - titleWidth / 2 - 40 * unit - ruleLength, y - size * 0.32, ruleLength, 2 * unit);
-    context.fillRect(width / 2 + titleWidth / 2 + 40 * unit, y - size * 0.32, ruleLength, 2 * unit);
+    context.globalAlpha = fade;
+
+    // A dark band behind, widest in the middle.
+    const bandRadius = 110 * unit;
+    context.save();
+    context.translate(width / 2, y - 26 * unit);
+    context.scale(Math.min(width * 0.42, 900 * unit) / bandRadius, 1);
+    const band = context.createRadialGradient(0, 0, 0, 0, 0, bandRadius);
+    band.addColorStop(0, 'rgba(4,8,12,0.7)');
+    band.addColorStop(0.6, 'rgba(4,8,12,0.4)');
+    band.addColorStop(1, 'rgba(4,8,12,0)');
+    context.fillStyle = band;
+    context.fillRect(-bandRadius, -bandRadius, bandRadius * 2, bandRadius * 2);
     context.restore();
-    context.save();
-    context.globalAlpha = clamp(fade, 0, 1);
-    text(context, detail, width / 2, y + 44 * unit, { size: 26 * unit, align: 'center', color: COLOR.dim, spacing: 3 * unit });
+
+    const size = 78 * unit;
+    const spacing = 14 * unit;
+    const titleWidth = measure(context, title, size, 800, spacing);
+    text(context, eyebrow, width / 2 + 2 * unit, y - size - 4 * unit, { size: 15 * unit, weight: 700, align: 'center', spacing: 5 * unit, color });
+    text(context, title, width / 2 + spacing / 2, y, { size, weight: 800, align: 'center', spacing, color: COLOR.text });
+    // Short rules either side of the title.
+    context.fillStyle = color;
+    const ruleLength = Math.min(width * 0.12, 160 * unit);
+    context.fillRect(width / 2 - titleWidth / 2 - 30 * unit - ruleLength, y - size * 0.34, ruleLength, 2 * unit);
+    context.fillRect(width / 2 + titleWidth / 2 + 30 * unit, y - size * 0.34, ruleLength, 2 * unit);
+    text(context, detail, width / 2, y + 40 * unit, { size: 21 * unit, align: 'center', color: COLOR.dim, spacing: 2 * unit });
     context.restore();
     void time;
   }

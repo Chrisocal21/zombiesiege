@@ -3,6 +3,7 @@ import { boardBox, closeGate } from '../game/doors';
 import { spawnZombie } from '../game/zombies';
 import { enterLevel } from '../game/state';
 import { levelForFloor } from '../levels';
+import { giveShotgun } from '../game/weapons';
 import type { Level } from '../levels/types';
 import type { Hud } from '../render/hud';
 import type { Menu } from '../render/menu';
@@ -62,7 +63,7 @@ export function installReview(context: ReviewContext): void {
     place(options: {
       x: number; y?: number; z: number; yaw: number; pitch?: number; aim?: boolean;
       gate?: boolean; boarded?: number[]; phase?: 'entry' | 'prep' | 'active'; wave?: number; timer?: number;
-      zombies?: [number, number, number?][]; health?: number; ammo?: number; fire?: boolean; lunge?: boolean; floor?: number; menu?: 'character' | 'settings' | 'controls' | 'main';
+      zombies?: [number, number, number?][]; health?: number; ammo?: number; fire?: boolean; lunge?: boolean; floor?: number; shotgun?: boolean; points?: number; banner?: boolean; reload?: number; menu?: 'character' | 'settings' | 'controls' | 'main';
     }) {
       const state = createGameState(context.level); state.tick = 2400;
       if (options.floor) { state.floor = options.floor; enterLevel(state, levelForFloor(options.floor)); }
@@ -71,6 +72,8 @@ export function installReview(context: ReviewContext): void {
       player.x = options.x; player.z = options.z; player.y = options.y ?? 0;
       player.yaw = options.yaw; player.pitch = options.pitch ?? 0;
       player.aiming = !!options.aim;
+      if (options.shotgun) giveShotgun(player, 0);
+      if (options.points !== undefined) state.points[player.id] = options.points;
       if (options.health !== undefined) player.health = options.health;
       if (options.ammo !== undefined) player.ammo = options.ammo;
       if (options.gate) { closeGate(state); state.gate.closedTick = 100; }
@@ -81,7 +84,8 @@ export function installReview(context: ReviewContext): void {
       state.waves.phase = options.phase ?? (options.gate ? 'active' : 'entry');
       state.waves.number = options.wave ?? 1;
       if (state.waves.phase === 'prep') state.waves.timer = options.timer ?? 18;
-      if (state.waves.phase === 'active') { state.waves.toSpawn = 6; state.waves.startedTick = state.tick - 6000; }
+      if (state.waves.phase === 'active') { state.waves.toSpawn = 6; state.waves.startedTick = state.tick - (options.banner ? 70 : 6000); }
+      if (options.reload !== undefined) player.reloadLeft = options.reload;
       for (const [x, z, yaw] of options.zombies ?? []) {
         spawnZombie(state, x, z, null);
         const zombie = state.zombies[state.zombies.length - 1];
