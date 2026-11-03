@@ -61,21 +61,21 @@ export const floor12: Level = {
     ...partition(style, 'z', 9, 1, 11),
 
     // Curtained bays along the north wall, each with a bed.
-    ...[-4, 0, 4, 8, 12].map((x) => furniture(x, -9.5, 0.12, 2, 3, CURTAIN)),
-    ...[-2, 2, 6, 10, 13.5].map((x) => furniture(x, -9.6, 1, 0.6, 2, BED)),
+    ...[-4, 0, 4, 8, 12].map((x) => furniture(x, -9.5, 0.12, 2, 3, CURTAIN, 'curtain', 'east')),
+    ...[-2, 2, 6, 10, 13.5].map((x) => furniture(x, -9.6, 1, 0.6, 2, BED, 'bed', 'south')),
     // The nurses' station in the middle of the ward, open on its east side.
-    furniture(0, 1.75, 8, 1.05, 0.9, COUNTER),
-    furniture(0, 6.75, 8, 1.05, 0.9, COUNTER),
-    furniture(-4, 4.25, 0.9, 1.05, 5.4, COUNTER),
+    furniture(0, 1.75, 8, 1.05, 0.9, COUNTER, 'counter', 'north'),
+    furniture(0, 6.75, 8, 1.05, 0.9, COUNTER, 'counter', 'south'),
+    furniture(-4, 4.25, 0.9, 1.05, 5.4, COUNTER, 'counter', 'west'),
     // Isolation A.
-    furniture(-12, 7.5, 1, 0.6, 2.2, BED),
-    furniture(-10.2, 9.8, 0.8, 1.2, 0.8, '#5d646b'),
+    furniture(-12, 7.5, 1, 0.6, 2.2, BED, 'bed', 'north'),
+    furniture(-10.2, 9.8, 0.8, 1.2, 0.8, '#5d646b', 'monitor', 'north'),
     // Isolation B, with the key on the doctor's desk.
-    furniture(13.8, 4.5, 1, 0.6, 2.2, BED),
-    furniture(11, 8.5, 2, 0.8, 1, '#7d5a3c'),
+    furniture(13.8, 4.5, 1, 0.6, 2.2, BED, 'bed', 'north'),
+    furniture(11, 8.5, 2, 0.8, 1, '#7d5a3c', 'desk', 'south'),
     // Trolleys left in the ward.
-    furniture(-6.5, -2, 0.9, 0.7, 2.1, '#8a9ba3'),
-    furniture(7, -2.5, 0.9, 0.7, 2.1, '#8a9ba3'),
+    furniture(-6.5, -2, 0.9, 0.7, 2.1, '#8a9ba3', 'gurney', 'south'),
+    furniture(7, -2.5, 0.9, 0.7, 2.1, '#8a9ba3', 'gurney', 'north'),
   ],
   ladders: [],
   lights,

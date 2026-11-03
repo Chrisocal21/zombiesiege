@@ -2,11 +2,14 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // Bake only immutable scenery. Doors, pickups, characters and effects retain their own rigs.
+// Transparent meshes are left alone unless their material says the order they draw in does not
+// matter, as for shadows and stains flat on the floor.
 export function bakeStaticMeshes(root: THREE.Group): void {
   root.updateMatrixWorld(true);
   const groups = new Map<string, { material: THREE.Material; meshes: THREE.Mesh[]; shadows: boolean; receive: boolean }>();
   root.traverse(object => {
-    if (!(object instanceof THREE.Mesh) || Array.isArray(object.material) || object.material.transparent) return;
+    if (!(object instanceof THREE.Mesh) || Array.isArray(object.material)) return;
+    if (object.material.transparent && !object.material.userData.bake) return;
     const key = `${object.material.uuid}:${object.castShadow}:${object.receiveShadow}`;
     let group = groups.get(key);
     if (!group) { group = { material: object.material, meshes: [], shadows: object.castShadow, receive: object.receiveShadow }; groups.set(key, group); }

@@ -59,23 +59,23 @@ export const floor9: Level = {
     ...partition(style, 'x', 3, 3, 12, [{ centre: 7.5, width: 2.2, height: DOOR_HEIGHT }]),
 
     // Scrub room.
-    furniture(-11.4, 4.6, 1, 2, 2.2, CABINET),
-    furniture(-6, 5.5, 3.5, 0.5, 0.7, '#6d7f78'),
+    furniture(-11.4, 4.6, 1, 2, 2.2, CABINET, 'lockers', 'east'),
+    furniture(-6, 5.5, 3.5, 0.5, 0.7, '#6d7f78', 'bench', 'south'),
     // Theatre 1: the table under the lamp, and trolleys.
-    furniture(-7.5, -4, 2.6, 0.95, 1, TABLE),
-    furniture(-10.6, -8, 1, 0.9, 1.4, TABLE),
-    furniture(-4.2, -9.5, 1, 1.9, 2.5, CABINET),
+    furniture(-7.5, -4, 2.6, 0.95, 1, TABLE, 'operating', 'east'),
+    furniture(-10.6, -8, 1, 0.9, 1.4, TABLE, 'instruments', 'east'),
+    furniture(-4.2, -9.5, 1, 1.9, 2.5, CABINET, 'supply', 'west'),
     // Theatre 2, with the keycard on the surgeon's desk.
-    furniture(7.5, -5, 2.6, 0.95, 1, TABLE),
-    furniture(11.3, -8, 1, 1.9, 3, CABINET),
-    furniture(9.5, -10.5, 2, 0.8, 1, '#7d5a3c'),
+    furniture(7.5, -5, 2.6, 0.95, 1, TABLE, 'operating', 'west'),
+    furniture(11.3, -8, 1, 1.9, 3, CABINET, 'supply', 'west'),
+    furniture(9.5, -10.5, 2, 0.8, 1, '#7d5a3c', 'desk', 'south'),
     // Corridor.
-    furniture(0.8, -3, 0.9, 0.7, 2.1, '#8a9ba3'),
-    furniture(-1.2, 5.5, 0.9, 0.7, 2.1, '#8a9ba3'),
+    furniture(0.8, -3, 0.9, 0.7, 2.1, '#8a9ba3', 'gurney', 'south'),
+    furniture(-1.2, 5.5, 0.9, 0.7, 2.1, '#8a9ba3', 'gurney', 'north'),
     // Recovery bay.
-    furniture(4.9, 4.6, 2.1, 0.6, 1, BED),
-    furniture(10.6, 4.6, 2.1, 0.6, 1, BED),
-    furniture(10.6, 10.4, 2.1, 0.6, 1, BED),
+    furniture(4.9, 4.6, 2.1, 0.6, 1, BED, 'bed', 'east'),
+    furniture(10.6, 4.6, 2.1, 0.6, 1, BED, 'bed', 'west'),
+    furniture(10.6, 10.4, 2.1, 0.6, 1, BED, 'bed', 'west'),
   ],
   ladders: [],
   lights,

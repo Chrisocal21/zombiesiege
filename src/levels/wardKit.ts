@@ -1,5 +1,5 @@
 import { alcoveBoxes, gapsOn, wallLine, type Gap } from './build';
-import type { Door, Elevator, LevelBox, Station, Surface } from './types';
+import type { Door, Elevator, LevelBox, Prop, Station } from './types';
 
 // Shared parts for the hospital floors: the shell of a floor, partitions, furniture, and the
 // steps that stop a player walking into a wall station.
@@ -49,9 +49,14 @@ export function entry(x: number, z: number, nx: number, nz: number): Door {
   return { position: { x, y: 0, z }, normal: { x: nx, z: nz }, width: 2.4, height: DOOR_HEIGHT };
 }
 
-// Furniture is solid but low, so zombies and players go around it and can climb onto it.
-export function furniture(x: number, z: number, sx: number, sy: number, sz: number, color: string, surface: Surface = 'plain'): LevelBox {
-  return { position: { x, y: sy / 2, z }, size: { x: sx, y: sy, z: sz }, color, surface };
+// Which way a prop's front faces, as a rotation about y.
+export const FACING = { south: 0, east: Math.PI / 2, north: Math.PI, west: -Math.PI / 2 } as const;
+export type Facing = keyof typeof FACING;
+
+// Furniture is solid but low, so zombies and players go around it and can climb onto it. The
+// colour is what the map shows; the prop is what the renderer models in the box.
+export function furniture(x: number, z: number, sx: number, sy: number, sz: number, color: string, prop?: Prop, facing: Facing = 'south'): LevelBox {
+  return { position: { x, y: sy / 2, z }, size: { x: sx, y: sy, z: sz }, color, surface: 'plain', prop, facing: FACING[facing] };
 }
 
 export function stationBoxes(stations: Station[]): LevelBox[] {

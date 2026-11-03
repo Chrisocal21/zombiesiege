@@ -30,12 +30,37 @@ export type Surface =
   | 'lock'
   | 'step';
 
+// A piece of furniture the renderer models in place of the plain box. The rules only see the box,
+// so the model stays inside it.
+export type Prop =
+  | 'desk'
+  | 'counter'
+  | 'seating'
+  | 'cabinet'
+  | 'shelf'
+  | 'lab'
+  | 'fridge'
+  | 'analyser'
+  | 'cart'
+  | 'bed'
+  | 'gurney'
+  | 'operating'
+  | 'instruments'
+  | 'supply'
+  | 'lockers'
+  | 'bench'
+  | 'curtain'
+  | 'monitor';
+
 export interface LevelBox {
   // Center of the box, not a corner.
   position: Vec3;
   size: Vec3;
   color: string;
   surface?: Surface;
+  prop?: Prop;
+  // Rotation about y of the prop's front, as for signs: 0 faces +z. A bed's front is its foot.
+  facing?: number;
 }
 
 // A ladder runs up the face of a box. The player climbs it from the side the normal points to.

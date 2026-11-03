@@ -1,5 +1,6 @@
 import { alcoveBoxes, gapsOn, wallLine, type Gap } from './build';
-import type { Door, Elevator, Level, LevelBox, Lock, Station, Surface } from './types';
+import type { Door, Elevator, Level, LevelBox, Lock, Station } from './types';
+import { furniture } from './wardKit';
 
 // Floor 3 of the hospital tower: the admissions floor. You arrive in the lobby, fight through the
 // open-plan office, and pay for the doors to the records room and the manager's office, where the
@@ -56,11 +57,6 @@ const stations: Station[] = [
   { kind: 'shotgun', position: { x: -13.95, y: 1.25, z: -6 }, normal: { x: 1, z: 0 } },
 ];
 
-// Furniture is solid but low, so zombies and players go around it and can climb onto it.
-function furniture(x: number, z: number, sx: number, sy: number, sz: number, color: string, surface: Surface = 'plain'): LevelBox {
-  return { position: { x, y: sy / 2, z }, size: { x: sx, y: sy, z: sz }, color, surface };
-}
-
 const stationBoxes: LevelBox[] = stations.map((station) => {
   const alongX = station.normal.z !== 0;
   return {
@@ -102,17 +98,17 @@ export const floor3: Level = {
     ...wallLine('x', -5, 8, 14, [], CEILING, INNER, WALL, 'plaster'),
 
     // Lobby: a reception counter and waiting seats.
-    furniture(-8, 7, 4.6, 1.05, 0.9, COUNTER),
-    furniture(-12.6, 11, 2.2, 0.8, 0.9, '#3d5a52'),
-    furniture(-5.4, 11, 2.2, 0.8, 0.9, '#3d5a52'),
+    furniture(-8, 7, 4.6, 1.05, 0.9, COUNTER, 'counter', 'north'),
+    furniture(-12.6, 11, 2.2, 0.8, 0.9, '#3d5a52', 'seating', 'north'),
+    furniture(-5.4, 11, 2.2, 0.8, 0.9, '#3d5a52', 'seating', 'north'),
     // Open-plan office: rows of desks with room to run between.
-    ...[-1, 4, 9].flatMap((x) => [-8, -3, 2].map((z) => furniture(x, z, 2.2, 0.78, 1, DESK))),
-    furniture(12.8, 9.5, 1.2, 1.8, 3, CABINET),
-    furniture(-2.4, -11.4, 3, 1.8, 0.8, CABINET),
+    ...[-1, 4, 9].flatMap((x) => [-8, -3, 2].map((z) => furniture(x, z, 2.2, 0.78, 1, DESK, 'desk', z === -3 ? 'north' : 'south'))),
+    furniture(12.8, 9.5, 1.2, 1.8, 3, CABINET, 'cabinet', 'west'),
+    furniture(-2.4, -11.4, 3, 1.8, 0.8, CABINET, 'cabinet', 'south'),
     // Records room: tall filing cabinets in rows.
-    ...[-9, -6.5, -3.5].flatMap((z) => [-11.5, -8].map((x) => furniture(x, z, 1.2, 1.9, 0.6, CABINET))),
+    ...[-9, -6.5, -3.5].flatMap((z) => [-11.5, -8].map((x) => furniture(x, z, 1.2, 1.9, 0.6, CABINET, 'cabinet', 'south'))),
     // The manager's desk, where the keycard is.
-    furniture(12, -9.5, 2, 0.8, 1, DESK),
+    furniture(12, -9.5, 2, 0.8, 1, DESK, 'desk', 'south'),
   ],
   ladders: [],
   lights: [

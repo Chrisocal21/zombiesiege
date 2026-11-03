@@ -71,25 +71,25 @@ export const floor6: Level = {
     ...partition(style, 'z', 2, 2.5, 9),
 
     // Lobby.
-    furniture(-12, 6.5, 0.9, 1.05, 4, '#4c5a66'),
-    furniture(-14, -6, 2.2, 0.8, 0.9, '#3d5a52'),
-    furniture(-11.2, -7.6, 0.9, 0.8, 2.2, '#3d5a52'),
+    furniture(-12, 6.5, 0.9, 1.05, 4, '#4c5a66', 'counter', 'east'),
+    furniture(-14, -6, 2.2, 0.8, 0.9, '#3d5a52', 'seating', 'south'),
+    furniture(-11.2, -7.6, 0.9, 0.8, 2.2, '#3d5a52', 'seating', 'west'),
     // Pharmacy: tall shelving at either end, the weapon wall between.
-    furniture(-8.6, -6, 0.6, 2, 3.6, SHELF),
-    furniture(-2.4, -6, 0.6, 2, 3.6, SHELF),
+    furniture(-8.6, -6, 0.6, 2, 3.6, SHELF, 'shelf', 'east'),
+    furniture(-2.4, -6, 0.6, 2, 3.6, SHELF, 'shelf', 'west'),
     // Lab 1.
-    furniture(2.5, -5.5, 4, 0.9, 1, BENCH),
-    furniture(5.8, -8, 1.2, 1.9, 1.2, FRIDGE),
+    furniture(2.5, -5.5, 4, 0.9, 1, BENCH, 'lab', 'south'),
+    furniture(5.8, -8, 1.2, 1.9, 1.2, FRIDGE, 'fridge', 'south'),
     // Cold storage and the keycard on its table.
-    furniture(15.4, -5.5, 1.2, 2, 4, FRIDGE),
-    furniture(9, -7.5, 1.4, 1.2, 1.4, '#7b8a96'),
-    furniture(13, -6.5, 2, 0.8, 1, DESK),
+    furniture(15.4, -5.5, 1.2, 2, 4, FRIDGE, 'fridge', 'west'),
+    furniture(9, -7.5, 1.4, 1.2, 1.4, '#7b8a96', 'analyser', 'south'),
+    furniture(13, -6.5, 2, 0.8, 1, DESK, 'desk', 'south'),
     // Corridor.
-    furniture(5, 1.3, 1.8, 0.7, 0.8, '#8a9ba3'),
+    furniture(5, 1.3, 1.8, 0.7, 0.8, '#8a9ba3', 'cart', 'north'),
     // Lab 2 and the dispensary.
-    furniture(-7, 6.2, 5, 0.9, 1, BENCH),
-    furniture(8, 5.5, 0.9, 1.05, 4.5, '#4c5a66'),
-    furniture(13, 4, 3, 0.8, 1, '#3d5a52'),
+    furniture(-7, 6.2, 5, 0.9, 1, BENCH, 'lab', 'north'),
+    furniture(8, 5.5, 0.9, 1.05, 4.5, '#4c5a66', 'counter', 'east'),
+    furniture(13, 4, 3, 0.8, 1, '#3d5a52', 'seating', 'south'),
   ],
   ladders: [],
   lights,

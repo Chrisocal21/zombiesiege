@@ -14,6 +14,7 @@ import {
   surfaceMaterial,
   tileMeters,
 } from './materials';
+import { buildFurniture } from './furniture';
 import { buildLift } from './lift';
 import { buildLocks, buildObjective, buildWardDressing } from './ward';
 import { buildStations } from './station';
@@ -546,7 +547,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const staticProps = new THREE.Group();
   scene.add(staticProps);
   level.boxes.forEach((box, index) => {
-    const object = buildBoxObject(box, index);
+    const object = box.prop ? buildFurniture(box, environment) : buildBoxObject(box, index);
     if (object) staticProps.add(object);
   });
   bakeStaticMeshes(staticProps);
