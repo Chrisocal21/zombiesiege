@@ -97,23 +97,64 @@ export function createAudio(): Audio {
 
   // --- the sounds ---------------------------------------------------------------------------
 
+  // A short synthetic room: decaying noise, fed from a send so gunfire has a tail outdoors never gives.
+  let room: ConvolverNode | null = null;
+  function reverb(): AudioNode {
+    const ctx = context!;
+    if (!room) {
+      const length = Math.floor(ctx.sampleRate * 1.1);
+      const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) {
+        const data = impulse.getChannelData(c);
+        for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3.2);
+      }
+      room = ctx.createConvolver();
+      room.buffer = impulse;
+      const wet = ctx.createGain();
+      wet.gain.value = 0.35;
+      room.connect(wet);
+      wet.connect(master);
+    }
+    return room;
+  }
+
+  // Soft clipping, so the loudest part of a shot has weight instead of a clean hiss.
+  function crunch(amount: number): WaveShaperNode {
+    const shaper = context!.createWaveShaper();
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < curve.length; i++) {
+      const x = (i / (curve.length - 1)) * 2 - 1;
+      curve[i] = Math.tanh(x * amount);
+    }
+    shaper.curve = curve;
+    return shaper;
+  }
+
+  // The body of a gunshot: a crushed burst, a heavy low thump, a sharp crack and a long tail.
+  function bang(out: AudioNode, t: number, size: number): void {
+    const drive = crunch(3);
+    const driven = context!.createGain();
+    driven.gain.value = 0.8;
+    drive.connect(driven);
+    driven.connect(out);
+    burst(drive, t, 0.16 * size, 'lowpass', 3800, 300, 1.4);
+    burst(drive, t, 0.03, 'bandpass', 1400, 900, 1.2, 0.6);
+    tone(out, t, 0.28 * size, 'sine', 95, 30, 1.3, 0.002);
+    tone(out, t, 0.09, 'triangle', 260, 60, 0.6, 0.002);
+    burst(out, t, 0.012, 'highpass', 2000, 4000, 0.9);
+    const tail = context!.createGain();
+    tail.gain.value = 0.9;
+    tail.connect(reverb());
+    burst(tail, t, 0.35 * size, 'lowpass', 2500, 250, 0.7);
+    burst(out, t + 0.05, 0.9 * size, 'lowpass', 600, 80, 0.22);
+  }
+
   function shotgun(): void {
-    const t = context!.currentTime;
-    const out = output(0, 1);
-    burst(out, t, 0.3, 'lowpass', 4200, 200, 1.2);
-    burst(out, t, 0.08, 'highpass', 1800, 3000, 0.8);
-    tone(out, t, 0.24, 'sine', 110, 28, 1.1);
-    burst(out, t + 0.06, 0.7, 'lowpass', 700, 90, 0.25);
+    bang(output(0, 1), context!.currentTime, 1.7);
   }
 
   function shot(): void {
-    const t = context!.currentTime;
-    const out = output(0, 0.9);
-    burst(out, t, 0.22, 'lowpass', 5200, 260, 1);
-    burst(out, t, 0.05, 'highpass', 2500, 3500, 0.7);
-    tone(out, t, 0.16, 'sine', 150, 38, 0.9);
-    // The room answering back.
-    burst(out, t + 0.04, 0.5, 'lowpass', 900, 120, 0.18);
+    bang(output(0, 0.95), context!.currentTime, 1);
   }
 
   function reloadOut(): void {
