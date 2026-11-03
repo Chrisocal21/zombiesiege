@@ -6,13 +6,14 @@ import * as THREE from 'three';
 import { config } from '../config';
 import type { Player } from '../game/state';
 import { isMelee, weaponStats, type WeaponId } from '../game/weapons';
-import { FIST_GRIP, FOREND_GRIP, GUN_GRIP, LEFT_HAND_LOADING_SHOTGUN, LEFT_HAND_MODEL, LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, RIGHT_HAND_MODEL, SUPPORT_GRIP, loadHand, type Hold } from './hand';
-import { handSocket, showSockets } from './handSockets';
+import { BAT_GRIP, FIST_GRIP, FOREND_GRIP, GUN_GRIP, SHOTGUN_GRIP, LEFT_HAND_LOADING_SHOTGUN, LEFT_HAND_MODEL, LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, RIGHT_HAND_MODEL, SUPPORT_GRIP, loadHand, type Hold } from './hand';
+import { handSocket, showSockets, triggerContact } from './handSockets';
 import type { CameraPose } from './view';
 import { buildLampCase } from './objectives';
 import { box, softBox, profile, barrelPart } from './weaponGeometry';
 import { createShotgun } from './shotgun';
 import { createMeleeWeapons } from './meleeWeapons';
+import { GLOCK_PIVOT, loadGlock } from './glock';
 
 // Everything here is in meters. The gun points down -z, +x is right, +y is up.
 const REST_POSITION = new THREE.Vector3(0.11, -0.18, -0.64);
@@ -29,6 +30,12 @@ const SHOTGUN_BODYCAM_POSITION = new THREE.Vector3(0.02, -0.12, -0.67);
 const SHOTGUN_AIM_POSITION = new THREE.Vector3(0, -0.1120, -0.68);
 const TOOL_POSITION = new THREE.Vector3(0.23, -0.20, -0.68);
 const AIM_PITCH = 0.0157;
+// The Glock pack holds its gun at eye level. At the hip it sits lower, out to the right and
+// turned in, so the forearm leaves the frame at the bottom corner. Aimed, it moves a little
+// forward so the arms crowd the view less.
+const GLOCK_HIP_OFFSET = new THREE.Vector3(0.065, -0.08, -0.02);
+const GLOCK_HIP_YAW = 0.12;
+const GLOCK_AIM_FORWARD = -0.08;
 const FLASH_SECONDS = 0.05;
 const FLASH_SIZE = 0.13;
 const SLIDE_TRAVEL = 0.032;
@@ -138,10 +145,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     bumpScale: 0.0002,
   });
   const textile = outfitTexture(appearance.outfit);
-  const gloveMap = gloveTexture();
+  const gloveMap = gloveTexture().clone(); gloveMap.repeat.set(3, 3);
   const sleeve = new THREE.MeshStandardMaterial({ color: '#a4a4a4', roughness: 0.96, map: textile, bumpMap: textile, bumpScale: 0.0006 });
   // A short glove cuff joins the source hand's wrist cut to the shirt cuff.
-  const sleeveCuff = new THREE.MeshStandardMaterial({ color: selectedGloves().color, roughness: 0.9, map: gloveMap, bumpMap: gloveMap, bumpScale: 0.0004 });
+  const sleeveCuff = new THREE.MeshStandardMaterial({ color: selectedGloves().color, roughness: 0.9, map: gloveMap, bumpMap: gloveMap, bumpScale: 0.00014 });
   let currentOutfit = appearance.outfit;
   const sight = new THREE.MeshStandardMaterial({
     color: 0xf4efd6,
@@ -294,19 +301,24 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   // Where the palms go on the pistol: the trigger hand on the grip's right side, the support hand
   // over its fingers from the left. Both lie along the grip's lean.
   const pistolSockets = {
-    primary: handSocket(grip, 'Pistol trigger hand', 'right', [0.0185, -0.036, 0.004], [0, 0.2, -1], [0, 1, 0.2], 0.016),
-    support: handSocket(grip, 'Pistol support hand', 'left', [-0.026, -0.045, -0.006], [0.25, -0.45, -0.85], [0, 0.85, -0.5], 0.03),
+    primary: handSocket(grip, 'Pistol trigger hand', 'right', [0.0185, -0.036, 0.004], [0, 0.2, -1], [0, 1, 0.2], 0.016, 0.024),
+    support: handSocket(grip, 'Pistol support hand', 'left', [-0.032, -0.040, -0.006], [0, 0.08, -1], [0, 1, 0.08], 0.030, 0.032),
   };
-  const rightHand = loadHand(grip, RIGHT_HAND_MODEL);
+  triggerContact(pistolSockets.primary, root, [0.003, -0.011, -0.009]);
+  // All pistol parts form one equippable object. The primary hand owns the active weapon;
+  // its authored sockets remain useful for fitting and for the support-hand targets.
+  const pistol = new THREE.Group(); pistol.name = 'P9 pistol';
+  pistol.add(...root.children);
+  root.add(pistol);
+  const rightHand = loadHand(root, RIGHT_HAND_MODEL);
 
   // One persistent support hand performs both the firing grip and the reload.
   // Blending its actual finger rig avoids duplicated hands popping in and out.
   const leftHand = new THREE.Group();
   leftHand.name = 'Support hand anchor';
-  grip.add(leftHand);
+  root.add(leftHand);
   const supportHand = loadHand(leftHand, LEFT_HAND_MODEL);
 
-  const pistolParts = root.children.filter(part => part !== grip);
   const shotgun = createShotgun({ steel: slideMetal, dark: darkMetal, edge: brightMetal, rubber: gripPolymer });
   root.add(shotgun.root);
   const tools = createMeleeWeapons(slideMetal, gripPolymer);
@@ -314,17 +326,23 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const holds = {
     pistol: { grip: GUN_GRIP, socket: pistolSockets.primary },
     pistolSupport: { grip: SUPPORT_GRIP, socket: pistolSockets.support },
-    shotgun: { grip: GUN_GRIP, socket: shotgun.sockets.primary },
+    shotgun: { grip: SHOTGUN_GRIP, socket: shotgun.sockets.primary },
     forend: { grip: FOREND_GRIP, socket: shotgun.sockets.support },
     machete: { grip: FIST_GRIP, socket: tools.sockets.machete },
-    bat: { grip: FIST_GRIP, socket: tools.sockets.batRight },
-    batSupport: { grip: FIST_GRIP, socket: tools.sockets.batLeft },
+    bat: { grip: BAT_GRIP, socket: tools.sockets.batRight },
+    batSupport: { grip: BAT_GRIP, socket: tools.sockets.batLeft },
   } satisfies Record<string, Hold>;
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('sockets')) {
     showSockets(Object.values(holds).map((hold) => hold.socket));
   }
-  const gripInverse = grip.matrix.clone().invert();
   const supportMatrix = new THREE.Matrix4();
+  const rootInverse = new THREE.Matrix4();
+  const supportOffset = new THREE.Matrix4();
+  const offsetSupport = (offset: THREE.Vector3) => {
+    supportOffset.makeTranslation(offset.x, offset.y, offset.z).premultiply(supportMatrix);
+    supportOffset.decompose(leftHand.position, leftHand.quaternion, leftHand.scale);
+  };
+  const handOffset = new THREE.Vector3();
 
   const forwardAxis = new THREE.Vector3(0, 0, 1);
   // Cover the wrist cut without extending a second, cylindrical "palm" into the hand.
@@ -426,6 +444,14 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   viewScene.add(carried);
   let carry = 0;
 
+  // Once its model loads, the Glock pack's own arms and animations stand in for the pistol.
+  const glock = loadGlock(viewScene);
+  const glockBase = new THREE.Vector3();
+  const glockSight = new THREE.Vector3();
+  let glockShown = false;
+  let sinceShot: number | null = null;
+  let sinceDraw: number | null = null;
+
   let seenShotTick = -1;
   let heldWeapon: WeaponId = 'pistol';
   let swapDip = 0;
@@ -455,16 +481,24 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     update(player, pose, frameSeconds, preview = false) {
       const shotgunHeld = player.weapon === 'shotgun';
       const toolHeld = isMelee(player.weapon);
-      if (player.weapon !== heldWeapon) {
+      const glockHeld = player.weapon === 'pistol' && glock.ready() && !preview;
+      if (player.weapon !== heldWeapon || glockHeld !== glockShown) {
+        if (player.weapon !== heldWeapon) {
+          swapDip = 1;
+          sinceDraw = glockHeld ? 0 : null;
+        }
         heldWeapon = player.weapon;
-        for (const part of pistolParts) part.visible = player.weapon === 'pistol';
+        glockShown = glockHeld;
+        pistol.visible = player.weapon === 'pistol';
         tools.machete.visible = player.weapon === 'machete';
         tools.bat.visible = player.weapon === 'bat';
         shotgun.root.visible = shotgunHeld;
-        (shotgunHeld ? shotgun.muzzle : slide).add(muzzle);
-        muzzle.position.set(0, shotgunHeld ? 0 : 0.0475, shotgunHeld ? 0 : -0.14);
-        swapDip = 1;
+        (shotgunHeld ? shotgun.muzzle : glockHeld ? glock.muzzle : slide).add(muzzle);
+        if (shotgunHeld || glockHeld) muzzle.position.set(0, 0, 0);
+        else muzzle.position.set(0, 0.0475, -0.14);
       }
+      if (sinceDraw !== null) sinceDraw += frameSeconds;
+      if (sinceShot !== null) sinceShot += frameSeconds;
       swapDip *= Math.exp(-frameSeconds * 8);
       const stats = weaponStats(player.weapon);
       if (currentOutfit !== appearance.outfit) {
@@ -480,6 +514,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
           recoilVelocity += shotgunHeld ? 5 : 2.2;
           slideKick = 1;
           triggerPull = 1;
+          sinceShot = 0;
           flashLeft = FLASH_SECONDS;
           flashMaterial.rotation = Math.random() * Math.PI * 2;
           flash.scale.setScalar(FLASH_SIZE * (shotgunHeld ? 1.6 : 1) * (0.8 + Math.random() * 0.5));
@@ -524,7 +559,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       carried.visible = carry > 0.02;
       carried.position.set(bobX * 2, -0.9 + 0.3 * carry + bobY * 3, -0.6);
       carried.rotation.set(0.32, Math.sin(bobPhase) * 0.03 * walking, Math.sin(bobPhase) * 0.02 * walking);
-      root.visible = carry < 0.98;
+      root.visible = carry < 0.98 && !glockHeld;
+      glock.root.visible = carry < 0.98 && glockHeld;
       const breathing = Math.sin(time * 1.7) * 0.0015;
       const motion = settings.cameraMotion ? 1 : 0;
 
@@ -532,7 +568,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       // with a push, then lets go, and the slide is released if the gun was empty.
       const reloading = player.reloadLeft > 0;
       const progress = reloading ? 1 - player.reloadLeft / stats.reloadSeconds : 0;
-      const tilt = Math.sin(progress * Math.PI);
+      // The Glock's own reload clips move its arms, so it skips the drawn pistol's roll.
+      const tilt = glockHeld ? 0 : Math.sin(progress * Math.PI);
       const stage = (from: number, to: number) => smooth(clamp((progress - from) / (to - from), 0, 1));
 
       if (reloading && !wasReloading && shotgunHeld) reloadWasEmpty = false;
@@ -542,7 +579,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         magazine.getWorldQuaternion(droppedMagazine.quaternion);
         magazine.getWorldScale(droppedMagazine.scale);
         droppedVelocity.set(-0.12, -0.5, 0.06);
-        droppedMagazine.visible = true;
+        droppedMagazine.visible = !glockHeld;
       }
       wasReloading = reloading;
       if (droppedMagazine.visible) {
@@ -553,9 +590,13 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         if (droppedMagazine.position.y < -1.5) droppedMagazine.visible = false;
       }
 
+      const firing = toolHeld ? (player.weapon === 'bat' ? holds.bat : holds.machete) : shotgunHeld ? holds.shotgun : holds.pistol;
+      rightHand.holdWeapon(toolHeld ? (player.weapon === 'bat' ? tools.bat : tools.machete) : shotgunHeld ? shotgun.root : pistol, firing);
+      root.updateWorldMatrix(true, true);
+      rootInverse.copy(root.matrixWorld).invert();
+      supportMatrix.copy(rootInverse).multiply(grip.matrixWorld);
       leftHand.visible = true;
-      leftHand.position.set(0, 0, 0);
-      leftHand.quaternion.identity();
+      offsetSupport(handOffset.set(0, 0, 0));
       // Each hand is posed after the parts it holds have moved, so it follows them this frame.
       if (toolHeld) {
         magazine.visible = false;
@@ -564,7 +605,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       } else if (shotgunHeld) {
         magazine.visible = false;
         const loading = shotgun.update(player.ammo, progress, reloading, triggerPull);
-        supportMatrix.copy(gripInverse).multiply(shotgun.supportTransform).multiply(grip.matrix);
+        supportMatrix.copy(rootInverse).multiply(shotgun.root.matrixWorld).multiply(shotgun.supportTransform).multiply(grip.matrix);
         supportMatrix.decompose(leftHand.position, leftHand.quaternion, leftHand.scale);
         supportHand.blendPose(holds.forend, LEFT_HAND_LOADING_SHOTGUN, loading);
       } else if (reloading) {
@@ -575,13 +616,13 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
           .lerp(MAGAZINE_READY, stage(0.22, 0.49))
           .multiplyScalar(1 - stage(0.49, 0.66));
         if (progress < 0.22) {
-          leftHand.position.copy(MAGAZINE_AWAY).multiplyScalar(stage(0.06, 0.22));
+          offsetSupport(handOffset.copy(MAGAZINE_AWAY).multiplyScalar(stage(0.06, 0.22)));
           supportHand.blendPose(holds.pistolSupport, LEFT_HAND_ON_MAGAZINE, stage(0.04, 0.18));
         } else if (progress < 0.66) {
-          leftHand.position.copy(magazine.position);
+          offsetSupport(magazine.position);
           supportHand.blendPose(LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_MAGAZINE, 0);
         } else if (reloadWasEmpty && progress < 0.86) {
-          leftHand.position.z = SLIDE_TRAVEL * stage(0.76, 0.82) * (1 - stage(0.82, 0.86));
+          offsetSupport(handOffset.set(0, 0, SLIDE_TRAVEL * stage(0.76, 0.82) * (1 - stage(0.82, 0.86))));
           supportHand.blendPose(LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, stage(0.66, 0.76));
         } else {
           supportHand.blendPose(reloadWasEmpty ? LEFT_HAND_ON_SLIDE : LEFT_HAND_ON_MAGAZINE, holds.pistolSupport,
@@ -592,17 +633,13 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         magazine.position.set(0, 0, 0);
         supportHand.blendPose(holds.pistolSupport, holds.pistolSupport, 0);
       }
-      const firing = toolHeld ? (player.weapon === 'bat' ? holds.bat : holds.machete) : shotgunHeld ? holds.shotgun : holds.pistol;
-      rightHand.blendPose(firing, firing, 0);
-      rightHand.pullIndex(triggerPull);
+      rightHand.pullIndex(toolHeld ? 0 : triggerPull);
       // Track the hand-model wrists, including reload pose changes, instead of
       // guessing sleeve attachment points and leaving gaps at the cuffs.
-      if (rightHand.getWrist(rightWrist)) {
-        rightWrist.applyMatrix4(grip.matrix);
-      } else rightWrist.set(0.01, -0.035, 0.13);
+      if (!rightHand.getWrist(rightWrist)) rightWrist.set(0.01, -0.035, 0.13);
       if (supportHand.getWrist(leftWrist)) {
         leftHand.updateMatrix();
-        leftWrist.applyMatrix4(leftHand.matrix).applyMatrix4(grip.matrix);
+        leftWrist.applyMatrix4(leftHand.matrix);
       } else leftWrist.set(-0.08, -0.045, 0.10);
       const bodycamTarget = settings.cameraStyle === 'bodycam' && !preview ? 1 : 0;
       bodycamAmount += (bodycamTarget - bodycamAmount) * (1 - Math.exp(-frameSeconds * 12));
@@ -613,7 +650,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       leftArm.rig.visible = leftArm.upperRig.visible = player.weapon !== 'machete';
 
       // The gun jolts up a little as the magazine is pushed home.
-      const seat = stage(0.64, 0.68) * (1 - stage(0.68, 0.74));
+      const seat = glockHeld ? 0 : stage(0.64, 0.68) * (1 - stage(0.68, 0.74));
 
       // An empty gun keeps the slide locked back until the reload is nearly done.
       const slideLocked = player.ammo === 0 && !(reloading && progress > 0.85);
@@ -667,11 +704,30 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         root.rotation.set(0.02, -0.6, -0.13);
       }
       root.updateMatrixWorld(true);
+
+      if (glockHeld) {
+        // The arms take the same bob, sway, recoil and dips as the drawn guns, measured from
+        // where those guns rest. Aimed, the sights' top edge moves onto the centre line.
+        glock.sightTop(glockSight);
+        glockBase.copy(GLOCK_PIVOT).addScaledVector(GLOCK_HIP_OFFSET, 1 - aim)
+          .addScaledVector(glockSight.set(-glockSight.x, -glockSight.y, GLOCK_AIM_FORWARD), aim);
+        glock.root.position.copy(glockBase).add(root.position).sub(basePosition);
+        glock.root.rotation.set(
+          root.rotation.x - (REST_PITCH + (AIM_PITCH - REST_PITCH) * aim),
+          root.rotation.y - REST_YAW * (1 - bodycamAmount) * (1 - aim) + GLOCK_HIP_YAW * (1 - aim),
+          root.rotation.z,
+        );
+        glock.pose({
+          sinceShot, reload: reloading ? progress : null, reloadEmpty: reloadWasEmpty, sinceDraw,
+          empty: player.ammo === 0 && !reloading,
+        });
+        glock.root.updateMatrixWorld(true);
+      }
     },
 
     aimAmount: () => aim,
 
-    getEjection(out) { return ejection.getWorldPosition(out); },
+    getEjection(out) { return (glockShown ? glock.ejection : ejection).getWorldPosition(out); },
 
     getMuzzle(out) {
       return muzzle.getWorldPosition(out);

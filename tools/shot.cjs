@@ -56,7 +56,7 @@ async function main() {
     for (let i = 0; i < 120; i++) {
       const ready = await evaluate(`(() => {
         document.getElementById('launch-continue')?.click();
-        return Boolean(window.__siegeReview);
+        return Boolean(window.__siegeReview || window.__grips?.ready);
       })()`);
       if (ready) break;
       await delay(500);
@@ -66,7 +66,11 @@ async function main() {
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
     }
     await delay(1500);
-    if (!process.argv.includes('--scenarios')) await capture('title');
+    if (process.argv.includes('--hands-check')) {
+      const result = await evaluate("import('/tools/check-hand-viewmodel.js').then(module => module.checkHandViewmodel())");
+      console.log('PASS: hand rig, weapon attachment, equip stability and reloads ' + JSON.stringify(result));
+    }
+    if (!process.argv.includes('--scenarios')) await capture(process.argv.find(arg => arg.startsWith('--name='))?.slice(7) ?? 'title');
     if (process.argv.includes('--interactions')) {
       const key = async code => {
         const value = code === 'Enter' ? { key: 'Enter', code, windowsVirtualKeyCode: 13 } : { key: code.replace('Key', '').toLowerCase(), code, windowsVirtualKeyCode: code.charCodeAt(3) };
@@ -154,7 +158,7 @@ async function main() {
           visible &&= scene.getObjectByName('Machete').visible===(weapon==='machete') &&
             scene.getObjectByName('Spiked baseball bat').visible===(weapon==='bat') &&
             scene.getObjectByName('Sawed-off shotgun').visible===(weapon==='shotgun') &&
-            scene.getObjectByName('Pistol slide').visible===(weapon==='pistol') &&
+            scene.getObjectByName('P9 pistol').visible===(weapon==='pistol') &&
             scene.getObjectByName('Pistol magazine').visible===(weapon==='pistol') &&
             scene.getObjectByName('Support hand anchor').visible===(weapon!=='machete');
           const before=[player.ammo,player.reserve,player.lastShotTick];

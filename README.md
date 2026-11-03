@@ -39,6 +39,18 @@ The focused regression check is [check-admin.mjs](./tools/check-admin.mjs); it r
 22.15 or newer with `--experimental-strip-types`.
 Run `node tools/check-melee.mjs` for melee timing, damage, cover, inventory, and input checks.
 
+The first-person hands use a connected 36-bone rig per hand: wrist, palm, finger chains, and
+weighted knuckle folds. The active weapon attaches to `Right hand weapon socket` on the palm.
+Weapon fitting targets define the grip orientation, oval handle dimensions, and trigger contact;
+the support hand follows its own target during firing and reloads. `src/render/handRig.ts` builds
+the rig, and `src/render/hand.ts` fits and blends its poses. The original GLB assets stay unchanged.
+
+Run `node tools/check-hands.mjs` for skeleton, skin-weight, and finger-length checks. With the dev
+server running, `node tools/shot.cjs --hands-check --shotgun-check --melee-check` checks attachments,
+trigger contact, sights, swaps, reloads, and swings in Chrome. Inspect close-ups at
+`/tools/grips.html?weapon=pistol` (also `shotgun`, `machete`, or `bat`); add `&bones`, `&sockets`,
+`&support`, `&gloves=coyote`, or `&view=right` to inspect the rig and contact from different sides.
+
 ## Door rush
 
 The moment the garage gate closes, or a new floor is stepped onto, `config.waves.doorRushZombies`

@@ -3,9 +3,10 @@ import { appearance, selectedGloves } from '../client/appearance';
 import * as THREE from 'three';
 import type { HandSocket } from './handSockets';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { articulateHand, refineHandSurface, FINGER_CHAINS as CHAINS } from './handRig';
 
-// The hand models have a bone in every finger joint. Each bone is posed once when the model
-// loads. See ASSET_LICENSES.md for their source.
+// The source tracking joints are upgraded to a connected 36-bone deformation rig on load.
+// See handRig.ts for palm articulation and the weighted knuckle/middle-joint fold bones.
 
 
 // Two ways to pose a hand. A hold puts the palm on one of a weapon's attach points (see
@@ -24,6 +25,8 @@ type Vec = [number, number, number];
 export interface Grip {
   wrap: Finger[];
   pose: Partial<Record<Finger, Vec[]>>;
+  cup: number;
+  opposeThumb?: boolean;
 }
 
 // A hold: this grip, on this attach point.
@@ -33,6 +36,7 @@ export interface Hold { grip: Grip; socket: HandSocket }
 // through the guard, and the thumb high on the far side.
 export const GUN_GRIP: Grip = {
   wrap: ['middle', 'ring', 'pinky'],
+  cup: 0.10,
   pose: {
     index: [[1, 0.05, 0.3], [0.55, 0, 0.85], [0.1, 0, 1]],
     thumb: [[0.6, 0.6, 0.55], [0.85, 0.3, 0.45], [0.95, 0.15, 0.3]],
@@ -43,20 +47,33 @@ export const GUN_GRIP: Grip = {
 // forward along the frame under the firing thumb.
 export const SUPPORT_GRIP: Grip = {
   wrap: ['index', 'middle', 'ring', 'pinky'],
-  pose: { thumb: [[0.7, 0.6, 0.4], [0.9, 0.4, 0.2], [0.95, 0.3, 0.1]] },
+  cup: 0.06,
+  pose: { thumb: [[0.7, 0.6, 0.4], [0.98, 0.1, 0.12], [1, 0, 0.05]] },
 };
 
 // Cupped under a fore-end: the fingers up the far side, the thumb forward along the near side.
 export const FOREND_GRIP: Grip = {
   wrap: ['index', 'middle', 'ring', 'pinky'],
+  cup: 0.08,
   pose: { thumb: [[0.5, 0.75, 0.45], [0.3, 0.95, 0.1], [0.2, 1, 0]] },
 };
 
 // A fist round a handle, the thumb closing round it the other way.
 export const FIST_GRIP: Grip = {
-  wrap: ['index', 'middle', 'ring', 'pinky', 'thumb'],
-  pose: {},
+  wrap: ['index', 'middle', 'ring', 'pinky'],
+  cup: 0.17,
+  opposeThumb: true,
+  pose: { thumb: [[0.52, 0.28, 0.8], [0.48, -0.72, 0.5], [0.15, -0.9, 0.4]] },
 };
+
+export const SHOTGUN_GRIP: Grip = {
+  ...GUN_GRIP, cup: 0.08,
+  pose: {
+    index: [[0.9, 0.32, 0.27], [0.65, 0.12, 0.75], [0.15, 0, 1]],
+    thumb: [[0.4, 0.65, 0.65], [0.8, 0.2, 0.55], [0.8, -0.15, 0.58]],
+  },
+};
+export const BAT_GRIP: Grip = { ...FIST_GRIP, cup: 0.22 };
 
 // A hand-made pose, in its parent's space: +x right, +y up, +z back.
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z).normalize();
@@ -118,26 +135,21 @@ export const LEFT_HAND_ON_MAGAZINE: HandSpec = {
   },
 };
 
-const CHAINS: Record<string, string[]> = {
-  index: ['index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate', 'index-finger-phalanx-distal', 'index-finger-tip'],
-  middle: ['middle-finger-phalanx-proximal', 'middle-finger-phalanx-intermediate', 'middle-finger-phalanx-distal', 'middle-finger-tip'],
-  ring: ['ring-finger-phalanx-proximal', 'ring-finger-phalanx-intermediate', 'ring-finger-phalanx-distal', 'ring-finger-tip'],
-  pinky: ['pinky-finger-phalanx-proximal', 'pinky-finger-phalanx-intermediate', 'pinky-finger-phalanx-distal', 'pinky-finger-tip'],
-  thumb: ['thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip'],
-};
-
 // How far the index finger's two outer joints bend at a full trigger pull, in radians.
 const PULL_MIDDLE_JOINT = 0.2;
 const PULL_END_JOINT = 0.35;
-// The palm's middle, this far from the wrist toward the middle knuckle.
-const PALM_CENTRE = 0.6;
+// Contact near the distal palm crease, this far from the wrist toward the middle knuckle.
+const PALM_CENTRE = 0.78;
 // How wide a patch of skin round the palm's middle sets where the palm surface is. Any wider
 // and it catches the ball of the thumb.
 const PALM_PATCH = 0.006;
 // Half a finger's thickness: a wrapped finger's joints stay this far out from the handle.
-const FINGER_RADIUS = 0.0085;
+const FINGER_RADII: Record<Finger, number> = { index: 0.007, middle: 0.0075, ring: 0.007, pinky: 0.006, thumb: 0.008 };
+type Rig = ReturnType<typeof articulateHand>;
 
 export interface Hand {
+  // Equips once the model is ready. The weapon becomes a child of the palm's socket.
+  holdWeapon(weapon: THREE.Object3D, hold: Hold): boolean;
   // Bends the index finger back: 0 is resting on the trigger, 1 is fully pulled.
   pullIndex(amount: number): void;
   // Poses the hand part way from one pose to another. Holds follow their attach point, so this
@@ -147,47 +159,63 @@ export interface Hand {
   getWrist(out: THREE.Vector3): boolean;
 }
 
-// Rotates the joints of a chain from `first` onward around that first joint.
-function bendFrom(chain: THREE.Bone[], first: number, turn: THREE.Quaternion): void {
-  const pivot = chain[first].position.clone();
-  for (let j = first; j < chain.length; j++) {
-    chain[j].position.sub(pivot).applyQuaternion(turn).add(pivot);
-    chain[j].quaternion.premultiply(turn);
-  }
-}
-
-// The model's bones are not nested, so bending a joint has to carry the later joints with it.
-function aimChain(chain: THREE.Bone[], directions: THREE.Vector3[]): void {
+function aimChain(chain: THREE.Bone[], directions: THREE.Vector3[], rig: Rig): void {
   directions.forEach((direction, i) => {
-    const current = chain[i + 1].position.clone().sub(chain[i].position).normalize();
-    bendFrom(chain, i, new THREE.Quaternion().setFromUnitVectors(current, direction));
+    const current = rig.point(chain[i + 1]).sub(rig.point(chain[i])).normalize();
+    rig.rotate(chain[i], new THREE.Quaternion().setFromUnitVectors(current, direction));
   });
 }
 
-// Closes a finger round a handle. Each bone turns so the next joint lands on a circle round the
-// handle's axis, carrying on round the way the finger already points.
-function wrapChain(chain: THREE.Bone[], centre: THREE.Vector3, axis: THREE.Vector3, radius: number): void {
-  let sense = 0;
+// Two-link reach plus a pad direction: keeps the index inside the trigger guard and lets
+// the opposed thumb rest on the closed fingers. Segment lengths never change.
+function touchChain(chain: THREE.Bone[], target: THREE.Vector3, padDirection: THREE.Vector3,
+  bendDirection: THREE.Vector3, rig: Rig): void {
+  const start = rig.point(chain[0]);
+  const lengths = chain.slice(1).map((bone, i) => rig.point(bone).distanceTo(rig.point(chain[i])));
+  const distal = target.clone().addScaledVector(padDirection, -lengths[2]);
+  const reach = distal.sub(start), direction = reach.clone().normalize();
+  const distance = THREE.MathUtils.clamp(reach.length(), Math.abs(lengths[0] - lengths[1]) + 0.0001, lengths[0] + lengths[1] - 0.0001);
+  const along = (lengths[0] ** 2 - lengths[1] ** 2 + distance ** 2) / (2 * distance);
+  const height = Math.sqrt(Math.max(0, lengths[0] ** 2 - along ** 2));
+  const bend = bendDirection.clone().addScaledVector(direction, -bendDirection.dot(direction)).normalize();
+  const middle = start.clone().addScaledVector(direction, along).addScaledVector(bend, height);
+  const end = start.clone().addScaledVector(direction, distance);
+  aimChain(chain, [middle.clone().sub(start).normalize(), end.sub(middle).normalize(), padDirection], rig);
+}
+
+// Solve successive fixed-length phalanges against an oval handle cross-section. The pad
+// clearance is different for each finger; the grip's depth follows its actual geometry.
+function wrapChain(chain: THREE.Bone[], centre: THREE.Vector3, axis: THREE.Vector3, forward: THREE.Vector3,
+  palmNormal: THREE.Vector3, radius: number, depth: number, rig: Rig): void {
   for (let i = 0; i < chain.length - 1; i++) {
-    const from = chain[i].position.clone();
-    const length = chain[i + 1].position.distanceTo(from);
+    const from = rig.point(chain[i]);
+    const length = rig.point(chain[i + 1]).distanceTo(from);
     const offset = from.clone().sub(centre);
     const along = offset.dot(axis);
-    const radial = offset.addScaledVector(axis, -along);
-    const distance = radial.length();
-    if (distance < 1e-6) return;
-    const out = radial.divideScalar(distance);
-    const around = axis.clone().cross(out);
-    const current = chain[i + 1].position.clone().sub(from).normalize();
-    if (i === 0) sense = Math.sign(current.dot(around)) || 1;
-    // The angle round the axis from this joint to where the next one meets the circle. A joint
-    // too far out to reach just points straight at the handle.
-    const cos = THREE.MathUtils.clamp((radius * radius + distance * distance - length * length) / (2 * radius * distance), -1, 1);
-    const turn = Math.acos(cos);
-    const target = centre.clone().addScaledVector(axis, along)
-      .addScaledVector(out, radius * Math.cos(turn))
-      .addScaledVector(around, sense * radius * Math.sin(turn));
-    bendFrom(chain, i, new THREE.Quaternion().setFromUnitVectors(current, target.sub(from).normalize()));
+    const current = rig.point(chain[i + 1]).sub(from).normalize();
+    const start = Math.atan2(offset.dot(palmNormal) / radius, offset.dot(forward) / depth);
+    const target = new THREE.Vector3();
+    const at = (angle: number) => target.copy(centre).addScaledVector(axis, along)
+      .addScaledVector(forward, depth * Math.cos(angle)).addScaledVector(palmNormal, radius * Math.sin(angle));
+    let lo = start, hi = start;
+    if (at(start).distanceToSquared(from) < length * length) {
+      for (let step = 1; step <= 48; step++) {
+        hi = start + Math.PI * step / 48;
+        if (at(hi).distanceToSquared(from) >= length * length) break;
+        lo = hi;
+      }
+      for (let step = 0; step < 20; step++) {
+        const mid = (lo + hi) / 2;
+        if (at(mid).distanceToSquared(from) < length * length) lo = mid; else hi = mid;
+      }
+    }
+    at((lo + hi) / 2);
+    const rotation = new THREE.Quaternion().setFromUnitVectors(current, target.sub(from).normalize());
+    // Keep the distal joints from folding back on themselves on a thin handle.
+    const limit = i === 0 ? 1.65 : i === 1 ? 1.92 : 1.4;
+    const angle = rotation.angleTo(new THREE.Quaternion());
+    if (angle > limit) rotation.slerp(new THREE.Quaternion(), 1 - limit / angle);
+    rig.rotate(chain[i], rotation);
   }
 }
 
@@ -203,7 +231,7 @@ function currentWorld(object: THREE.Object3D, out: THREE.Matrix4): THREE.Matrix4
 
 // Adds a hand to the parent as soon as its model has loaded.
 export function loadHand(parent: THREE.Object3D, url: string): Hand {
-  const hand: Hand = { pullIndex: () => {}, blendPose: () => {}, getWrist: () => false };
+  const hand: Hand = { holdWeapon: () => false, pullIndex: () => {}, blendPose: () => {}, getWrist: () => false };
 
   new GLTFLoader().load(url, (gltf) => {
     gltf.scene.name = url === RIGHT_HAND_MODEL ? 'Primary hand mesh' : 'Support hand mesh';
@@ -212,18 +240,20 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
       if (object instanceof THREE.SkinnedMesh) mesh = object;
     });
     if (!mesh) return;
+    const sourceGeometry = mesh.geometry;
+    mesh.geometry = refineHandSurface(sourceGeometry);
+    sourceGeometry.dispose();
 
     mesh.frustumCulled = false;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    const leather = gloveTexture();
-    const gloveMaterial = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.87,
-      map: leather, bumpMap: leather, bumpScale: 0.00032, vertexColors: true, clearcoat: 0.02, clearcoatRoughness: 0.95 });
+    const leather = gloveTexture().clone(); leather.repeat.set(3, 3);
+    const gloveMaterial = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.82,
+      map: leather, bumpMap: leather, bumpScale: 0.00014, vertexColors: true, clearcoat: 0.02, clearcoatRoughness: 0.95 });
     mesh.material = gloveMaterial;
+    const cuffMaterial = gloveMaterial.clone(); cuffMaterial.vertexColors = false;
 
     const bones = new Map(mesh.skeleton.bones.map((bone) => [bone.name, bone]));
-    const boneList = mesh.skeleton.bones;
-    const bind = boneList.map(bone => ({ position: bone.position.clone(), quaternion: bone.quaternion.clone() }));
     const position = (name: string) => bones.get(name)!.position.clone();
 
     // Build the hand's own axes from its joints, then turn them onto the target axes.
@@ -232,6 +262,7 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
     const across = position('index-finger-phalanx-proximal').sub(position('pinky-finger-phalanx-proximal'));
     const side = forward.clone().cross(across).normalize();
     const thumbSide = side.clone().cross(forward).normalize();
+    const palmNormal = url === RIGHT_HAND_MODEL ? side.clone().negate() : side.clone();
 
     // Reinforcement and stitched seams are vertex panels on the skinned surface, so
     // every pad follows the finger rig through support grips, magazines and slide racks.
@@ -239,28 +270,27 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
     const panelWeights = new Float32Array(vertexPositions.count);
     const seams = new Float32Array(vertexPositions.count);
     const wristOrigin = position('wrist');
-    const knuckles = ['index', 'middle', 'ring', 'pinky'].map(finger => position(CHAINS[finger][0]));
+    const knuckles = (['index', 'middle', 'ring', 'pinky'] as Finger[]).map(finger => position(CHAINS[finger][0]));
     const fingerJoints = Object.values(CHAINS).flatMap(chain => chain.slice(1, 3).map(name => position(name)));
     const point = new THREE.Vector3();
     for (let i = 0; i < vertexPositions.count; i++) {
       point.fromBufferAttribute(vertexPositions, i);
       const fromWrist = point.clone().sub(wristOrigin);
-      const along = fromWrist.dot(forward), depth = fromWrist.dot(side);
+      const along = fromWrist.dot(forward), depth = -fromWrist.dot(palmNormal);
       // The source includes a long, irregular wrist tail. Keep a short overlap inside
       // the cuff so it cannot protrude through the shirt when a weapon changes the grip.
       if (along < 0) {
-        point.addScaledVector(forward, -along * 0.8);
+        point.addScaledVector(forward, -along * 0.96);
         vertexPositions.setXYZ(i, point.x, point.y, point.z);
       }
       let weight = 0;
       for (const center of knuckles) weight = Math.max(weight, Math.exp(-point.distanceToSquared(center) / 0.00012));
       for (const center of fingerJoints) weight = Math.max(weight, Math.exp(-point.distanceToSquared(center) / 0.000035) * 0.7);
       // Dark palm grip, lighter dorsal reinforcement, narrow stitched boundary.
-      panelWeights[i] = depth > 0 ? weight : weight * 0.38;
-      seams[i] = Math.abs(along - 0.022) < 0.0014 ? 0.55 : 0;
+      panelWeights[i] = depth > 0 ? THREE.MathUtils.smoothstep(weight, 0.2, 0.65) : weight * 0.2;
+      seams[i] = depth > 0 && Math.abs(weight - 0.35) < 0.025 ? 0.8 : Math.abs(along - 0.022) < 0.0007 ? 0.55 : 0;
     }
     vertexPositions.needsUpdate = true;
-    mesh.geometry.computeVertexNormals();
     const colorArray = new Float32Array(vertexPositions.count * 3);
     mesh.geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
     let currentGloves = '';
@@ -268,6 +298,7 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
       if (currentGloves === appearance.gloves) return;
       currentGloves = appearance.gloves;
       const gloves = selectedGloves(), base = new THREE.Color(gloves.color), accent = new THREE.Color(gloves.accent);
+      cuffMaterial.color.copy(base);
       const darkGrip = base.clone().multiplyScalar(0.75), color = new THREE.Color();
       for (let i = 0; i < vertexPositions.count; i++) {
         color.copy(darkGrip).lerp(base, 0.7).lerp(accent, panelWeights[i] * 0.78 + seams[i] * 0.35);
@@ -280,7 +311,6 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
 
     // The palm: its middle, and the skin over it, from the joints and the mesh. The models are
     // mirror images, so the palm is on the opposite side of the hand's axes in each.
-    const palmNormal = url === RIGHT_HAND_MODEL ? side.clone().negate() : side.clone();
     const palmCentre = position('wrist').lerp(knuckle, PALM_CENTRE);
     let palmDepth = 0;
     for (let i = 0; i < vertexPositions.count; i++) {
@@ -296,6 +326,28 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
     // A trigger pull curls the index toward the palm.
     const curlAxis = forward.clone().cross(palmNormal).normalize();
 
+    const rig = articulateHand(mesh);
+    const boneList = mesh.skeleton.bones;
+    const bind = boneList.map(bone => ({ position: bone.position.clone(), quaternion: bone.quaternion.clone() }));
+    const weaponSocket = new THREE.Object3D();
+    weaponSocket.name = url === RIGHT_HAND_MODEL ? 'Right hand weapon socket' : 'Left hand weapon socket';
+    weaponSocket.position.copy(palmAnchor);
+    weaponSocket.quaternion.copy(toSocket).invert();
+    rig.armature.add(weaponSocket);
+    rig.palm.attach(weaponSocket);
+    // The short glove gauntlet follows the wrist, so the hand's open cut stays covered
+    // even when the forearm and palm have different orientations during a reload.
+    const cuff = new THREE.Mesh(new THREE.LatheGeometry([
+      new THREE.Vector2(0.020, -0.012), new THREE.Vector2(0.022, -0.008),
+      new THREE.Vector2(0.020, 0), new THREE.Vector2(0.014, 0.010),
+    ], 28), cuffMaterial);
+    cuff.name = 'Articulated glove cuff';
+    cuff.position.copy(wristOrigin);
+    cuff.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), forward);
+    cuff.castShadow = cuff.receiveShadow = true;
+    rig.armature.add(cuff);
+    rig.wrist.attach(cuff);
+
     // Remember the resting index finger, so each pull starts again from there.
     const index = CHAINS.index.map((name) => bones.get(name)!);
     const rest = index.map((bone) => ({ position: bone.position.clone(), quaternion: bone.quaternion.clone() }));
@@ -307,8 +359,10 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
         bone.position.copy(rest[i].position);
         bone.quaternion.copy(rest[i].quaternion);
       });
-      bendFrom(index, 1, turn.setFromAxisAngle(axis, amount * PULL_MIDDLE_JOINT));
-      bendFrom(index, 2, turn.setFromAxisAngle(axis, amount * PULL_END_JOINT));
+      const pull = THREE.MathUtils.clamp(amount, 0, 1);
+      rig.rotate(index[1], turn.setFromAxisAngle(axis, pull * PULL_MIDDLE_JOINT));
+      rig.rotate(index[2], turn.setFromAxisAngle(axis, pull * PULL_END_JOINT));
+      rig.updateFolds();
     };
 
     parent.add(gltf.scene);
@@ -336,10 +390,10 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
       const rotation = new THREE.Quaternion().setFromRotationMatrix(basis.multiply(source.invert()));
       const inverse = rotation.clone().invert();
       for (const [finger, directions] of Object.entries(target.pose)) {
-        aimChain(CHAINS[finger].map(name => bones.get(name)!), directions.map(direction => direction.clone().applyQuaternion(inverse)));
+        aimChain(CHAINS[finger as Finger].map(name => bones.get(name)!), directions.map(direction => direction.clone().applyQuaternion(inverse)), rig);
       }
       const value = {
-        position: target.middleKnuckle.clone().sub(position('middle-finger-phalanx-proximal').applyQuaternion(rotation)),
+        position: target.middleKnuckle.clone().sub(rig.point(bones.get('middle-finger-phalanx-proximal')!).applyQuaternion(rotation)),
         quaternion: rotation,
         joints: joints(),
         // The hand-made poses curl the trigger finger round their parent's up axis.
@@ -348,20 +402,34 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
       solvedSpecs.set(target, value); return value;
     };
 
-    // Holds are worked out once per grip and handle thickness.
-    const solvedHolds = new Map<Grip, Map<number, SolvedPose>>();
-    const solveHold = (grip: Grip, radius: number): SolvedPose => {
-      const byRadius = solvedHolds.get(grip) ?? new Map<number, SolvedPose>();
-      solvedHolds.set(grip, byRadius);
-      const cached = byRadius.get(radius);
+    // Holds are worked out once per grip and weapon contact profile.
+    const solvedHolds = new Map<Grip, Map<HandSocket, SolvedPose>>();
+    const solveHold = (grip: Grip, socket: HandSocket): SolvedPose => {
+      const bySocket = solvedHolds.get(grip) ?? new Map<HandSocket, SolvedPose>();
+      solvedHolds.set(grip, bySocket);
+      const cached = bySocket.get(socket);
       if (cached) return cached;
+      const { radius, depth } = socket.userData;
       resetBones();
+      for (const [finger, amount] of [['ring', 0.5], ['pinky', 1]] as const) {
+        rig.rotate(bones.get(`${finger}-finger-metacarpal`)!, new THREE.Quaternion().setFromAxisAngle(curlAxis, grip.cup * amount));
+      }
       // The handle lies along the knuckles, its centre a radius in from the palm's skin.
       const centre = palmAnchor.clone().addScaledVector(palmNormal, radius);
       for (const finger of Object.keys(CHAINS) as Finger[]) {
         const chain = CHAINS[finger].map(name => bones.get(name)!);
-        if (grip.wrap.includes(finger)) wrapChain(chain, centre, thumbSide, radius + FINGER_RADIUS);
-        else if (grip.pose[finger]) aimChain(chain, grip.pose[finger]!.map(inHand));
+        if (grip.wrap.includes(finger)) wrapChain(chain, centre, thumbSide, forward, palmNormal,
+          radius + FINGER_RADII[finger], depth + FINGER_RADII[finger], rig);
+        else if (grip.pose[finger]) aimChain(chain, grip.pose[finger]!.map(inHand), rig);
+      }
+      if (socket.userData.trigger) {
+        const target = new THREE.Vector3(...socket.userData.trigger).applyQuaternion(toSocket.clone().invert()).add(palmAnchor);
+        touchChain(index, target, palmNormal, palmNormal.clone().negate(), rig);
+      }
+      if (grip.opposeThumb) {
+        const target = rig.point(bones.get(CHAINS.index[1])!).lerp(rig.point(bones.get(CHAINS.middle[1])!), 0.35)
+          .addScaledVector(palmNormal, 0.008);
+        touchChain(CHAINS.thumb.map(name => bones.get(name)!), target, thumbSide.clone().negate(), forward, rig);
       }
       const value = {
         position: palmAnchor.clone().applyQuaternion(toSocket).negate(),
@@ -369,7 +437,7 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
         joints: joints(),
         curl: curlAxis.clone(),
       };
-      byRadius.set(radius, value); return value;
+      bySocket.set(socket, value); return value;
     };
 
     const parentWorld = new THREE.Matrix4();
@@ -385,7 +453,7 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
         facing.copy(solved.quaternion);
         return solved;
       }
-      const solved = solveHold(pose.grip, pose.socket.userData.radius);
+      const solved = solveHold(pose.grip, pose.socket);
       currentWorld(parent, parentWorld).invert();
       currentWorld(pose.socket, socketWorld);
       placed.compose(solved.position, solved.quaternion, one).premultiply(socketWorld).premultiply(parentWorld);
@@ -405,6 +473,7 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
         bone.position.copy(a.joints[i].position).lerp(b.joints[i].position, t);
         bone.quaternion.copy(a.joints[i].quaternion).slerp(b.joints[i].quaternion, t);
       });
+      rig.updateFolds();
       // Trigger pulls start from the active weapon's index pose after a grip change.
       index.forEach((bone, i) => {
         rest[i].position.copy(bone.position);
@@ -412,8 +481,27 @@ export function loadHand(parent: THREE.Object3D, url: string): Hand {
       });
       axis.copy(t < 0.5 ? a.curl : b.curl);
     };
+    let equipped: THREE.Object3D | undefined;
+    const unequippedTransforms = new Map<THREE.Object3D, THREE.Matrix4>();
+    hand.holdWeapon = (weapon, hold) => {
+      if (equipped === weapon) return true;
+      if (!unequippedTransforms.has(weapon)) {
+        const local = currentWorld(parent, new THREE.Matrix4()).invert().multiply(currentWorld(weapon, new THREE.Matrix4()));
+        unequippedTransforms.set(weapon, local);
+      }
+      // Restore its authored placement when putting a weapon away. A wrist animation must
+      // not accumulate into the next equip's offset. Detach before solving the next grip.
+      if (equipped) {
+        parent.add(equipped);
+        unequippedTransforms.get(equipped)!.decompose(equipped.position, equipped.quaternion, equipped.scale);
+      }
+      hand.blendPose(hold, hold, 0);
+      weaponSocket.attach(weapon);
+      equipped = weapon;
+      return true;
+    };
     hand.getWrist = out => {
-      out.copy(bones.get('wrist')!.position).applyQuaternion(gltf.scene.quaternion).add(gltf.scene.position);
+      out.copy(rig.point(bones.get('wrist')!)).applyQuaternion(gltf.scene.quaternion).add(gltf.scene.position);
       return true;
     };
   });

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { paintTexture } from './materials';
-import { handSocket } from './handSockets';
+import { handSocket, triggerContact } from './handSockets';
 import { box, softBox, profile, barrelPart } from './weaponGeometry';
 
 interface ShotgunMaterials {
@@ -163,8 +163,9 @@ export function createShotgun(materials: ShotgunMaterials) {
   // the receiver. The support hand cups the fore-end from below, so it rides the hinge.
   const sockets = {
     primary: handSocket(root, 'Shotgun trigger hand', 'right', [.021,.012,.140], [0,-.77,-.64], [0,.64,-.77], .020),
-    support: handSocket(barrels, 'Shotgun support hand', 'left', [-.020,-.022,-.130], [.9,-.45,0], [0,0,-1], .030),
+    support: handSocket(barrels, 'Shotgun support hand', 'left', [-.008,-.028,-.130], [.94,-.34,0], [0,0,-1], .022, .026),
   };
+  triggerContact(sockets.primary, root, [.003, -.010, .056]);
   const supportTransform = new THREE.Matrix4();
   const offset = new THREE.Matrix4();
 
