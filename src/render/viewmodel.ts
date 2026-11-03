@@ -430,10 +430,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const SLEEVE_START = 0.012;
   const SLEEVE_RADIUS = 0.0265;
   // The sleeve stops this far up the arm, with a hem, instead of running on past the bottom of the screen.
-  const SLEEVE_LENGTH = 0.2;
+  const SLEEVE_LENGTH = 0.11;
   const sleeveProfile = Array.from({ length: 36 }, (_, i) => {
     const t = i / 35;
-    const radius = SLEEVE_RADIUS - t * 0.005 + Math.sin(t * Math.PI * 13) * 0.0008 * Math.sin(t * Math.PI);
+    const radius = SLEEVE_RADIUS * 0.92 + t * 0.004 + Math.sin(t * Math.PI * 13) * 0.0008 * Math.sin(t * Math.PI);
     return new THREE.Vector2(radius, t);
   });
   const sleeveGeometry = new THREE.LatheGeometry(sleeveProfile, 28);
@@ -463,7 +463,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const armDirection = new THREE.Vector3();
   const elbow = new THREE.Vector3();
   const syncArm = (arm: ReturnType<typeof makeArm>, wrist: THREE.Vector3, side: number, bodycam: number) => {
-    elbow.set(side * (0.29 + bodycam * 0.05), -0.22, 0.65);
+    // The forearm angles down and out, away from the camera, so the sleeve is not seen end-on like a tube.
+    elbow.set(side * (0.34 + bodycam * 0.05), -0.38, 0.55);
     armDirection.copy(elbow).sub(wrist);
     arm.rig.position.copy(wrist);
     arm.rig.quaternion.setFromUnitVectors(forwardAxis, armDirection.clone().normalize());
