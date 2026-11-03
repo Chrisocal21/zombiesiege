@@ -52,7 +52,15 @@ async function main() {
     await send('Emulation.setFocusEmulationEnabled', { enabled: true });
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     await send('Page.navigate', { url: 'http://127.0.0.1:3000/?review' });
-    await delay(6500);
+    for (let i = 0; i < 120; i++) {
+      const ready = await evaluate(`(() => {
+        document.getElementById('launch-continue')?.click();
+        return Boolean(window.__siegeReview);
+      })()`);
+      if (ready) break;
+      await delay(500);
+    }
+    await delay(1500);
     await capture('title');
     if (process.argv.includes('--interactions')) {
       const key = async code => {

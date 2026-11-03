@@ -13,7 +13,7 @@ import type { CameraPose } from './view';
 
 // Everything here is in meters. The gun points down -z, +x is right, +y is up.
 const REST_POSITION = new THREE.Vector3(0.11, -0.18, -0.64);
-const BODYCAM_POSITION = new THREE.Vector3(0, 0.035, -0.68);
+const BODYCAM_POSITION = new THREE.Vector3(0, -0.045, -0.62);
 const SCALE = 1.55;
 // The gun is angled slightly in toward the crosshair.
 const REST_YAW = 0.1;
@@ -219,9 +219,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const textile = outfitTexture(appearance.outfit);
   const gloveMap = gloveTexture();
   const sleeve = new THREE.MeshStandardMaterial({ color: '#a4a4a4', roughness: 0.96, map: textile, bumpMap: textile, bumpScale: 0.0006 });
-  // The longer glove gauntlet overlaps the sleeve and the source hand's wrist cut.
+  // A short glove cuff joins the source hand's wrist cut to the shirt cuff.
   const sleeveCuff = new THREE.MeshStandardMaterial({ color: selectedGloves().color, roughness: 0.9, map: gloveMap, bumpMap: gloveMap, bumpScale: 0.0004 });
-  const gloveStrap = new THREE.MeshStandardMaterial({ color: selectedGloves().accent, roughness: 0.95, map: gloveMap });
   let currentOutfit = appearance.outfit;
   const sight = new THREE.MeshStandardMaterial({
     color: 0xf4efd6,
@@ -424,35 +423,31 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   );
 
   const forwardAxis = new THREE.Vector3(0, 0, 1);
-  // The glove ends just inside the sleeve, like a combat shirt cuff worn over a glove. The sleeve opening
-  // is only a little wider than the wrist, and the forearm barely widens from there.
-  const CUFF = 0.56;
-  const SLEEVE_START = 0.012;
-  const SLEEVE_RADIUS = 0.0265;
-  // The sleeve stops this far up the arm, with a hem, instead of running on past the bottom of the screen.
-  const SLEEVE_LENGTH = 0.11;
+  // Cover the wrist cut without extending a second, cylindrical "palm" into the hand.
+  // The shirt starts over this short cuff and continues down the forearm off screen.
+  const SLEEVE_START = 0;
+  const SLEEVE_RADIUS = 0.025;
+  // Account for the viewmodel's overall scale when bounding the wrist-to-elbow length.
+  const FOREARM_LENGTH = 0.34 / SCALE;
   const sleeveProfile = Array.from({ length: 36 }, (_, i) => {
     const t = i / 35;
-    const radius = SLEEVE_RADIUS * 0.92 + t * 0.004 + Math.sin(t * Math.PI * 13) * 0.0008 * Math.sin(t * Math.PI);
+    const radius = SLEEVE_RADIUS + t * 0.008 + Math.sin(t * Math.PI * 13) * 0.0008 * Math.sin(t * Math.PI);
     return new THREE.Vector2(radius, t);
   });
   const sleeveGeometry = new THREE.LatheGeometry(sleeveProfile, 28);
   // The source wrist cut is slightly oval/irregular. The glove cuff covers its seam.
-  const cuffGeometry = new THREE.CylinderGeometry(0.043 * CUFF, 0.037 * CUFF, 0.080, 28);
+  const cuffGeometry = new THREE.CylinderGeometry(0.020, 0.022, 0.028, 28);
   const bandGeometry = new THREE.TorusGeometry(SLEEVE_RADIUS, 0.0016, 6, 28);
   const makeArm = () => {
     const rig = new THREE.Group(); root.add(rig);
     const cuff = new THREE.Mesh(cuffGeometry, sleeveCuff);
-    cuff.rotation.x = Math.PI / 2; cuff.position.z = 0.002; rig.add(cuff);
+    cuff.rotation.x = Math.PI / 2; cuff.position.z = 0.008; rig.add(cuff);
     const cloth = new THREE.Mesh(sleeveGeometry, sleeve);
     cloth.rotation.x = Math.PI / 2; cloth.position.z = SLEEVE_START; rig.add(cloth);
-    // The rolled hem at the end of the sleeve.
+    // A stitched shirt cuff overlaps the glove at the wrist.
     const band = new THREE.Mesh(bandGeometry, sleeve);
     band.position.z = SLEEVE_START; rig.add(band);
-    // The hem at the far end.
-    const hem = new THREE.Mesh(bandGeometry, sleeve);
-    rig.add(hem);
-    return { rig, cloth, hem };
+    return { rig, cloth };
   };
   const rightArm = makeArm();
   const leftArm = makeArm();
@@ -463,14 +458,14 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const armDirection = new THREE.Vector3();
   const elbow = new THREE.Vector3();
   const syncArm = (arm: ReturnType<typeof makeArm>, wrist: THREE.Vector3, side: number, bodycam: number) => {
-    // The forearm angles down and out, away from the camera, so the sleeve is not seen end-on like a tube.
-    elbow.set(side * (0.34 + bodycam * 0.05), -0.38, 0.55);
+    // Bent elbows sit below and behind the wrists, close enough to avoid long,
+    // straight sleeves stretching toward targets behind the camera.
+    elbow.set(side * (0.09 + bodycam * 0.01), -0.25, 0.30);
     armDirection.copy(elbow).sub(wrist);
     arm.rig.position.copy(wrist);
     arm.rig.quaternion.setFromUnitVectors(forwardAxis, armDirection.clone().normalize());
-    const length = Math.min(SLEEVE_LENGTH, Math.max(0.15, armDirection.length() - SLEEVE_START));
+    const length = Math.min(FOREARM_LENGTH, Math.max(0.12, armDirection.length() - SLEEVE_START));
     arm.cloth.scale.y = length;
-    arm.hem.position.z = SLEEVE_START + length;
   };
 
   // Muzzle flash: a soft glowing burst, shown for a moment after each shot.
@@ -544,7 +539,6 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         sleeve.map = sleeve.bumpMap = outfitTexture(currentOutfit); sleeve.needsUpdate = true;
       }
       sleeveCuff.color.set(selectedGloves().color);
-      gloveStrap.color.set(selectedGloves().accent);
       time += frameSeconds;
 
       if (player.lastShotTick !== seenShotTick) {
