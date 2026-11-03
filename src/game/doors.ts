@@ -3,6 +3,7 @@ import type { Door, LevelBox } from '../levels/types';
 import { objectiveTarget, useObjective, type ObjectiveTarget } from './objectives';
 import type { GameState, Player } from './state';
 import { giveShotgun, owns, reserveOf, setReserve, weaponStats } from './weapons';
+import { spawnZombie } from './zombies';
 
 export type Interaction =
   | { kind: 'pickup'; index: number }
@@ -179,6 +180,22 @@ function buy(state: GameState, player: Player, index: number): void {
   player.lastBuyTick = state.tick;
 }
 
+// Starts the countdown for boarding up doors, and rushes zombies in through every one of them at
+// once, spread across each doorway's width so they do not queue up single file. Boarding becomes
+// a scramble against zombies already coming through, rather than a quiet beat beforehand.
+export function beginPrep(state: GameState): void {
+  state.waves.phase = 'prep';
+  state.waves.timer = config.waves.prepSeconds;
+  const count: number = config.waves.doorRushZombies;
+  for (const door of state.level.doors) {
+    for (let i = 0; i < count; i++) {
+      const variation = count === 1 ? 0.5 : 0.2 + (0.6 * i) / (count - 1);
+      const spawn = doorwaySpawn(door, variation);
+      spawnZombie(state, spawn.x, spawn.z, spawn.entry);
+    }
+  }
+}
+
 // Closing the gate shuts the way out and starts the countdown for boarding up doors.
 export function closeGate(state: GameState): void {
   const gate = state.level.gate;
@@ -191,8 +208,7 @@ export function closeGate(state: GameState): void {
     color: '#000000',
     surface: 'gate',
   });
-  state.waves.phase = 'prep';
-  state.waves.timer = config.waves.prepSeconds;
+  beginPrep(state);
 }
 
 export function openDoors(state: GameState): number[] {

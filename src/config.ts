@@ -181,6 +181,9 @@ export const config = {
     breakSeconds: 25,
     // The countdown, starting when the gate is closed, to find the bars and board up doors.
     prepSeconds: 30,
+    // The moment the gate closes, or a new floor is stepped onto, this many zombies rush in
+    // through every door at once, so boarding up is a scramble instead of a quiet beat.
+    doorRushZombies: 2,
     // The short pause before the same wave starts again after dying.
     startDelaySeconds: 3,
     // The pause on the floor-cleared message before the elevator opens.

@@ -1,7 +1,7 @@
 import { config } from '../config';
 import type { Level } from '../levels/types';
 import { closeLift, everyoneInCab, openLift } from './elevator';
-import { closeGate, doorwaySpawn, openDoors } from './doors';
+import { beginPrep, closeGate, doorwaySpawn, openDoors } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, dropCase, everyoneAboard } from './objectives';
 import { createPlayer, enterLevel, type GameState, type Player } from './state';
@@ -193,18 +193,19 @@ export function startOnFloor(state: GameState, floor: number): void {
 function startFloor(state: GameState, keepGuns: boolean): void {
   const level = levelForFloor(state.floor);
   enterLevel(state, level);
-  // Only the garage has a street gate, and it stays shut, so it goes straight down with no animation.
-  if (level.gate) {
-    closeGate(state);
-    state.gate.closedTick = -1_000_000;
-  }
   state.zombies = [];
   state.players = state.players.map((old) => respawn(old, level, keepGuns));
   const waves = state.waves;
   waves.number = 1;
-  waves.phase = 'prep';
-  waves.timer = config.waves.prepSeconds;
   waves.toSpawn = 0;
+  // Only the garage has a street gate, and it stays shut, so it goes straight down with no
+  // animation. Either way, the prep countdown starts now, with zombies rushing every door.
+  if (level.gate) {
+    closeGate(state);
+    state.gate.closedTick = -1_000_000;
+  } else {
+    beginPrep(state);
+  }
 }
 
 function startWave(state: GameState): void {

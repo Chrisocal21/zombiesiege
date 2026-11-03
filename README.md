@@ -2,7 +2,10 @@
 
 A first-person zombie wave shooter that runs in the browser, by Probably Fine Studios. Working title, early days.
 
-Hold a parking garage under a tower at night. Run in from the street, close the gate, board up two of the four doors, and survive five waves. Built with TypeScript, Three.js and Vite. Desktop only, solo for now with co-op planned.
+Hold a parking garage under a tower at night. Run in from the street, close the gate — and as
+every door bursts open at once, scramble to find boards and barricade two of the four doors while
+the dead are already coming through. Survive five waves. Built with TypeScript, Three.js and Vite.
+Desktop only, solo for now with co-op planned.
 
 ## Run it
 
@@ -27,6 +30,14 @@ not replaced, and points cannot go below zero. Restarting a run resets these cha
 
 The focused regression check is [check-admin.mjs](./tools/check-admin.mjs); it requires Node
 22.15 or newer with `--experimental-strip-types`.
+
+## Door rush
+
+The moment the garage gate closes, or a new floor is stepped onto, `config.waves.doorRushZombies`
+zombies (2 by default) burst in through every door at once, spread across each doorway so they do
+not queue in single file. The prep countdown to board up doors runs at the same time, so boarding
+is a scramble against zombies already coming through rather than a quiet beat beforehand. See
+[check-door-rush.mjs](./tools/check-door-rush.mjs) for the regression check.
 
 ## Layout
 
