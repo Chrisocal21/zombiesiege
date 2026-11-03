@@ -4,8 +4,8 @@
 
 ## Zombie Siege
 
-**Overall progress:** 58% (32/55)
-**Last updated:** November 2, 2026
+**Overall progress:** 67% (38/57)
+**Last updated:** November 3, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
 
@@ -13,11 +13,11 @@
 
 ### Pre-Production
 
-**Progress:** 50% (2/4)
+**Progress:** 100% (4/4)
 
-- [ ] Create new GitHub repo
+- [x] Create new GitHub repo
 - [x] Scaffold TypeScript + Vite + Three.js on localhost:3000
-- [ ] Create Vercel project and confirm a blank page deploys
+- [x] Create Vercel project and confirm a blank page deploys
 - [x] Add DECISIONS_LOG.md and ASSET_LICENSES.md to the repo
 
 ---
@@ -110,13 +110,15 @@
 
 ### Phase 3 — Level 1 and Spending
 
-**Phase progress:** 43% (3/7)
+**Phase progress:** 78% (7/9)
 
-- [ ] Level 1 map with multiple areas
-- [ ] Climb the tower: each level is a floor higher, ending on the roof with a helicopter airlift (elevator and floor counter built; floors still reuse the garage)
+- [x] Level 1 map with multiple areas (floor 3 admissions)
+- [x] Climb the tower: floors 3, 6, 9, 12 and the roof each have their own hospital layout, ending with the air ambulance on the helipad
+- [x] Floor objectives: keycard, breakers, charge hold, lamp cases, and the helipad lights on the roof
 - [x] Doors that cost points (floor 3: records room 250, manager's office 500)
 - [x] Weapon stations: ammo locker and a sawed-off shotgun wall
 - [x] More weapons and limited ammo: spare rounds per gun, pistol and sawed-off shotgun (more guns later)
+- [x] Melee weapons and weapon slots
 - [ ] Dual wielding: second pistol or sawed-off shotgun
 - [ ] More zombie types as data
 
@@ -153,14 +155,17 @@
 | Nov 1, 2026 | Level 0 rebuilt as a parking garage under a tower, with a street, ramp and gate; waves rest 25 seconds; title and pause menu with rebindable keys and settings; new HUD | 42% |
 | Nov 2, 2026 | Floor 3 admissions: lobby, office, records room and manager's office, doors that cost points, keycard objective, zombie pathfinding round walls | 58% |
 | Nov 2, 2026 | Elevator and floors, lives, points, headshot kills, synthesized sound, win screen, limited ammo with an ammo station, and a buyable sawed-off shotgun with weapon swap | 56% |
+| Nov 2, 2026 | Hospital floors 6, 9 and 12 and the roof, furniture, floor objectives and the air ambulance finale; new title flow, HUD redesign, photosensitivity warning; zombies rush every door at prep | 64% |
+| Nov 3, 2026 | Melee weapons, weapon slots and a shotgun model. Story written up in docs/LORE.md. Floor 6 now goes properly dark in the blackout. Repo and Vercel confirmed | 67% |
 
 ---
 
 ## What to Tackle Next
 
-- [ ] Hand the Handoff Brief and Feature Map to the coding Claude
-- [ ] Get a blank Three.js scene running on localhost:3000
-- [ ] Start Step Zero: load one room from a level file
+- [ ] Play the roof finale on a real graphics card
+- [ ] Choose co-op networking: WebRTC peer-to-peer (the plan) or Cloudflare Durable Objects with WebSockets (the lore session's lean)
+- [ ] Start Phase 2: two players
+- [ ] Optional, any time: small Act 1 story touches from docs/LORE.md (opening text card, patient files, people saved, radio call after the extraction)
 
 ---
 
