@@ -17,7 +17,7 @@ export const MAX_PITCH = Math.PI / 2 - 0.05;
 export function step(state: GameState, inputs: InputMessage[], dt: number): void {
   const level = state.level;
   for (const input of inputs) {
-    const player = state.players[input.playerId];
+    const player = state.players.find((each) => each.id === input.playerId);
     if (!player || player.health <= 0) continue;
 
     if (input.toggleFreeze) state.frozen = !state.frozen;

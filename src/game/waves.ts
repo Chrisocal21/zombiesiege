@@ -4,7 +4,7 @@ import { closeLift, everyoneInCab, openLift } from './elevator';
 import { beginPrep, closeGate, doorwaySpawn, openDoors } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, dropCase, everyoneAboard } from './objectives';
-import { createPlayer, enterLevel, type GameState, type Player } from './state';
+import { createPlayer, enterLevel, spawnPoint, type GameState, type Player } from './state';
 import { ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower';
 import { guaranteeAmmo } from './weapons';
 import { aliveZombies, spawnZombie } from './zombies';
@@ -43,7 +43,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   const waves = state.waves;
 
   const safe = waves.phase === 'cleared' || waves.phase === 'search' || waves.phase === 'lift' || waves.phase === 'ride' || waves.phase === 'won';
-  if (!safe && state.players.every((player) => player.health <= 0)) {
+  if (!safe && state.players.length > 0 && state.players.every((player) => player.health <= 0)) {
     restartWave(state, level);
     return;
   }
@@ -167,7 +167,7 @@ function arriveOnNextFloor(state: GameState): void {
 
 // A player back at full health at the spawn, with or without the weapons and rounds they had.
 function respawn(old: Player, level: Level, keepGuns: boolean): Player {
-  const player = createPlayer(old.id, level.playerSpawns[old.id]);
+  const player = createPlayer(old.id, spawnPoint(level.playerSpawns, old.id, level.spawnYaw));
   player.yaw = level.spawnYaw ?? 0;
   player.flashlight = old.flashlight;
   if (!keepGuns) return player;

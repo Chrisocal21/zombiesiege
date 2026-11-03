@@ -32,3 +32,41 @@ export interface InputMessage {
   // True when the flashlight key was pressed since the last message.
   toggleLight?: boolean;
 }
+
+// Standing still with nothing pressed.
+export function idleInput(playerId: number): InputMessage {
+  return {
+    playerId, moveForward: 0, moveRight: 0, lookYaw: 0, lookPitch: 0, fire: false, reload: false, aim: false,
+    lean: 0, crouch: false, jump: false, toggleCover: false, use: false, swap: false, toggleFreeze: false,
+  };
+}
+
+// Two inputs as one, for when they arrive faster than ticks run: the later held keys and stick
+// positions, all the turning from both, and any press from either.
+export function mergeInputs(earlier: InputMessage, later: InputMessage): InputMessage {
+  return {
+    ...later,
+    lookYaw: earlier.lookYaw + later.lookYaw,
+    lookPitch: earlier.lookPitch + later.lookPitch,
+    fire: earlier.fire || later.fire,
+    jump: earlier.jump || later.jump,
+    toggleCover: earlier.toggleCover || later.toggleCover,
+    use: earlier.use || later.use,
+    swap: earlier.swap || later.swap,
+    swapDirection: later.swapDirection ?? earlier.swapDirection,
+    selectWeapon: later.selectWeapon ?? earlier.selectWeapon,
+    melee: earlier.melee || later.melee,
+    toggleFreeze: earlier.toggleFreeze || later.toggleFreeze,
+    toggleLight: earlier.toggleLight || later.toggleLight,
+  };
+}
+
+// What stays held once an input has been used for a tick: the keys still down and where the
+// stick is, but no more turning and no presses, so a single press does not repeat.
+export function heldPart(input: InputMessage): InputMessage {
+  return {
+    ...input,
+    lookYaw: 0, lookPitch: 0, toggleCover: false, use: false, swap: false, swapDirection: undefined,
+    selectWeapon: undefined, toggleFreeze: false, toggleLight: false,
+  };
+}

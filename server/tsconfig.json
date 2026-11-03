@@ -11,5 +11,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["*.ts", "../src/net"]
+  "include": ["*.ts", "../src/net", "../src/game", "../src/levels", "../src/config.ts"]
 }

@@ -2,7 +2,7 @@ import { loadBindings } from './client/bindings';
 import { createAudio } from './client/audio';
 import { joinRoom } from './client/coop';
 import { createLocalInput } from './client/localInput';
-import { createLocalSession } from './client/session';
+import { createLocalSession, createRemoteSession } from './client/session';
 import { loadSettings, settings } from './client/settings';
 import { config } from './config';
 import { createGameState, eyeY, type GameState } from './game/state';
@@ -32,22 +32,20 @@ const TITLE_CAMERA = { x: -1.2, y: 1.3, z: -5.5, yaw: -2.75, pitch: 0.14 };
 const TITLE_ZOMBIES: [number, number, number][] = [[0.24, -1.23, 0.1], [2.29, -0.99, -0.25], [-0.39, 0.66, 0.3], [4.45, 1.36, -0.4], [2.07, 4.51, 0.15], [1.27, 7.0, -0.2], [3.4, 9.0, 0.35]];
 // Whether the title's zombies are still standing in the state, to be cleared when the game starts.
 let dressed = false;
-const session = createLocalSession(dressTitle(createGameState(level)));
+
+// Co-op testing: ?room=CODE joins that room on the co-op server, which runs the game for
+// everyone in it. A host and join menu replaces this later.
+const roomCode = import.meta.env.DEV ? new URLSearchParams(location.search).get('room') : null;
+const coop = roomCode ? joinRoom(roomCode) : null;
+const session = coop ? createRemoteSession(coop, createGameState(level)) : createLocalSession(dressTitle(createGameState(level)));
 const view = createView(level);
 const input = createLocalInput(view.renderer.domElement);
 const viewmodel = createViewmodel(view.viewScene);
 const effects = createEffects(view.scene, view.camera, viewmodel);
 const zombieViews = createZombieViews(view.scene);
 const audio = createAudio();
-
-// Co-op testing: ?room=CODE joins that room on the co-op server, and the other players in it
-// show up as boxes. A host and join menu replaces this later.
-const roomCode = import.meta.env.DEV ? new URLSearchParams(location.search).get('room') : null;
-const coop = roomCode ? joinRoom(roomCode) : null;
+// The other players in a co-op game, drawn as boxes for now.
 const remotePlayers = coop ? createRemotePlayers(view.scene) : null;
-// Positions go out 20 times a second.
-const POSE_SECONDS = 0.05;
-let poseTimer = 0;
 
 let reviewing = false;
 let lastTime = performance.now();
@@ -100,6 +98,11 @@ const menu = createMenu({
   },
   sound: (kind) => audio.ui(kind),
   playFloor(floor) {
+    if (coop) {
+      coop.restart(floor);
+      enterGame();
+      return;
+    }
     const next = createGameState(level);
     // The garage starts out in the street as usual; the floors start just out of the elevator.
     if (floor > 0) startOnFloor(next, floor);
@@ -110,7 +113,8 @@ const menu = createMenu({
   resume: enterGame,
   gameState: () => session.state,
   restart() {
-    session.replace(createGameState(level));
+    if (coop) coop.restart(0);
+    else session.replace(createGameState(level));
     enterGame();
   },
   toTitle() {
@@ -139,6 +143,7 @@ view.renderer.setAnimationLoop((now) => {
   const paused = menu.isOpen();
 
   if (!paused && !reviewing) session.advance(frameSeconds, input.poll);
+  else session.hold();
   const state = session.state;
   // The run is over: show the victory screen and let go of the mouse.
   if (state.waves.phase === 'won' && !menu.isOpen()) {
@@ -156,15 +161,17 @@ view.renderer.setAnimationLoop((now) => {
   // Draw between the last two ticks so motion stays smooth on any screen refresh rate.
   // Turning is drawn from the latest tick plus the mouse movement not yet sent.
   const blend = session.blend;
+  // In co-op, turning the server has not used yet is added too, so the view never waits on it.
+  const sent = session.pendingLook();
   const look = paused ? { yaw: 0, pitch: 0 } : input.pendingLook();
-  const yaw = player.yaw + look.yaw;
+  const yaw = player.yaw + sent.yaw + look.yaw;
   let pose = {
     // The head sits out to the side of the body when leaning.
     x: previous.x + (player.x - previous.x) * blend + Math.cos(yaw) * player.leanOffset,
     y: previous.y + (eyeY(player) - previous.y) * blend,
     z: previous.z + (player.z - previous.z) * blend - Math.sin(yaw) * player.leanOffset,
     yaw,
-    pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, player.pitch + look.pitch)),
+    pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, player.pitch + sent.pitch + look.pitch)),
     roll: -(player.leanOffset / config.player.leanDistance) * config.view.leanRoll,
   };
   const onTitle = menu.onTitle();
@@ -204,14 +211,7 @@ view.renderer.setAnimationLoop((now) => {
   if (!onTitle || outfitPreview) viewmodel.update(player, pose, paused ? 0 : frameSeconds, outfitPreview);
   view.setAim(onTitle ? 0 : viewmodel.aimAmount());
   view.setFlashlight(!onTitle && player.flashlight && player.health > 0);
-  if (coop && remotePlayers) {
-    poseTimer -= frameSeconds;
-    if (poseTimer <= 0) {
-      poseTimer = POSE_SECONDS;
-      coop.sendPose({ floor: state.floor, x: player.x, y: player.y, z: player.z, yaw: player.yaw });
-    }
-    remotePlayers.update(coop.others(), state.floor);
-  }
+  remotePlayers?.update(state.players, session.playerId);
   view.animate(now / 1000, state);
   input.setLookScale(view.camera.fov / settings.fieldOfView);
   effects.update(player, paused ? 0 : frameSeconds, state.level);
