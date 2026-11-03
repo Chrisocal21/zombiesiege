@@ -49,7 +49,7 @@ Hold out against waves of zombies in a dark, foggy, blocky world. Kill zombies f
 - [agreed] The solo game is built as a host with one player, so co-op adds players instead of rewriting
 - [stated] Join by room code from the host (Phase 2)
 - [agreed] Host-authoritative: the host runs the real game; other players send inputs and see the host's result
-- [agreed] WebRTC peer-to-peer, with a small Cloudflare Worker matching players by room code; Cloudflare Durable Objects as the fallback if peer-to-peer is unreliable
+- [agreed] Cloudflare Durable Objects: one per room code, running the real game on the server, with players connected over WebSockets. Solo keeps running in the browser with no server. (Replaced WebRTC peer-to-peer on Nov 3, 2026)
 
 ### Lives
 
@@ -130,7 +130,7 @@ Hold out against waves of zombies in a dark, foggy, blocky world. Kill zombies f
 
 ## Phase 2 — Two Players
 
-- Cloudflare Worker matching players by room code
+- Cloudflare Durable Objects: one per room code, running the real game on the server, with players connected over WebSockets
 - Second player joins and sees the same zombies in the same places
 - Downed state and spectate camera
 - Halftime checkpoint revive and first aid kit

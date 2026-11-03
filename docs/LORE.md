@@ -273,7 +273,6 @@ Not written yet. See **Places** for what's next.
 - Names for the crew, the pilot, the co-pilot, the scientist and the zone.
 - Where "people saved" shows up, and how camps are introduced.
 - The thirst meter conflicts with the plan's plain auto-regen. It's Phase 3 only, so the plan files need updating before then.
-- Co-op networking: switch to Cloudflare Durable Objects with WebSockets, dropping peer-to-peer. Not needed until Phase 2.
 
 ---
 

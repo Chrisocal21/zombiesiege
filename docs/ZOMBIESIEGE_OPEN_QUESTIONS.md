@@ -9,7 +9,7 @@
 | Final name | Zombie Siege is a working title; the repo and domain depend on it | Keep the working title until the game is fun |
 | Exact checkpoint spot in the Level 0 room | Needed for the Level 0 file before Phase 2 | Decide while sketching the room |
 | Is the HUD drawn on the canvas, as Supplyline does? | Matches Chris's no-HTML rule for UI | Yes; coding Claude to confirm the cost |
-| State sync: full snapshots or only changes? | Shapes the Phase 2 networking build | Coding Claude's call, explained simply to Chris |
+| State sync: full snapshots or only changes? | Shapes the Phase 2 networking build | Start with full snapshots from the server 20 to 30 times a second; send only changes later if they are too big |
 | Can zombies reach a player standing high up? | Right now a player on a crate or the container roof is out of reach, so camping up there wins every wave. Options: zombies climb ladders and crates too, or the high spots get a limit | Let zombies climb crates and ladders in Phase 3; keep high spots safe for now, and see if it spoils Level 0 |
 | Do zombies chase the players in the street? | Right now the street is empty, so closing the gate is only a short run. A few chasing zombies would make the gate urgent | Add a handful that start far down the road and walk at you |
 | How many levels, and what is each floor? | The tower climbs to the roof and a helicopter airlift. Level 0 is the garage. The floors in between, and how a level ends (a stairwell, a lift), are not planned | Plan in Phase 3 once Level 0 has been played |
@@ -36,6 +36,7 @@
 | Build order? | Solo first, then 2 players, then 4 | Nov 1, 2026 |
 | How is solo built? | As a host with one player, inputs sent as messages, so co-op adds players without a rewrite | Nov 1, 2026 |
 | How do players find each other? | A small Cloudflare Worker matching by room code (Phase 2) | Nov 1, 2026 |
+| How does co-op connect? | Cloudflare Durable Objects: one per room code, running the real game on the server, with players connected over WebSockets. Replaces peer-to-peer | Nov 3, 2026 |
 | How do players join? | Room code from the host | Nov 1, 2026 |
 | Lives? | 3 per player, one spent per down, refilled each level | Nov 1, 2026 |
 | Solo death? | Going down spends a life and restarts the current wave; 0 lives restarts from wave 1 | Nov 1, 2026 |

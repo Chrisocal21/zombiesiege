@@ -89,7 +89,7 @@
 
 #### Feature 2.1 — Connecting
 **Progress:** 0% (0/3)
-- [ ] Cloudflare Worker that matches players by room code
+- [ ] Cloudflare Durable Object per room code that runs the game; players connect over WebSockets
 - [ ] Host creates a room, friend joins with the code
 - [ ] Both players see the same zombies in the same places
 
@@ -163,8 +163,7 @@
 ## What to Tackle Next
 
 - [ ] Play the roof finale on a real graphics card
-- [ ] Choose co-op networking: WebRTC peer-to-peer (the plan) or Cloudflare Durable Objects with WebSockets (the lore session's lean)
-- [ ] Start Phase 2: two players
+- [ ] Start Phase 2: split the main loop into local (solo) and server (co-op), then the server skeleton on localhost
 - [ ] Optional, any time: small Act 1 story touches from docs/LORE.md (opening text card, patient files, people saved, radio call after the extraction)
 
 ---

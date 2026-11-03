@@ -38,7 +38,7 @@ A browser zombie wave shooter. Krunker.io look, COD Zombies loop. First person, 
 - localhost:3000
 - Git and GitHub, new repo
 - Vercel, its own project
-- Later, for co-op: WebRTC peer-to-peer, a small Cloudflare Worker matching players by room code, Cloudflare Durable Objects as the fallback. Not needed until Phase 2.
+- Later, for co-op: Cloudflare Durable Objects: one per room code, running the real game on the server, with players connected over WebSockets. Not needed until Phase 2. (Replaced WebRTC peer-to-peer on Nov 3, 2026.)
 
 ---
 
