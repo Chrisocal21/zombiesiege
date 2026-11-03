@@ -2,7 +2,7 @@ import { config } from '../config';
 import type { Level } from '../levels/types';
 import { closeLift, everyoneInCab, openLift } from './elevator';
 import { closeGate, doorwaySpawn, openDoors, resetDoors } from './doors';
-import { createPlayer, type GameState } from './state';
+import { createPlayer, type GameState, type Player } from './state';
 import { guaranteeAmmo } from './weapons';
 import { aliveZombies, spawnZombie } from './zombies';
 
@@ -104,20 +104,32 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
 // full health outside the elevator, and a fresh countdown to board up doors before wave 1.
 function arriveOnNextFloor(state: GameState, level: Level): void {
   state.floor++;
-  startFloor(state, level);
+  startFloor(state, level, true);
   openLift(state);
   state.waves.arrivedTick = state.tick;
+}
+
+// A player back at full health at the spawn, with or without the weapons and rounds they had.
+function respawn(old: Player, level: Level, keepGuns: boolean): Player {
+  const player = createPlayer(old.id, level.playerSpawns[old.id]);
+  if (!keepGuns) return player;
+  player.weapon = old.weapon;
+  player.stowed = old.stowed;
+  player.ammo = old.ammo;
+  player.reserve = old.reserve;
+  guaranteeAmmo(player);
+  return player;
 }
 
 // Wave 1 of the current floor: boards off, zombies gone, everyone back at full health, and the
 // countdown to board up doors. The street gate is shut for good, so it goes straight back down
 // with no animation.
-function startFloor(state: GameState, level: Level): void {
+function startFloor(state: GameState, level: Level, keepGuns: boolean): void {
   resetDoors(state);
   closeGate(state);
   state.gate.closedTick = -1_000_000;
   state.zombies = [];
-  state.players = state.players.map((player) => createPlayer(player.id, level.playerSpawns[player.id]));
+  state.players = state.players.map((old) => respawn(old, level, keepGuns));
   const waves = state.waves;
   waves.number = 1;
   waves.phase = 'prep';
@@ -145,12 +157,13 @@ function restartWave(state: GameState, level: Level): void {
     waves.lostRun = true;
     // The score goes with the run.
     state.points = state.points.map(() => 0);
-    startFloor(state, level);
+    startFloor(state, level, false);
     return;
   }
   waves.lostRun = false;
   state.zombies = [];
-  state.players = state.players.map((player) => createPlayer(player.id, level.playerSpawns[player.id]));
+  // Going down costs a life but not the guns: weapons and spare rounds come back with the player.
+  state.players = state.players.map((old) => respawn(old, level, true));
   waves.phase = 'break';
   waves.timer = config.waves.startDelaySeconds;
   waves.toSpawn = 0;
