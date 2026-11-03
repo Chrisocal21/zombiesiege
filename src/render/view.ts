@@ -259,6 +259,9 @@ export function createView(level: Level): View {
       fog.far = 85 + ((air?.fogFar ?? 85) - 85) * dark;
       (scene.background as THREE.Color).copy(fog.color);
       sky.intensity = 0.65 * (air?.ambient ?? 1) * (0.08 + 0.92 * power);
+      // The reflections light every wall evenly, so they fade with the power too, or a blacked-out
+      // floor still reads as lit.
+      scene.environmentIntensity = 0.2 * (0.1 + 0.9 * power);
     },
     setFlashlight(on) {
       flashlight.intensity = on ? 38 : 0;

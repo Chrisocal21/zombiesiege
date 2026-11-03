@@ -23,6 +23,9 @@ const SCENES = {
   'combat-aim': { place: { x: 1, z: 4, yaw: -0.18, pitch: -0.03, aim: true, gate: true, phase: 'active', wave: 4, boarded: [1, 2], ammo: 9, lunge: true, zombies: [[2.2, -2.4], [6.2, -4.4], [4.4, -6.5]] } },
   'zombie-close': { place: { x: -2, z: 4.5, yaw: 0, pitch: -0.1, gate: true, phase: 'active', wave: 2, health: 38, lunge: true, zombies: [[-2, 2.1, Math.PI]] } },
   'tactical-map': { show: 'map' },
+  // Floor 6 is lift stop 2. The flashlight is off so the shots show the room's own light.
+  'floor6-blackout': { place: { floor: 2, x: -12, z: 0, yaw: -Math.PI / 2, pitch: -0.05, phase: 'prep', timer: 20, flashlight: false } },
+  'floor6-power': { place: { floor: 2, x: -12, z: 0, yaw: -Math.PI / 2, pitch: -0.05, phase: 'prep', timer: 20, thrown: 3, flashlight: false } },
   'survivor-screen': { show: 'character' },
   controls: { show: 'controls' },
   settings: { show: 'settings' },
@@ -50,7 +53,11 @@ async function main() {
     let id = 0; const pending = new Map();
     socket.onmessage = (event) => { const data = JSON.parse(event.data); if (data.id && pending.has(data.id)) pending.get(data.id)(data); };
     const send = (method, params = {}) => new Promise((resolve) => { const key = ++id; pending.set(key, resolve); socket.send(JSON.stringify({ id: key, method, params })); });
-    const run = async (expression) => (await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })).result?.result?.value;
+    const run = async (expression) => {
+      const { result } = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+      if (result?.exceptionDetails) console.error('page error:', result.exceptionDetails.exception?.description ?? result.exceptionDetails.text);
+      return result?.result?.value;
+    };
 
     await send('Runtime.enable'); await send('Page.enable');
     await send('Emulation.setFocusEmulationEnabled', { enabled: true });
@@ -58,7 +65,9 @@ async function main() {
     // The warning screen first, with reduced flashing off so the muzzle flash shows.
     await send('Page.navigate', { url: 'http://127.0.0.1:3000/?review' });
     await delay(5000);
-    await run("document.getElementById('launch-reduced-flashing').checked = false; document.getElementById('launch-continue').click()");
+    await run("document.getElementById('launch-reduced-flashing').checked = false");
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
     await delay(14000);
 
     for (const name of wanted) {
