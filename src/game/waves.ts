@@ -3,19 +3,16 @@ import type { Level } from '../levels/types';
 import { closeLift, everyoneInCab, openLift } from './elevator';
 import { closeGate, doorwaySpawn, openDoors, resetDoors } from './doors';
 import { createPlayer, type GameState, type Player } from './state';
+import { stops, storeysToNext, waveSize, wavesOnFloor } from './tower';
 import { guaranteeAmmo } from './weapons';
 import { aliveZombies, spawnZombie } from './zombies';
 
-export const TOTAL_WAVES = config.waves.zombiesPerWave.length;
-
 export function isTopFloor(state: GameState): boolean {
-  return state.floor >= config.tower.floors - 1;
+  return state.floor >= stops.length - 1;
 }
 
 // Every floor up brings more zombies to each wave.
-export function zombiesInWave(floor: number, wave: number): number {
-  return Math.round(config.waves.zombiesPerWave[wave - 1] * (1 + config.elevator.extraZombiesPerFloor * floor));
-}
+export const zombiesInWave = waveSize;
 
 // Spawns the wave's zombies one at a time, runs the break between waves, and resets the wave if
 // every player is down.
@@ -60,7 +57,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     if (everyoneInCab(state)) {
       closeLift(state);
       waves.phase = 'ride';
-      waves.timer = config.elevator.rideSeconds;
+      waves.timer = config.elevator.rideSeconds + config.elevator.rideSecondsPerStorey * storeysToNext(state.floor);
     }
     return;
   }
@@ -89,7 +86,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   }
 
   if (aliveZombies(state) === 0) {
-    if (waves.number >= TOTAL_WAVES) {
+    if (waves.number >= wavesOnFloor(state.floor)) {
       waves.phase = 'cleared';
       waves.timer = config.waves.levelClearedSeconds;
     } else {

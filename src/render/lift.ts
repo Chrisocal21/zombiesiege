@@ -3,12 +3,13 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { config } from '../config';
 import { settings } from '../client/settings';
 import type { GameState } from '../game/state';
+import { storeyLabel } from '../game/tower';
 import type { Level } from '../levels/types';
 
 const FRAME = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.35, metalness: 0.85 });
 const DOOR = new THREE.MeshStandardMaterial({ color: 0xa9aeb4, roughness: 0.3, metalness: 0.9 });
 
-function displayTexture(): { texture: THREE.CanvasTexture; draw: (floor: number, open: boolean) => void } {
+function displayTexture(): { texture: THREE.CanvasTexture; draw: (label: string, open: boolean) => void } {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 160;
@@ -17,7 +18,7 @@ function displayTexture(): { texture: THREE.CanvasTexture; draw: (floor: number,
   texture.colorSpace = THREE.SRGBColorSpace;
   return {
     texture,
-    draw(floor, open) {
+    draw(label, open) {
       context.fillStyle = '#0b0d10';
       context.fillRect(0, 0, 512, 160);
       context.strokeStyle = '#8a8f96';
@@ -29,7 +30,7 @@ function displayTexture(): { texture: THREE.CanvasTexture; draw: (floor: number,
       context.fillText('ELEVATOR', 256, 70);
       context.fillStyle = open ? '#38e070' : '#ffd24a';
       context.font = '700 46px Bahnschrift, Arial Narrow, sans-serif';
-      context.fillText(`▲  FLOOR ${floor + 1}`, 256, 130);
+      context.fillText(label === 'ROOF' ? '▲  ROOF' : `▲  FLOOR ${label}`, 256, 130);
       texture.needsUpdate = true;
     },
   };
@@ -94,7 +95,7 @@ export function buildLift(scene: THREE.Scene, level: Level, glowMap: THREE.Textu
     if (state.floor !== shownFloor || state.lift.open !== shownOpen) {
       shownFloor = state.floor;
       shownOpen = state.lift.open;
-      display.draw(state.floor, state.lift.open);
+      display.draw(storeyLabel(state.floor + 1), state.lift.open);
     }
     const riding = state.waves.phase === 'ride';
     const pulse = settings.reducedFlashing ? 1 : 0.7 + 0.3 * Math.sin(time * 6);

@@ -116,16 +116,24 @@ export const config = {
   },
 
   tower: {
-    // How many floors there are to fight through, counting the ground floor. Clearing the top one
-    // wins the run. A stand-in until the roof and the helicopter exist.
-    floors: 3,
+    // The floors the elevator stops at, bottom to top. The building has many more storeys, which
+    // the elevator rides past. Clearing the last one wins the run, until the roof exists.
+    stops: [
+      { number: 0, name: 'Garage', waves: 5 },
+      { number: 3, name: 'Admissions', waves: 3 },
+      { number: 6, name: 'Pharmacy and lab', waves: 3 },
+      { number: 9, name: 'Surgery', waves: 4 },
+      { number: 12, name: 'Intensive care', waves: 4 },
+    ],
   },
 
   elevator: {
     // How long the doors take to slide, for the picture only.
     doorSeconds: 1.4,
-    // The ride up, from the doors closing to the doors opening on the next floor.
-    rideSeconds: 6,
+    // The ride up, from the doors closing to the doors opening on the next stop: this plus a
+    // little for every storey climbed.
+    rideSeconds: 3,
+    rideSecondsPerStorey: 1,
     // After arriving, how long the doors stay open before they close again behind the players.
     arrivalOpenSeconds: 4,
     // Each floor up adds this fraction to every wave's zombie count and to their speed.

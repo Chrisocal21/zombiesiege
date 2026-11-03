@@ -358,7 +358,7 @@ export function createAudio(): Audio {
         if (state.waves.phase === 'active' && phase !== 'active') sting(false);
         if ((state.waves.phase === 'cleared' && phase !== 'cleared') || (state.waves.phase === 'won' && phase !== 'won')) sting(false);
         if (state.lift.open && !liftOpen) ding();
-        if (state.waves.phase === 'ride' && phase !== 'ride') rumble(config.elevator.rideSeconds);
+        if (state.waves.phase === 'ride' && phase !== 'ride') rumble(state.waves.timer);
         if (state.gate.closed && !gateClosed && state.gate.closedTick >= 0) gateClank();
         if (boarded > boardedCount) nailing();
         if (taken > takenCount) pickup();

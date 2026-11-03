@@ -6,14 +6,15 @@ import { interactionTarget, stationOffer } from '../game/doors';
 import { weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
-import { TOTAL_WAVES, isTopFloor, zombiesInWave } from '../game/waves';
+import { floorTitle, wavesOnFloor } from '../game/tower';
+import { isTopFloor, zombiesInWave } from '../game/waves';
 
 import { aliveZombies } from '../game/zombies';
 import type { Level } from '../levels/types';
 import type { Menu } from './menu';
 import { COLOR, clamp, keycap, measure, panel, roundedRect, text } from './ui';
 
-const floorName = (floor: number): string => (floor === 0 ? 'Ground floor' : `Floor ${floor}`);
+const floorName = floorTitle;
 
 export interface Hud {
   toggleMap(): void;
@@ -376,7 +377,7 @@ export function createHud(level: Level, menu: Menu): Hud {
         timer = waves.timer;
         break;
       case 'active':
-        title = `Wave ${waves.number} of ${TOTAL_WAVES}`;
+        title = `Wave ${waves.number} of ${wavesOnFloor(state.floor)}`;
         detail = `${waves.toSpawn + aliveZombies(state)} zombies left`;
         break;
       case 'cleared':
@@ -619,8 +620,8 @@ export function createHud(level: Level, menu: Menu): Hud {
     panel(context, x, margin, 248 * unit, 112 * unit);
     text(context, `SURVIVAL / SOLO / ${floorName(state.floor).toUpperCase()}`, x + 20 * unit, margin + 28 * unit, { size: 13 * unit, spacing: 3 * unit, color: COLOR.dim });
     text(context, String(state.waves.number).padStart(2, '0'), x + 20 * unit, margin + 84 * unit, { size: 52 * unit, weight: 800, color: COLOR.accent });
-    text(context, '/ 05 WAVES', x + 93 * unit, margin + 77 * unit, { size: 16 * unit, color: COLOR.dim });
-    for (let i = 0; i < TOTAL_WAVES; i++) {
+    text(context, `/ ${String(wavesOnFloor(state.floor)).padStart(2, '0')} WAVES`, x + 93 * unit, margin + 77 * unit, { size: 16 * unit, color: COLOR.dim });
+    for (let i = 0; i < wavesOnFloor(state.floor); i++) {
       context.fillStyle = i < state.waves.number - (state.waves.phase === 'cleared' ? 0 : 1) ? COLOR.good : 'rgba(255,255,255,.12)';
       context.fillRect(x + (20 + i * 43) * unit, margin + 99 * unit, 35 * unit, 3 * unit);
     }
