@@ -1,0 +1,59 @@
+<!doctype html><html><head><link rel="icon" href="/favicon.svg"><style>body{margin:0;background:#aaa6a0}canvas{display:block}</style></head><body><script type="module">
+// Each weapon's grip from five sides, on a plain background. With the dev server running, open
+// /tools/grips.html?weapon=pistol (or shotgun, machete, bat). Add &sockets to show the attach
+// points, &support to centre on the support hand, &view=right (rear, left, below, front) for one big view.
+import * as THREE from '/node_modules/.vite/deps/three.js';
+import { createViewmodel } from '/src/render/viewmodel.ts';
+import { createGameState } from '/src/game/state.ts';
+import { level0 } from '/src/levels/level0.ts';
+import { settings } from '/src/client/settings.ts';
+const params = new URLSearchParams(location.search);
+const weapon = params.get('weapon') ?? 'pistol';
+const W = 1500, H = 900;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H); renderer.setPixelRatio(1); renderer.setScissorTest(true);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#aaa6a0');
+scene.add(new THREE.HemisphereLight(0xc4d2ee, 0x2a2e36, 1.1));
+const key = new THREE.DirectionalLight(0xdde8ff, 2.2); key.position.set(-.8, 1.6, .4); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, .9); fill.position.set(1, .5, -1); scene.add(fill);
+const state = createGameState(level0), player = state.players[0];
+player.weapon = weapon; player.ammo = 2; player.reserve = 12;
+settings.cameraMotion = false; settings.cameraStyle = 'standard';
+const model = createViewmodel(scene);
+const pose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0 };
+const views = [
+  ['rear', [0, 0.25, 0.45]], ['right', [0.55, 0, 0]], ['left', [-0.55, 0, 0]],
+  ['below', [0.05, -0.55, 0.05]], ['front', [0.05, 0.1, -0.55]],
+];
+const cameras = views.map(([, offset]) => new THREE.OrthographicCamera(-.17, .17, .17, -.17, .01, 10));
+const only = params.get('view');
+const cells = only ? views.map(([name]) => name === only ? [0, 0, 1500, 900] : [0, 0, 0, 0])
+  : [[0, 0, 900, 900], [900, 450, 300, 450], [1200, 450, 300, 450], [900, 0, 300, 450], [1200, 0, 300, 450]];
+window.__grips = { ready: false };
+let frames = 0;
+renderer.setAnimationLoop(() => {
+  model.update(player, pose, 1 / 60);
+  const gun = scene.getObjectByName('Weapon viewmodel');
+  gun.position.set(0, 0, 0); gun.rotation.set(0, 0, 0); gun.updateMatrixWorld(true);
+  // Centre on the trigger hand's palm.
+  const hand = scene.getObjectByName(params.has('support') ? 'Support hand mesh' : 'Primary hand mesh');
+  const target = new THREE.Vector3();
+  if (hand) new THREE.Box3().setFromObject(hand).getCenter(target);
+  views.forEach(([name, offset], i) => {
+    const camera = cameras[i];
+    const [x, y, w, h] = cells[i];
+    if (!w) return;
+    const aspect = w / h, size = only ? .12 : i === 0 ? .16 : .19;
+    camera.left = -size * aspect; camera.right = size * aspect; camera.top = size; camera.bottom = -size;
+    camera.updateProjectionMatrix();
+    camera.position.copy(target).add(new THREE.Vector3(...offset));
+    camera.up.set(0, name === 'below' ? 0 : 1, name === 'below' ? -1 : 0);
+    camera.lookAt(target);
+    renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
+    renderer.render(scene, camera);
+  });
+  if (hand && ++frames > 5) window.__grips.ready = true;
+});
+</script></body></html>

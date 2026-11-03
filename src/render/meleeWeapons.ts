@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { paintTexture } from './materials';
+import { handSocket } from './handSockets';
 import { softBox } from './weaponGeometry';
 
 function bladePart(shape: THREE.Shape, depth: number, material: THREE.Material | THREE.Material[]): THREE.Mesh {
@@ -89,5 +90,12 @@ export function createMeleeWeapons(steel: THREE.MeshStandardMaterial, rubber: TH
     point.position.copy(at).addScaledVector(direction,.0405);bat.add(point);
     const washer=new THREE.Mesh(washerGeometry,oxidized);washer.quaternion.copy(turn);washer.position.copy(at);bat.add(washer);
   }
-  return {machete,bat};
+  // A fist round each handle, palm on the right side. Two hands stack on the bat's tape, the
+  // left nearer the knob.
+  const sockets = {
+    machete: handSocket(machete, 'Machete hand', 'right', [.0155,-.035,.002], [0,0,-1], [0,1,0], .0145),
+    batRight: handSocket(bat, 'Bat upper hand', 'right', [.0125,-.035,0], [0,0,-1], [0,1,0], .012),
+    batLeft: handSocket(bat, 'Bat lower hand', 'left', [-.0125,-.100,0], [0,0,-1], [0,1,0], .012),
+  };
+  return {machete,bat,sockets};
 }

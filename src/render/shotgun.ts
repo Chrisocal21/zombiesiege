@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { paintTexture } from './materials';
+import { handSocket } from './handSockets';
 import { box, softBox, profile, barrelPart } from './weaponGeometry';
 
 interface ShotgunMaterials {
@@ -158,11 +159,17 @@ export function createShotgun(materials: ShotgunMaterials) {
   });
   const muzzle = new THREE.Object3D();muzzle.name='Shotgun muzzle';
   muzzle.position.set(-.014,.034,-.247);barrels.add(muzzle);
+  // The trigger hand round the stock's neck, its palm on the right side and the thumb up toward
+  // the receiver. The support hand cups the fore-end from below, so it rides the hinge.
+  const sockets = {
+    primary: handSocket(root, 'Shotgun trigger hand', 'right', [.021,.012,.140], [0,-.77,-.64], [0,.64,-.77], .020),
+    support: handSocket(barrels, 'Shotgun support hand', 'left', [-.020,-.022,-.130], [.9,-.45,0], [0,0,-1], .030),
+  };
   const supportTransform = new THREE.Matrix4();
   const offset = new THREE.Matrix4();
 
   return {
-    root, muzzle, supportTransform,
+    root, muzzle, supportTransform, sockets,
     update(ammo: number, progress: number, reloading: boolean, pull: number) {
       const stage=(a:number,b:number)=>smooth((progress-a)/(b-a));
       const opening=reloading ? stage(.04,.22)*(1-stage(.78,.96)) : 0;

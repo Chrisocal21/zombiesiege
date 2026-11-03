@@ -1,17 +1,67 @@
 import { gloveTexture } from './gearTextures';
 import { appearance, selectedGloves } from '../client/appearance';
 import * as THREE from 'three';
+import type { HandSocket } from './handSockets';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // The hand models have a bone in every finger joint. Each bone is posed once when the model
 // loads. See ASSET_LICENSES.md for their source.
 
 
-// Everything below is in the grip's own space: +x right, +y up along the grip, +z back.
+// Two ways to pose a hand. A hold puts the palm on one of a weapon's attach points (see
+// handSockets.ts) and closes fingers round its handle. A hand-made pose places the hand and
+// aims every finger bone directly, for moments that are not a grip on a handle: reloads.
+
+export const RIGHT_HAND_MODEL = '/models/right-hand.glb';
+export const LEFT_HAND_MODEL = '/models/left-hand.glb';
+
+export type Finger = 'index' | 'middle' | 'ring' | 'pinky' | 'thumb';
+type Vec = [number, number, number];
+
+// How a hand holds a handle. Fingers in `wrap` close round it, however thick it is. The others
+// take the bone directions in `pose`, knuckle out to tip, in the hand's own frame: x the way the
+// fingers point, y toward the thumb, z out of the palm. A finger in neither stays straight.
+export interface Grip {
+  wrap: Finger[];
+  pose: Partial<Record<Finger, Vec[]>>;
+}
+
+// A hold: this grip, on this attach point.
+export interface Hold { grip: Grip; socket: HandSocket }
+
+// The trigger hand on a gun: three fingers round the grip, the index along the frame and in
+// through the guard, and the thumb high on the far side.
+export const GUN_GRIP: Grip = {
+  wrap: ['middle', 'ring', 'pinky'],
+  pose: {
+    index: [[1, 0.05, 0.3], [0.55, 0, 0.85], [0.1, 0, 1]],
+    thumb: [[0.6, 0.6, 0.55], [0.85, 0.3, 0.45], [0.95, 0.15, 0.3]],
+  },
+};
+
+// The support hand on a pistol: every finger round the trigger hand's fingers, the thumb
+// forward along the frame under the firing thumb.
+export const SUPPORT_GRIP: Grip = {
+  wrap: ['index', 'middle', 'ring', 'pinky'],
+  pose: { thumb: [[0.7, 0.6, 0.4], [0.9, 0.4, 0.2], [0.95, 0.3, 0.1]] },
+};
+
+// Cupped under a fore-end: the fingers up the far side, the thumb forward along the near side.
+export const FOREND_GRIP: Grip = {
+  wrap: ['index', 'middle', 'ring', 'pinky'],
+  pose: { thumb: [[0.5, 0.75, 0.45], [0.3, 0.95, 0.1], [0.2, 1, 0]] },
+};
+
+// A fist round a handle, the thumb closing round it the other way.
+export const FIST_GRIP: Grip = {
+  wrap: ['index', 'middle', 'ring', 'pinky', 'thumb'],
+  pose: {},
+};
+
+// A hand-made pose, in its parent's space: +x right, +y up, +z back.
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z).normalize();
 
 export interface HandSpec {
-  url: string;
   // Which way the fingers point, and which side the thumb is on.
   forward: THREE.Vector3;
   thumbSide: THREE.Vector3;
@@ -21,100 +71,11 @@ export interface HandSpec {
   pose: Record<string, THREE.Vector3[]>;
 }
 
-// Keep the palm upright behind the backstrap, with the wrist below the grip. The index
-// reaches forward through the guard before curling onto the trigger; the thumb rides
-// above the support thumb along the left side of the frame.
-export const RIGHT_HAND_ON_GRIP: HandSpec = {
-  url: '/models/right-hand.glb',
-  forward: v(0.08, 0.65, -0.76),
-  thumbSide: v(0, 1, 0),
-  middleKnuckle: new THREE.Vector3(0.026, -0.02, -0.022),
-  pose: {
-    index: [v(0.08, -0.06, -1), v(-1, -0.06, 0.05), v(-0.5, 0.05, 0.86)],
-    middle: [v(-0.9, 0, -0.3), v(-0.7, 0, 0.7), v(0.1, 0, 1)],
-    ring: [v(-0.9, 0.13, -0.3), v(-0.7, 0.1, 0.7), v(0.1, 0.05, 1)],
-    pinky: [v(-0.9, 0.28, -0.3), v(-0.7, 0.2, 0.7), v(0.1, 0.1, 1)],
-    thumb: [v(-0.6, 0.75, -0.27), v(0, 0.35, -0.94), v(0, 0.1, -1)],
-  },
-};
-
-// The support palm meets the firing hand rather than flaring out to the side. Its fingers
-// close around the firing fingers, with the thumb forward and outside the firing thumb.
-export const LEFT_HAND_SUPPORT: HandSpec = {
-  url: '/models/left-hand.glb',
-  forward: v(0.18, 0.5, -0.85),
-  thumbSide: v(0, 1, 0),
-  middleKnuckle: new THREE.Vector3(-0.028, -0.035, -0.037),
-  pose: {
-    index: [v(0.9, -0.03, -0.32), v(0.6, 0.02, 0.8), v(-0.25, 0.03, 1)],
-    middle: [v(0.92, 0, -0.25), v(0.5, 0.04, 0.88), v(-0.3, 0.03, 0.95)],
-    ring: [v(0.92, 0.12, -0.25), v(0.5, 0.1, 0.88), v(-0.3, 0.05, 0.95)],
-    pinky: [v(0.9, 0.22, -0.22), v(0.5, 0.14, 0.88), v(-0.3, 0.08, 0.95)],
-    thumb: [v(-0.32, 0.82, -0.47), v(-0.1, 0.15, -1), v(0.05, 0, -1)],
-  },
-};
-
-// The firing palm sits farther back around the shotgun's swept wooden stock.
-export const RIGHT_HAND_ON_SHOTGUN: HandSpec = {
-  ...RIGHT_HAND_ON_GRIP,
-  forward: v(-0.55, 0.45, -0.70),
-  thumbSide: v(0.15, 0.65, -0.75),
-  middleKnuckle: new THREE.Vector3(0.026, -0.012, 0.069),
-  pose: {
-    ...RIGHT_HAND_ON_GRIP.pose,
-    index: [v(-0.28, -0.3, -1), v(-1, -0.02, -0.35), v(-0.7, 0.1, -0.7)],
-    middle: [v(-0.9, 0, -0.3), v(-0.05, 0.96, 0.25), v(0.05, 0.95, 0.3)],
-    ring: [v(-0.65, 0.5, -0.2), v(0.03, 0.95, 0.3), v(0.8, 0.1, 0.6)],
-    pinky: [v(-0.6, 0.65, -0.25), v(0, 0.95, 0.3), v(0.65, 0.2, 0.7)],
-    thumb: [v(-0.7, 0.7, -0.14), v(-0.9, 0.35, -0.2), v(-0.8, -0.1, -0.6)],
-  },
-};
-
-export const RIGHT_HAND_ON_TOOL: HandSpec = {
-  ...RIGHT_HAND_ON_GRIP,
-  middleKnuckle: new THREE.Vector3(.024,-.025,-.016),
-  pose: {
-    index: [v(-.9,0,-.15),v(.1,0,1),v(.8,0,.6)],
-    middle: [v(-.9,0,-.15),v(.1,0,1),v(.8,0,.6)],
-    ring: [v(-.9,.12,-.15),v(.1,.05,1),v(.8,.03,.6)],
-    pinky: [v(-.9,.22,-.12),v(.1,.1,1),v(.8,.05,.6)],
-    thumb: RIGHT_HAND_ON_GRIP.pose.thumb,
-  },
-};
-
-export const LEFT_HAND_ON_BAT: HandSpec = {
-  ...LEFT_HAND_SUPPORT,
-  forward: v(.12,.6,-.79),
-  middleKnuckle: new THREE.Vector3(-.024,-.110,-.018),
-  pose: {
-    index: [v(.9,0,-.15),v(-.1,0,1),v(-.8,0,.6)],
-    middle: [v(.9,0,-.15),v(-.1,0,1),v(-.8,0,.6)],
-    ring: [v(.9,.12,-.15),v(-.1,.05,1),v(-.8,.03,.6)],
-    pinky: [v(.9,.22,-.12),v(-.1,.1,1),v(-.8,.05,.6)],
-    thumb: LEFT_HAND_SUPPORT.pose.thumb,
-  },
-};
-
-// A cupped support palm under the shotgun's wood fore-end. The knuckles run along
-// the barrels, with the fingers wrapping up the far side instead of stacking on the grip.
-export const LEFT_HAND_ON_FOREND: HandSpec = {
-  url: '/models/left-hand.glb',
-  forward: v(0.65, 0.45, -0.61),
-  thumbSide: v(0, 0, -1),
-  middleKnuckle: new THREE.Vector3(0.006, 0.027, -0.165),
-  pose: {
-    index: [v(0.7, 0.68, 0.15), v(-0.8, 0.49, 0.11), v(-0.8, -0.49, -0.11)],
-    middle: [v(0.7, 0.68, 0.15), v(-0.8, 0.49, 0.11), v(-0.8, -0.49, -0.11)],
-    ring: [v(0.72, 0.66, 0.18), v(-0.8, 0.49, 0.15), v(-0.8, -0.49, -0.08)],
-    pinky: [v(0.74, 0.64, 0.23), v(-0.8, 0.49, 0.18), v(-0.8, -0.49, -0.05)],
-    thumb: [v(-0.2, 0.7, -0.68), v(0.1, 0.25, -1), v(0.1, 0, -1)],
-  },
-};
+export type HandPose = Hold | HandSpec;
 
 // Pinch the brass ends of the fresh shells at the exposed breech. The hand follows
 // the barrel hinge and the shells' insertion travel during the break-action reload.
 export const LEFT_HAND_LOADING_SHOTGUN: HandSpec = {
-  url: '/models/left-hand.glb',
   forward: v(0.8, 0.6, -0.05),
   thumbSide: v(0, 0, -1),
   middleKnuckle: new THREE.Vector3(-0.025, 0.065, -0.025),
@@ -130,7 +91,6 @@ export const LEFT_HAND_LOADING_SHOTGUN: HandSpec = {
 // An overhand rack. The palm crosses the top/rear of the slide rather than passing
 // through the receiver. This is used only after inserting an empty-gun reload.
 export const LEFT_HAND_ON_SLIDE: HandSpec = {
-  url: '/models/left-hand.glb',
   forward: v(0.93, 0.02, -0.36),
   thumbSide: v(0, 0, 1),
   middleKnuckle: new THREE.Vector3(-0.026, 0.083, -0.008),
@@ -146,7 +106,6 @@ export const LEFT_HAND_ON_SLIDE: HandSpec = {
 // The left hand holds a fresh magazine by its base: palm on the left side and under the
 // baseplate, index finger up the front, the other fingers wrapped round, thumb up the back.
 export const LEFT_HAND_ON_MAGAZINE: HandSpec = {
-  url: '/models/left-hand.glb',
   forward: v(0.05, 1, -0.1),
   thumbSide: v(0, 0, 1),
   middleKnuckle: new THREE.Vector3(-0.03, -0.038, -0.014),
@@ -170,11 +129,20 @@ const CHAINS: Record<string, string[]> = {
 // How far the index finger's two outer joints bend at a full trigger pull, in radians.
 const PULL_MIDDLE_JOINT = 0.2;
 const PULL_END_JOINT = 0.35;
+// The palm's middle, this far from the wrist toward the middle knuckle.
+const PALM_CENTRE = 0.6;
+// How wide a patch of skin round the palm's middle sets where the palm surface is. Any wider
+// and it catches the ball of the thumb.
+const PALM_PATCH = 0.006;
+// Half a finger's thickness: a wrapped finger's joints stay this far out from the handle.
+const FINGER_RADIUS = 0.0085;
 
 export interface Hand {
   // Bends the index finger back: 0 is resting on the trigger, 1 is fully pulled.
   pullIndex(amount: number): void;
-  blendPose(from: HandSpec, to: HandSpec, amount: number): void;
+  // Poses the hand part way from one pose to another. Holds follow their attach point, so this
+  // is called every frame.
+  blendPose(from: HandPose, to: HandPose, amount: number): void;
   // Wrist in the local space of the parent passed to loadHand.
   getWrist(out: THREE.Vector3): boolean;
 }
@@ -196,12 +164,49 @@ function aimChain(chain: THREE.Bone[], directions: THREE.Vector3[]): void {
   });
 }
 
+// Closes a finger round a handle. Each bone turns so the next joint lands on a circle round the
+// handle's axis, carrying on round the way the finger already points.
+function wrapChain(chain: THREE.Bone[], centre: THREE.Vector3, axis: THREE.Vector3, radius: number): void {
+  let sense = 0;
+  for (let i = 0; i < chain.length - 1; i++) {
+    const from = chain[i].position.clone();
+    const length = chain[i + 1].position.distanceTo(from);
+    const offset = from.clone().sub(centre);
+    const along = offset.dot(axis);
+    const radial = offset.addScaledVector(axis, -along);
+    const distance = radial.length();
+    if (distance < 1e-6) return;
+    const out = radial.divideScalar(distance);
+    const around = axis.clone().cross(out);
+    const current = chain[i + 1].position.clone().sub(from).normalize();
+    if (i === 0) sense = Math.sign(current.dot(around)) || 1;
+    // The angle round the axis from this joint to where the next one meets the circle. A joint
+    // too far out to reach just points straight at the handle.
+    const cos = THREE.MathUtils.clamp((radius * radius + distance * distance - length * length) / (2 * radius * distance), -1, 1);
+    const turn = Math.acos(cos);
+    const target = centre.clone().addScaledVector(axis, along)
+      .addScaledVector(out, radius * Math.cos(turn))
+      .addScaledVector(around, sense * radius * Math.sin(turn));
+    bendFrom(chain, i, new THREE.Quaternion().setFromUnitVectors(current, target.sub(from).normalize()));
+  }
+}
+
+// An object's world matrix from its local transforms as they are now, even mid-frame.
+function currentWorld(object: THREE.Object3D, out: THREE.Matrix4): THREE.Matrix4 {
+  out.identity();
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+    node.updateMatrix();
+    out.premultiply(node.matrix);
+  }
+  return out;
+}
+
 // Adds a hand to the parent as soon as its model has loaded.
-export function loadHand(parent: THREE.Object3D, spec: HandSpec): Hand {
+export function loadHand(parent: THREE.Object3D, url: string): Hand {
   const hand: Hand = { pullIndex: () => {}, blendPose: () => {}, getWrist: () => false };
 
-  new GLTFLoader().load(spec.url, (gltf) => {
-    gltf.scene.name = spec.url.includes('right-hand') ? 'Primary hand mesh' : 'Support hand mesh';
+  new GLTFLoader().load(url, (gltf) => {
+    gltf.scene.name = url === RIGHT_HAND_MODEL ? 'Primary hand mesh' : 'Support hand mesh';
     let mesh: THREE.SkinnedMesh | undefined;
     gltf.scene.traverse((object) => {
       if (object instanceof THREE.SkinnedMesh) mesh = object;
@@ -273,27 +278,28 @@ export function loadHand(parent: THREE.Object3D, spec: HandSpec): Hand {
     syncGloves();
     mesh.onBeforeRender = syncGloves;
 
-    const targetSide = spec.forward.clone().cross(spec.thumbSide).normalize();
-    const targetThumbSide = targetSide.clone().cross(spec.forward).normalize();
-    const from = new THREE.Matrix4().makeBasis(forward, thumbSide, side);
-    const to = new THREE.Matrix4().makeBasis(spec.forward, targetThumbSide, targetSide);
-    const facing = new THREE.Quaternion().setFromRotationMatrix(to.multiply(from.invert()));
-
-    gltf.scene.quaternion.copy(facing);
-    gltf.scene.position.copy(spec.middleKnuckle).sub(knuckle.applyQuaternion(facing));
-
-    const toHandSpace = facing.clone().invert();
-    for (const [finger, directions] of Object.entries(spec.pose)) {
-      aimChain(
-        CHAINS[finger].map((name) => bones.get(name)!),
-        directions.map((direction) => direction.clone().applyQuaternion(toHandSpace)),
-      );
+    // The palm: its middle, and the skin over it, from the joints and the mesh. The models are
+    // mirror images, so the palm is on the opposite side of the hand's axes in each.
+    const palmNormal = url === RIGHT_HAND_MODEL ? side.clone().negate() : side.clone();
+    const palmCentre = position('wrist').lerp(knuckle, PALM_CENTRE);
+    let palmDepth = 0;
+    for (let i = 0; i < vertexPositions.count; i++) {
+      point.fromBufferAttribute(vertexPositions, i).sub(palmCentre);
+      const out = point.dot(palmNormal);
+      if (out > palmDepth && point.addScaledVector(palmNormal, -out).length() < PALM_PATCH) palmDepth = out;
     }
+    const palmAnchor = palmCentre.clone().addScaledVector(palmNormal, palmDepth);
+    const inHand = ([x, y, z]: Vec) => forward.clone().multiplyScalar(x)
+      .addScaledVector(thumbSide, y).addScaledVector(palmNormal, z).normalize();
+    // Turns the hand's own axes onto an attach point's: fingers to x, thumb to y.
+    const toSocket = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(forward, thumbSide, side).invert());
+    // A trigger pull curls the index toward the palm.
+    const curlAxis = forward.clone().cross(palmNormal).normalize();
 
     // Remember the resting index finger, so each pull starts again from there.
     const index = CHAINS.index.map((name) => bones.get(name)!);
     const rest = index.map((bone) => ({ position: bone.position.clone(), quaternion: bone.quaternion.clone() }));
-    const axis = new THREE.Vector3(0, 1, 0).applyQuaternion(toHandSpace);
+    const axis = curlAxis.clone();
     const turn = new THREE.Quaternion();
 
     hand.pullIndex = (amount) => {
@@ -307,16 +313,22 @@ export function loadHand(parent: THREE.Object3D, spec: HandSpec): Hand {
 
     parent.add(gltf.scene);
 
+    // A pose worked out once: the fingers, and where the hand sits. For a hold that is in the
+    // attach point's frame; for a hand-made pose, in the parent's.
     interface SolvedPose {
       position: THREE.Vector3;
       quaternion: THREE.Quaternion;
       joints: { position: THREE.Vector3; quaternion: THREE.Quaternion }[];
+      curl: THREE.Vector3;
     }
-    const solved = new Map<HandSpec, SolvedPose>();
-    const solve = (target: HandSpec): SolvedPose => {
-      const cached = solved.get(target);
+    const resetBones = () => boneList.forEach((bone, i) => { bone.position.copy(bind[i].position); bone.quaternion.copy(bind[i].quaternion); });
+    const joints = () => boneList.map(bone => ({ position: bone.position.clone(), quaternion: bone.quaternion.clone() }));
+
+    const solvedSpecs = new Map<HandSpec, SolvedPose>();
+    const solveSpec = (target: HandSpec): SolvedPose => {
+      const cached = solvedSpecs.get(target);
       if (cached) return cached;
-      boneList.forEach((bone, i) => { bone.position.copy(bind[i].position); bone.quaternion.copy(bind[i].quaternion); });
+      resetBones();
       const targetSide = target.forward.clone().cross(target.thumbSide).normalize();
       const targetUp = targetSide.clone().cross(target.forward).normalize();
       const basis = new THREE.Matrix4().makeBasis(target.forward, targetUp, targetSide);
@@ -329,14 +341,66 @@ export function loadHand(parent: THREE.Object3D, spec: HandSpec): Hand {
       const value = {
         position: target.middleKnuckle.clone().sub(position('middle-finger-phalanx-proximal').applyQuaternion(rotation)),
         quaternion: rotation,
-        joints: boneList.map(bone => ({ position: bone.position.clone(), quaternion: bone.quaternion.clone() })),
+        joints: joints(),
+        // The hand-made poses curl the trigger finger round their parent's up axis.
+        curl: new THREE.Vector3(0, 1, 0).applyQuaternion(inverse),
       };
-      solved.set(target, value); return value;
+      solvedSpecs.set(target, value); return value;
     };
-    hand.blendPose = (fromSpec, toSpec, amount) => {
-      const a = solve(fromSpec), b = solve(toSpec), t = THREE.MathUtils.clamp(amount, 0, 1);
-      gltf.scene.position.copy(a.position).lerp(b.position, t);
-      gltf.scene.quaternion.copy(a.quaternion).slerp(b.quaternion, t);
+
+    // Holds are worked out once per grip and handle thickness.
+    const solvedHolds = new Map<Grip, Map<number, SolvedPose>>();
+    const solveHold = (grip: Grip, radius: number): SolvedPose => {
+      const byRadius = solvedHolds.get(grip) ?? new Map<number, SolvedPose>();
+      solvedHolds.set(grip, byRadius);
+      const cached = byRadius.get(radius);
+      if (cached) return cached;
+      resetBones();
+      // The handle lies along the knuckles, its centre a radius in from the palm's skin.
+      const centre = palmAnchor.clone().addScaledVector(palmNormal, radius);
+      for (const finger of Object.keys(CHAINS) as Finger[]) {
+        const chain = CHAINS[finger].map(name => bones.get(name)!);
+        if (grip.wrap.includes(finger)) wrapChain(chain, centre, thumbSide, radius + FINGER_RADIUS);
+        else if (grip.pose[finger]) aimChain(chain, grip.pose[finger]!.map(inHand));
+      }
+      const value = {
+        position: palmAnchor.clone().applyQuaternion(toSocket).negate(),
+        quaternion: toSocket.clone(),
+        joints: joints(),
+        curl: curlAxis.clone(),
+      };
+      byRadius.set(radius, value); return value;
+    };
+
+    const parentWorld = new THREE.Matrix4();
+    const socketWorld = new THREE.Matrix4();
+    const placed = new THREE.Matrix4();
+    const ignoredScale = new THREE.Vector3();
+    const one = new THREE.Vector3(1, 1, 1);
+    // Where a pose puts the hand in its parent's space, right now.
+    const place = (pose: HandPose, at: THREE.Vector3, facing: THREE.Quaternion): SolvedPose => {
+      if (!('socket' in pose)) {
+        const solved = solveSpec(pose);
+        at.copy(solved.position);
+        facing.copy(solved.quaternion);
+        return solved;
+      }
+      const solved = solveHold(pose.grip, pose.socket.userData.radius);
+      currentWorld(parent, parentWorld).invert();
+      currentWorld(pose.socket, socketWorld);
+      placed.compose(solved.position, solved.quaternion, one).premultiply(socketWorld).premultiply(parentWorld);
+      placed.decompose(at, facing, ignoredScale);
+      return solved;
+    };
+    const fromPosition = new THREE.Vector3(), toPosition = new THREE.Vector3();
+    const fromQuaternion = new THREE.Quaternion(), toQuaternion = new THREE.Quaternion();
+
+    hand.blendPose = (fromPose, toPose, amount) => {
+      const a = place(fromPose, fromPosition, fromQuaternion);
+      const b = place(toPose, toPosition, toQuaternion);
+      const t = THREE.MathUtils.clamp(amount, 0, 1);
+      gltf.scene.position.copy(fromPosition).lerp(toPosition, t);
+      gltf.scene.quaternion.copy(fromQuaternion).slerp(toQuaternion, t);
       boneList.forEach((bone, i) => {
         bone.position.copy(a.joints[i].position).lerp(b.joints[i].position, t);
         bone.quaternion.copy(a.joints[i].quaternion).slerp(b.joints[i].quaternion, t);
@@ -346,7 +410,7 @@ export function loadHand(parent: THREE.Object3D, spec: HandSpec): Hand {
         rest[i].position.copy(bone.position);
         rest[i].quaternion.copy(bone.quaternion);
       });
-      axis.set(0, 1, 0).applyQuaternion(gltf.scene.quaternion.clone().invert());
+      axis.copy(t < 0.5 ? a.curl : b.curl);
     };
     hand.getWrist = out => {
       out.copy(bones.get('wrist')!.position).applyQuaternion(gltf.scene.quaternion).add(gltf.scene.position);
