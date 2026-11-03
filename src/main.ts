@@ -35,7 +35,7 @@ let dressed = false;
 
 // Co-op testing: ?room=CODE joins that room on the co-op server, which runs the game for
 // everyone in it. A host and join menu replaces this later.
-const roomCode = import.meta.env.DEV ? new URLSearchParams(location.search).get('room') : null;
+const roomCode = new URLSearchParams(location.search).get('room');
 const coop = roomCode ? joinRoom(roomCode) : null;
 const session = coop ? createRemoteSession(coop, createGameState(level)) : createLocalSession(dressTitle(createGameState(level)));
 const view = createView(level);

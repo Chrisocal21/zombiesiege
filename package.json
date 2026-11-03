@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "server": "wrangler dev --config server/wrangler.jsonc",
-    "check:server": "tsc -p server"
+    "check:server": "tsc -p server",
+    "deploy:server": "wrangler deploy --config server/wrangler.jsonc"
   },
   "dependencies": {
     "three": "^0.187.0"

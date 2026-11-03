@@ -1,5 +1,5 @@
 {
-  // The co-op server. `npm run server` runs it on this PC; nothing is deployed yet.
+  // The co-op server. `npm run server` runs it on this PC; `npm run deploy:server` publishes it.
   "name": "zombiesiege-coop",
   "main": "worker.ts",
   "compatibility_date": "2026-10-01",
