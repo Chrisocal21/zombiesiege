@@ -1,3 +1,4 @@
+import { alcoveBoxes, gapsOn, wallLine } from './build';
 import type { Door, Elevator, Gate, Level, LevelBox, Ramp, Station, Surface } from './types';
 
 const FLOOR = '#6b6e72';
@@ -49,71 +50,15 @@ const elevator: Elevator = {
 
 const ramp: Ramp = { x: 3, width: 4.2, zBottom: 10.5, zTop: 34.5, rise: STREET };
 
-interface Opening {
-  centre: number;
-  width: number;
-  height: number;
-}
-
-// A wall along one axis, from `from` to `to`, with a gap cut for each opening and a beam over it.
+// A wall along one axis with a gap cut for each doorway, the gate and the elevator on it.
 function wall(axis: 'x' | 'z', fixed: number, from: number, to: number): LevelBox[] {
-  const boxes: LevelBox[] = [];
-  const along = (start: number, end: number, bottom: number, top: number): LevelBox => {
-    const middle = (start + end) / 2;
-    const length = end - start;
-    const y = (bottom + top) / 2;
-    const height = top - bottom;
-    return axis === 'x'
-      ? { position: { x: middle, y, z: fixed }, size: { x: length, y: height, z: WALL_THICKNESS }, color: WALL, surface: 'wall' }
-      : { position: { x: fixed, y, z: middle }, size: { x: WALL_THICKNESS, y: height, z: length }, color: WALL, surface: 'wall' };
-  };
-
-  const onThisWall = (position: { x: number; z: number }) => (axis === 'x' ? position.z === fixed : position.x === fixed);
-  const centreOf = (position: { x: number; z: number }) => (axis === 'x' ? position.x : position.z);
-  const openings: Opening[] = [...doors, gate, elevator]
-    .filter((opening) => onThisWall(opening.position))
-    .map((opening) => ({ centre: centreOf(opening.position), width: opening.width, height: opening.height }))
-    .sort((a, b) => a.centre - b.centre);
-
-  let cursor = from;
-  for (const opening of openings) {
-    boxes.push(along(cursor, opening.centre - opening.width / 2, 0, CEILING));
-    // The beam over the opening.
-    boxes.push(along(opening.centre - opening.width / 2, opening.centre + opening.width / 2, opening.height, CEILING));
-    cursor = opening.centre + opening.width / 2;
-  }
-  boxes.push(along(cursor, to, 0, CEILING));
-  return boxes;
+  return wallLine(axis, fixed, from, to, gapsOn(axis, fixed, [...doors, gate, elevator]), CEILING, WALL_THICKNESS, WALL);
 }
 
 // A closed space behind a door, with a floor so a player can step into it. The street slab is
 // its roof.
 function alcove(door: Door): LevelBox[] {
-  const out = { x: -door.normal.x, z: -door.normal.z };
-  const outerFace = WALL_THICKNESS / 2;
-  const sideOffset = ALCOVE_WIDTH / 2 + WALL_THICKNESS / 2;
-  const boxes: LevelBox[] = [];
-  // Positions are worked out as (distance out from the wall's center line, distance sideways).
-  const place = (outward: number, sideways: number, y: number, depth: number, width: number, height: number, color: string, surface: Surface): void => {
-    const x = door.position.x + out.x * outward + (out.z !== 0 ? sideways : 0);
-    const z = door.position.z + out.z * outward + (out.x !== 0 ? sideways : 0);
-    const alongX = out.x !== 0;
-    boxes.push({
-      position: { x, y, z },
-      size: { x: alongX ? depth : width, y: height, z: alongX ? width : depth },
-      color,
-      surface,
-    });
-  };
-
-  const middle = outerFace + ALCOVE_DEPTH / 2;
-  for (const side of [-1, 1]) {
-    place(middle, side * sideOffset, CEILING / 2, ALCOVE_DEPTH, WALL_THICKNESS, CEILING, WALL, 'wall');
-  }
-  const capOffset = outerFace + ALCOVE_DEPTH + WALL_THICKNESS / 2;
-  place(capOffset, 0, CEILING / 2, WALL_THICKNESS, ALCOVE_WIDTH + WALL_THICKNESS * 2, CEILING, WALL, 'wall');
-  place(middle, 0, -0.25, ALCOVE_DEPTH, ALCOVE_WIDTH, 0.5, FLOOR, 'floor');
-  return boxes;
+  return alcoveBoxes(door, { ceiling: CEILING, depth: ALCOVE_DEPTH, width: ALCOVE_WIDTH, thickness: WALL_THICKNESS, wallColor: WALL, floorColor: FLOOR });
 }
 
 // The ramp as many small steps, each lower than a step height, so it walks like a slope.
@@ -174,6 +119,7 @@ const stationBoxes: LevelBox[] = stations.map((station) => {
 
 export const level0: Level = {
   name: 'Level 0',
+  theme: 'garage',
   boxes: [
     ...stationBoxes,
     { position: { x: 0, y: -0.25, z: 0 }, size: { x: 21, y: 0.5, z: 21 }, color: FLOOR, surface: 'floor' },
@@ -268,6 +214,9 @@ export const level0: Level = {
   gate,
   elevator,
   stations,
+  locks: [],
+  objective: null,
+  navBounds: null,
   ramp,
   // Two bundles of boards, far apart, so finding them takes some of the opening time.
   barricadeBars: [

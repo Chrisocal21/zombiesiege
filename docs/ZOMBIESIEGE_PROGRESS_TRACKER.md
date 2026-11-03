@@ -4,7 +4,7 @@
 
 ## Zombie Siege
 
-**Overall progress:** 56% (31/55)
+**Overall progress:** 58% (32/55)
 **Last updated:** November 2, 2026
 **Status:** Active, main project
 **Build order:** solo first, then 2 players, then 4
@@ -110,11 +110,11 @@
 
 ### Phase 3 — Level 1 and Spending
 
-**Phase progress:** 29% (2/7)
+**Phase progress:** 43% (3/7)
 
 - [ ] Level 1 map with multiple areas
 - [ ] Climb the tower: each level is a floor higher, ending on the roof with a helicopter airlift (elevator and floor counter built; floors still reuse the garage)
-- [ ] Doors that cost points
+- [x] Doors that cost points (floor 3: records room 250, manager's office 500)
 - [x] Weapon stations: ammo locker and a sawed-off shotgun wall
 - [x] More weapons and limited ammo: spare rounds per gun, pistol and sawed-off shotgun (more guns later)
 - [ ] Dual wielding: second pistol or sawed-off shotgun
@@ -151,6 +151,7 @@
 | Nov 1, 2026 | Crouch, jump, ledge climbing, ladders and cover built. Zombies, waves and health regeneration built. Level 0 rebuilt with textured materials, lamps, props and a night sky | 35% |
 | Nov 1, 2026 | Four doorways with dark alcoves behind them, two bundles of boards to find, 30 second opening to board up two doors, P to freeze the zombies for testing | 38% |
 | Nov 1, 2026 | Level 0 rebuilt as a parking garage under a tower, with a street, ramp and gate; waves rest 25 seconds; title and pause menu with rebindable keys and settings; new HUD | 42% |
+| Nov 2, 2026 | Floor 3 admissions: lobby, office, records room and manager's office, doors that cost points, keycard objective, zombie pathfinding round walls | 58% |
 | Nov 2, 2026 | Elevator and floors, lives, points, headshot kills, synthesized sound, win screen, limited ammo with an ammo station, and a buyable sawed-off shotgun with weapon swap | 56% |
 
 ---

@@ -318,6 +318,7 @@ export function createAudio(): Audio {
   let lives = -1;
   let boardedCount = 0;
   let takenCount = 0;
+  let objectiveDone = true;
   let gateClosed = false;
   const zombies = new Map<number, ZombieMemory>();
 
@@ -362,6 +363,7 @@ export function createAudio(): Audio {
         if (state.gate.closed && !gateClosed && state.gate.closedTick >= 0) gateClank();
         if (boarded > boardedCount) nailing();
         if (taken > takenCount) pickup();
+        if (state.objective.done && !objectiveDone && state.objective.doneTick >= 0) pickup();
         if (state.lives < lives && state.lives < config.player.lives) sting(true);
       }
       shotTick = player.lastShotTick;
@@ -377,6 +379,7 @@ export function createAudio(): Audio {
       gateClosed = state.gate.closed;
       boardedCount = boarded;
       takenCount = taken;
+      objectiveDone = state.objective.done;
 
       // Footsteps, slower when crouched.
       const speed = player.onGround && alive ? Math.hypot(player.vx, player.vz) : 0;

@@ -69,7 +69,7 @@ const menu = createMenu({
     menu.open('main');
   },
 });
-const hud = createHud(level, menu);
+const hud = createHud(menu);
 
 // Esc, or anything else that releases the mouse, opens the pause menu.
 input.onUnlock(() => {

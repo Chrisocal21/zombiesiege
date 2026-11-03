@@ -2,15 +2,14 @@ import { drawTacticalMap } from './tacticalMap';
 import { bindings, keyLabel } from '../client/bindings';
 import { settings } from '../client/settings';
 import { config } from '../config';
-import { interactionTarget, stationOffer } from '../game/doors';
+import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
 import { weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
-import { floorTitle, wavesOnFloor } from '../game/tower';
+import { floorTitle, stopAt, wavesOnFloor } from '../game/tower';
 import { isTopFloor, zombiesInWave } from '../game/waves';
 
 import { aliveZombies } from '../game/zombies';
-import type { Level } from '../levels/types';
 import type { Menu } from './menu';
 import { COLOR, clamp, keycap, measure, panel, roundedRect, text } from './ui';
 
@@ -48,7 +47,7 @@ function clock(seconds: number): string {
 
 // The HUD is a transparent 2D canvas layered over the 3D view: crosshair, compass, radar, health,
 // ammo, prompts and banners, followed by the menu when one is open.
-export function createHud(level: Level, menu: Menu): Hud {
+export function createHud(menu: Menu): Hud {
   const canvas = document.createElement('canvas');
   canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none';
   document.body.appendChild(canvas);
@@ -135,12 +134,16 @@ export function createHud(level: Level, menu: Menu): Hud {
   function waypoints(state: GameState, player: Player): Waypoint[] {
     const points: Waypoint[] = [];
     const phase = state.waves.phase;
-    if (phase === 'entry') {
+    const level = state.level;
+    if (phase === 'entry' && level.gate) {
       const panelPos = level.gate.panel;
       points.push({ x: panelPos.x, z: panelPos.z, color: COLOR.good, label: 'GATE' });
     } else if (phase === 'lift') {
       const lift = level.elevator;
       points.push({ x: lift.position.x, z: lift.position.z, color: COLOR.good, label: 'ELEVATOR' });
+    } else if (phase === 'search') {
+      const item = level.objective;
+      if (item) points.push({ x: item.position.x, z: item.position.z, color: COLOR.good, label: 'KEYCARD' });
     } else if (phase === 'prep') {
       if (player.bars < config.doors.carryLimit) {
         state.pickups.forEach((pickup) => {
@@ -382,8 +385,15 @@ export function createHud(level: Level, menu: Menu): Hud {
         break;
       case 'cleared':
         title = `${floorName(state.floor)} cleared`;
-        detail = 'All five waves survived';
+        detail = `All ${wavesOnFloor(state.floor)} waves survived`;
         break;
+      case 'search': {
+        const item = state.level.objective;
+        title = `Find the ${item ? item.label.toLowerCase() : 'way on'}`;
+        const shut = state.locks.filter((lock) => !lock.open).length;
+        detail = shut > 0 ? 'Locked doors open for points' : 'Check the offices';
+        break;
+      }
       case 'won':
         title = 'Extraction';
         detail = 'You made it out';
@@ -658,7 +668,13 @@ export function createHud(level: Level, menu: Menu): Hud {
       prompt = offer.status === 'ok'
         ? { keys: [bindings.use], label: `${offer.label}   ${offer.cost} pts` }
         : offer.status === 'full' ? { keys: [], label: 'Ammo full' } : { keys: [], label: `${offer.label.replace('Buy ', '')} costs ${offer.cost} points` };
-    } else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
+    } else if (interaction?.kind === 'lock') {
+      const offer = lockOffer(state, player, interaction.index);
+      prompt = offer.status === 'ok'
+        ? { keys: [bindings.use], label: `Open ${offer.label.toLowerCase()}   ${offer.cost} pts` }
+        : { keys: [], label: `${offer.label} costs ${offer.cost} points` };
+    } else if (interaction?.kind === 'objective') prompt = { keys: [bindings.use], label: `Take the ${state.level.objective?.label.toLowerCase() ?? 'item'}` };
+    else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
     else if (interaction?.kind === 'pickup') prompt = { keys: [bindings.use], label: 'Pick up the boards' };
     else if (interaction?.kind === 'door') prompt = { keys: [bindings.use], label: 'Board up this door' };
     else if (player.ladder) prompt = { keys: [bindings.forward, bindings.back], label: 'Climb' };
@@ -690,9 +706,9 @@ export function createHud(level: Level, menu: Menu): Hud {
     let color: string = COLOR.text;
     let age = 0;
 
-    if (waves.phase === 'cleared') {
+    if (waves.phase === 'cleared' || waves.phase === 'search') {
       title = `${floorName(state.floor).toUpperCase()} CLEARED`;
-      detail = isTopFloor(state) ? 'Extraction is on the way' : 'The elevator is opening';
+      detail = isTopFloor(state) ? 'Extraction is on the way' : state.objective.done ? 'The elevator is opening' : 'Find the keycard to wake the elevator';
       color = COLOR.accent;
       age = 0.5;
     } else if (waves.phase === 'lift') {
@@ -707,7 +723,7 @@ export function createHud(level: Level, menu: Menu): Hud {
       age = 0.5;
     } else if (waves.arrivedTick >= 0 && seconds(waves.arrivedTick) < BANNER_SECONDS) {
       title = floorName(state.floor).toUpperCase();
-      detail = 'Board up the doors. They are coming';
+      detail = `${stopAt(state.floor).name}. Board up the doors`;
       color = COLOR.accent;
       age = seconds(waves.arrivedTick);
     } else if (waves.diedTick >= 0 && seconds(waves.diedTick) < BANNER_SECONDS) {

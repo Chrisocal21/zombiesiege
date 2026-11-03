@@ -38,7 +38,7 @@ function displayTexture(): { texture: THREE.CanvasTexture; draw: (label: string,
 
 // The elevator: a steel frame, two sliding doors, a sign that says which floor is next, and a lit
 // cab behind the wall. The doors are solid in the rules while shut and drawn from the game state.
-export function buildLift(scene: THREE.Scene, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
+export function buildLift(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
   const lift = level.elevator;
   const facing = Math.atan2(lift.normal.x, lift.normal.z);
   const group = new THREE.Group();

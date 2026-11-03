@@ -22,9 +22,10 @@ function glowSprite(map: THREE.Texture, color: number, scale: number, opacity: n
 
 // The street outside: paving and road paint over the slab, lamp posts, the sign over the ramp,
 // handrails along it, and fire hydrants.
-export function buildStreet(scene: THREE.Scene, level: Level, glowMap: THREE.Texture): void {
-  const street = level.ramp.rise;
+export function buildStreet(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): void {
   const { ramp } = level;
+  if (!ramp) return;
+  const street = ramp.rise;
 
   // Paint over the slab.
   const x0 = -34;
@@ -202,8 +203,9 @@ export function buildStreet(scene: THREE.Scene, level: Level, glowMap: THREE.Tex
 }
 
 // The gate across the foot of the ramp, and the control that closes it.
-export function buildGate(scene: THREE.Scene, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
+export function buildGate(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
   const gate = level.gate;
+  if (!gate) return () => {};
   const facing = Math.atan2(gate.normal.x, gate.normal.z);
   const group = new THREE.Group();
   group.position.set(gate.position.x + gate.normal.x * 0.25, 0, gate.position.z + gate.normal.z * 0.25);

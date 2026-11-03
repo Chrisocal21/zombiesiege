@@ -4,7 +4,7 @@ import { glowTexture, paintTexture, puddleAlphaTexture } from './materials';
 import { labelTexture } from './streetTextures';
 
 // Reusable detail kit. Large solid props remain defined by the level's collision boxes.
-export function buildDressing(scene: THREE.Scene | THREE.Group, level: Level): (time: number) => void {
+export function buildDressing(scene: THREE.Object3D, level: Level): (time: number) => void {
   const steel = new THREE.MeshStandardMaterial({ color: '#444e55', metalness: 0.7, roughness: 0.5 });
   const rubber = new THREE.MeshStandardMaterial({ color: '#171b1d', roughness: 0.95 });
   const yellow = new THREE.MeshStandardMaterial({ color: '#cfa74f', roughness: 0.78 });
@@ -51,6 +51,7 @@ export function buildDressing(scene: THREE.Scene | THREE.Group, level: Level): (
     label.position.set(w * 0.24, h * 0.71, d / 2 + 0.038); group.add(label);
   }
 
+  if (!level.ramp) return () => {};
   const streetY = level.ramp.rise;
   const wet = new THREE.MeshPhysicalMaterial({ color: '#32434c', roughness: 0.1, metalness: 0.3, clearcoat: 1,
     alphaMap: puddleAlphaTexture(), transparent: true, opacity: 0.5, depthWrite: false });

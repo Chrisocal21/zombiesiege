@@ -6,7 +6,7 @@ export interface Vec3 {
 }
 
 // What a box is made of. The renderer picks a material from this; the rules ignore it.
-// 'board', 'gate', 'lift' and 'step' are solid but never drawn as boxes: boards, the gate and the lift doors
+// 'board', 'gate', 'lift', 'lock' and 'step' are solid but never drawn as boxes: boards, the gate and the lift doors
 // are drawn from the game state, and steps are the stair-stepped stand-in for a smooth ramp.
 export type Surface =
   | 'floor'
@@ -24,6 +24,7 @@ export type Surface =
   | 'board'
   | 'gate'
   | 'lift'
+  | 'lock'
   | 'step';
 
 export interface LevelBox {
@@ -90,6 +91,20 @@ export interface Elevator extends Door {
   cabWidth: number;
 }
 
+// A door that stays shut until a player pays points for it. Zombies cannot use it either.
+export interface Lock extends Door {
+  cost: number;
+  // What is on the other side, for the prompt and the map.
+  label: string;
+}
+
+// Something to find on the floor before the elevator will work.
+export interface Objective {
+  kind: 'keycard';
+  label: string;
+  position: Vec3;
+}
+
 // A buying point on a wall. Walk up, press use, and pay points.
 export interface Station {
   kind: 'ammo' | 'shotgun';
@@ -105,23 +120,34 @@ export interface LevelLight {
   intensity: number;
   // The bulb is on a bad wire and stutters.
   flicker?: boolean;
+  // Set into a low ceiling, as in an office, rather than hung from a high one.
+  ceiling?: boolean;
 }
 
 export interface Level {
   name: string;
+  // The garage has the street, ramp and gate. A ward is a closed floor of rooms inside the tower.
+  theme: 'garage' | 'ward';
   boxes: LevelBox[];
   ladders: Ladder[];
   lights: LevelLight[];
   doors: Door[];
-  gate: Gate;
+  gate: Gate | null;
   elevator: Elevator;
   stations: Station[];
-  ramp: Ramp;
+  // Doors that open for points, and the thing to find before leaving, if the floor has them.
+  locks: Lock[];
+  objective: Objective | null;
+  ramp: Ramp | null;
+  // The area zombies find their way around walls in, for floors with rooms.
+  navBounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null;
   // Bundles of boards lying on the floor. Each one boards up a door.
   barricadeBars: Vec3[];
   // Where the players start, out in the street, and where they come back after dying inside.
   streetSpawns: Vec3[];
   playerSpawns: Vec3[];
+  // Which way a player faces when placed at a spawn, if it matters. 0 faces -z.
+  spawnYaw?: number;
   // Lamp posts along the street. A few of them carry a real light.
   streetLamps: Vec3[];
   checkpoint: Vec3;

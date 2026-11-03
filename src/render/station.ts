@@ -32,7 +32,7 @@ function screenTexture(kind: 'ammo' | 'shotgun'): THREE.CanvasTexture {
 }
 
 // Wall stations: a steel locker of ammunition with a lit price screen.
-export function buildStations(scene: THREE.Scene, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
+export function buildStations(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
   const pulses: { glow: THREE.Sprite; light: THREE.PointLight }[] = [];
   for (const station of level.stations) {
     const group = new THREE.Group();

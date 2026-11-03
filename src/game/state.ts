@@ -1,5 +1,5 @@
 import { config } from '../config';
-import type { Elevator, Ladder, Level, LevelBox, Vec3 } from '../levels/types';
+import type { Elevator, Ladder, Level, LevelBox, Lock, Vec3 } from '../levels/types';
 
 // A pull-up onto a ledge, played out over a fixed time. Nothing else moves the player meanwhile.
 export interface Mantle {
@@ -108,7 +108,8 @@ export interface Zombie {
 // 'won' is the end of the run, after the top floor. 'lift' is the elevator standing open once the floor is cleared, and 'ride' is the trip up.
 // 'entry' is the run from the street into the garage, ending when the gate is closed. 'prep' is
 // the countdown to board up doors, 'break' the rest between waves.
-export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'lift' | 'ride' | 'won';
+// 'search' is a cleared floor whose objective is still to be found: nothing attacks until it is.
+export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'lift' | 'ride' | 'won';
 
 export interface Waves {
   // The wave being fought, or the one coming up during a break. Starts at 1.
@@ -147,6 +148,18 @@ export interface LiftState {
   changedTick: number;
 }
 
+export interface LockState {
+  open: boolean;
+  // Tick it was opened, for the renderer's animation. -1 while shut.
+  openedTick: number;
+}
+
+export interface ObjectiveState {
+  // True once the floor's objective has been found, or at once if it has none.
+  done: boolean;
+  doneTick: number;
+}
+
 export interface BarPickup {
   x: number;
   z: number;
@@ -168,6 +181,8 @@ export interface GameState {
   // Which floor of the tower this is. The ground floor is 0.
   floor: number;
   doors: DoorState[];
+  locks: LockState[];
+  objective: ObjectiveState;
   pickups: BarPickup[];
   players: Player[];
   zombies: Zombie[];
@@ -184,6 +199,30 @@ export function liftDoorBox(elevator: Elevator): LevelBox {
     color: '#000000',
     surface: 'lift',
   };
+}
+
+// A solid box that fills a locked door.
+export function lockBox(lock: Lock): LevelBox {
+  const alongX = lock.normal.z !== 0;
+  return {
+    position: { x: lock.position.x, y: lock.height / 2, z: lock.position.z },
+    size: { x: alongX ? lock.width : 0.4, y: lock.height, z: alongX ? 0.4 : lock.width },
+    color: '#000000',
+    surface: 'lock',
+  };
+}
+
+// Puts the game on a floor: its own copy of the level, with every door open and unboarded, every
+// lock shut, the bundles of boards back on the floor, and the elevator closed.
+export function enterLevel(state: GameState, level: Level): void {
+  state.level = { ...level, boxes: [...level.boxes, liftDoorBox(level.elevator), ...level.locks.map(lockBox)] };
+  state.gate = { closed: false, closedTick: -1 };
+  state.lift = { open: false, changedTick: -1 };
+  state.doors = level.doors.map(() => ({ boarded: false, boardedTick: -1 }));
+  state.locks = level.locks.map(() => ({ open: false, openedTick: -1 }));
+  state.objective = { done: level.objective === null, doneTick: -1 };
+  state.pickups = level.barricadeBars.map((bar) => ({ x: bar.x, z: bar.z, taken: false }));
+  for (const player of state.players) player.bars = 0;
 }
 
 export function createPlayer(id: number, spawn: Vec3): Player {
@@ -235,17 +274,19 @@ export function createPlayer(id: number, spawn: Vec3): Player {
 export function createGameState(level: Level): GameState {
   const players: Player[] = [];
   for (let id = 0; id < config.playerCount; id++) players.push(createPlayer(id, level.streetSpawns[id]));
-  return {
+  const state: GameState = {
     tick: 0,
-    level: { ...level, boxes: [...level.boxes, liftDoorBox(level.elevator)] },
+    level,
     frozen: false,
     gate: { closed: false, closedTick: -1 },
     lift: { open: false, changedTick: -1 },
     floor: 0,
     lives: config.player.lives,
     points: players.map(() => 0),
-    doors: level.doors.map(() => ({ boarded: false, boardedTick: -1 })),
-    pickups: level.barricadeBars.map((bar) => ({ x: bar.x, z: bar.z, taken: false })),
+    doors: [],
+    locks: [],
+    objective: { done: true, doneTick: -1 },
+    pickups: [],
     players,
     zombies: [],
     nextZombieId: 0,
@@ -262,6 +303,8 @@ export function createGameState(level: Level): GameState {
       lostRun: false,
     },
   };
+  enterLevel(state, level);
+  return state;
 }
 
 // Active camera height: crouch and the smoothed chest-camera preset also affect shot origin.

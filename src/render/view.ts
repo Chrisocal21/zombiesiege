@@ -5,7 +5,7 @@ import { settings } from '../client/settings';
 import { config } from '../config';
 import type { GameState } from '../game/state';
 import type { Level } from '../levels/types';
-import { buildWorld } from './world';
+import { buildWorld, type World } from './world';
 
 const NIGHT = 0x0c1119;
 
@@ -123,7 +123,20 @@ export function createView(level: Level): View {
   scene.add(moon, moon.target);
   // A studio-style environment gives the metal something to reflect.
   const environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04);
-  const world = buildWorld(scene, level, environment.texture);
+  // Each floor has its own world, built the first time it is needed. Only the current one shows.
+  const worlds = new Map<string, { root: THREE.Group; world: World }>();
+  const worldFor = (floor: Level) => {
+    let entry = worlds.get(floor.name);
+    if (!entry) {
+      const root = new THREE.Group();
+      scene.add(root);
+      entry = { root, world: buildWorld(root, floor, environment.texture) };
+      worlds.set(floor.name, entry);
+    }
+    return entry;
+  };
+  let current = worldFor(level);
+  let currentName = level.name;
 
   const aspect = window.innerWidth / window.innerHeight;
   const camera = new THREE.PerspectiveCamera(config.view.fieldOfView, aspect, 0.1, 130);
@@ -202,7 +215,16 @@ export function createView(level: Level): View {
     camera,
     viewScene,
     renderer,
-    animate(time, state) { world.update(time, state); lensMaterial.uniforms.time.value = time; },
+    animate(time, state) {
+      if (state.level.name !== currentName) {
+        currentName = state.level.name;
+        // A new floor: hide the old one and show the new.
+        const next = worldFor(state.level);
+        current.root.visible = false;
+        next.root.visible = true;
+        current = next;
+      }
+      current.world.update(time, state); lensMaterial.uniforms.time.value = time; },
     setAim(amount) {
       // The aimed view keeps the same proportion to the chosen field of view.
       const fieldOfView = settings.fieldOfView;

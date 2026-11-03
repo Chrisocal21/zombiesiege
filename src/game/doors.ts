@@ -8,6 +8,8 @@ export type Interaction =
   | { kind: 'door'; index: number }
   | { kind: 'gate' }
   | { kind: 'station'; index: number }
+  | { kind: 'lock'; index: number }
+  | { kind: 'objective' }
   | null;
 
 // The spot a player stands at to board a door up, a little way inside the room.
@@ -19,11 +21,25 @@ function doorSide(door: Door): { x: number; z: number } {
 // Only possible in the opening prep time, so the choice of doors is made before the first wave.
 export function interactionTarget(state: GameState, player: Player): Interaction {
   if (state.waves.phase === 'entry') {
-    const panel = state.level.gate.panel;
+    const gate = state.level.gate;
+    if (!gate) return null;
+    const panel = gate.panel;
     const near = Math.hypot(panel.x - player.x, panel.z - player.z) <= config.doors.gateRange;
     return near && player.y < 1 ? { kind: 'gate' } : null;
   }
-  if (state.waves.phase === 'prep' || state.waves.phase === 'break' || state.waves.phase === 'active') {
+  if (state.waves.phase === 'prep' || state.waves.phase === 'break' || state.waves.phase === 'active' || state.waves.phase === 'search') {
+    const locks = state.level.locks;
+    for (let index = 0; index < locks.length; index++) {
+      if (state.locks[index].open) continue;
+      const lock = locks[index];
+      const near = Math.hypot(lock.position.x - player.x, lock.position.z - player.z) <= config.stations.range;
+      if (near && player.y < 1) return { kind: 'lock', index };
+    }
+    const objective = state.level.objective;
+    if (objective && !state.objective.done) {
+      const near = Math.hypot(objective.position.x - player.x, objective.position.z - player.z) <= config.stations.range;
+      if (near && player.y < 1) return { kind: 'objective' };
+    }
     const stations = state.level.stations;
     for (let index = 0; index < stations.length; index++) {
       const station = stations[index];
@@ -84,6 +100,16 @@ export function useAction(state: GameState, player: Player): void {
     return;
   }
 
+  if (target.kind === 'lock') {
+    openLock(state, player, target.index);
+    return;
+  }
+
+  if (target.kind === 'objective') {
+    state.objective = { done: true, doneTick: state.tick };
+    return;
+  }
+
   if (target.kind === 'gate') {
     closeGate(state);
     return;
@@ -97,6 +123,24 @@ export function useAction(state: GameState, player: Player): void {
   player.bars--;
   state.doors[target.index] = { boarded: true, boardedTick: state.tick };
   state.level.boxes.push(boardBox(state.level.doors[target.index]));
+}
+
+// What a locked door costs this player, and whether they can pay it.
+export function lockOffer(state: GameState, player: Player, index: number): { label: string; cost: number; status: 'ok' | 'poor' } {
+  const lock = state.level.locks[index];
+  return { label: lock.label, cost: lock.cost, status: (state.points[player.id] ?? 0) >= lock.cost ? 'ok' : 'poor' };
+}
+
+function openLock(state: GameState, player: Player, index: number): void {
+  const offer = lockOffer(state, player, index);
+  if (offer.status !== 'ok') return;
+  state.points[player.id] -= offer.cost;
+  state.locks[index] = { open: true, openedTick: state.tick };
+  const lock = state.level.locks[index];
+  state.level.boxes = state.level.boxes.filter(
+    (box) => !(box.surface === 'lock' && box.position.x === lock.position.x && box.position.z === lock.position.z),
+  );
+  player.lastBuyTick = state.tick;
 }
 
 export interface Offer {
@@ -137,6 +181,7 @@ function buy(state: GameState, player: Player, index: number): void {
 // Closing the gate shuts the way out and starts the countdown for boarding up doors.
 export function closeGate(state: GameState): void {
   const gate = state.level.gate;
+  if (!gate) return;
   const alongX = gate.normal.z !== 0;
   state.gate = { closed: true, closedTick: state.tick };
   state.level.boxes.push({
@@ -147,15 +192,6 @@ export function closeGate(state: GameState): void {
   });
   state.waves.phase = 'prep';
   state.waves.timer = config.waves.prepSeconds;
-}
-
-// Takes the boards off every door and puts the bundles back on the floor.
-export function resetDoors(state: GameState): void {
-  state.level.boxes = state.level.boxes.filter((box) => box.surface !== 'board' && box.surface !== 'gate');
-  state.gate = { closed: false, closedTick: -1 };
-  state.doors = state.level.doors.map(() => ({ boarded: false, boardedTick: -1 }));
-  state.pickups.forEach((pickup) => (pickup.taken = false));
-  for (const player of state.players) player.bars = 0;
 }
 
 export function openDoors(state: GameState): number[] {

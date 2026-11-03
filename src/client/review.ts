@@ -24,7 +24,7 @@ export function installReview(context: ReviewContext): void {
       settings.cameraStyle = name.startsWith('bodycam') ? 'bodycam' : 'standard';
       player.cameraStyle = settings.cameraStyle;
       player.cameraDrop = settings.cameraStyle === 'bodycam' ? config.view.bodycamDrop : 0;
-      player.x = -5; player.z = 44; player.y = context.level.ramp.rise;
+      player.x = -5; player.z = 44; player.y = context.level.ramp?.rise ?? 0;
       player.yaw = -0.3; player.pitch = -0.03;
       context.menu.close();
       if (name === 'character' || name === 'settings' || name === 'controls') context.menu.open(name);

@@ -2,6 +2,7 @@ import { config } from '../config';
 import type { Level, Vec3 } from '../levels/types';
 import { resolveCircle } from './collision';
 import { rayAabb } from './hitscan';
+import { nextStep } from './navigation';
 import type { GameState, Player, Zombie } from './state';
 
 export function spawnZombie(
@@ -69,8 +70,17 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     const dx = goal.x - zombie.x;
     const dz = goal.z - zombie.z;
     const distance = Math.hypot(dx, dz);
+    // On a floor with rooms it walks round the walls toward a point on the way, or stays put if
+    // every way to the players is shut.
+    let heading = { x: dx, z: dz };
+    let blocked = false;
+    if (zombie.entry === null && level.navBounds) {
+      const step = nextStep(state, zombie, target);
+      if (step === undefined) blocked = true;
+      else if (step) heading = { x: step.x - zombie.x, z: step.z - zombie.z };
+    }
     // Yaw 0 faces -z, the same as the player.
-    zombie.yaw = Math.atan2(-dx, -dz);
+    zombie.yaw = Math.atan2(-heading.x, -heading.z);
 
     const inReach =
       zombie.entry === null && distance <= zombieConfig.attackRange && target.y < zombieConfig.reachHeight;
@@ -88,15 +98,16 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     }
 
     // It stops a little short of its reach, so it stays on you without walking into you.
-    if (zombie.entry || distance > zombieConfig.attackRange * 0.75) {
+    if (!blocked && (zombie.entry || distance > zombieConfig.attackRange * 0.75)) {
+      const headingLength = Math.hypot(heading.x, heading.z) || 1;
       const speed =
         zombieConfig.moveSpeed *
         zombie.speedFactor *
         (1 + zombieConfig.speedPerWave * (state.waves.number - 1) + config.elevator.speedPerFloor * state.floor);
       const moved = resolveCircle(
         level,
-        zombie.x + (dx / distance) * speed * dt,
-        zombie.z + (dz / distance) * speed * dt,
+        zombie.x + (heading.x / headingLength) * speed * dt,
+        zombie.z + (heading.z / headingLength) * speed * dt,
         zombieConfig.radius,
         0,
         zombieConfig.height,
