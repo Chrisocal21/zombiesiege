@@ -10,62 +10,41 @@
   </head>
   <body>
     <section id="launch-warning" role="dialog" aria-modal="true" aria-labelledby="launch-heading" aria-describedby="launch-description">
-      <div class="launch-card">
-        <div class="launch-eyebrow">
-          <svg class="launch-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5 45 41H3Z"/><path d="M24 17v11m0 5v1"/></svg>
-          HEALTH WARNING
-        </div>
+      <div class="launch-copy">
         <h1 id="launch-heading" tabindex="-1">Photosensitivity warning</h1>
         <div id="launch-description">
           <p>This game contains flashing lights, muzzle flashes, flickering lighting, and rapidly changing visuals. These effects may trigger seizures or discomfort in some people.</p>
           <p>Reduced flashing turns off muzzle flashes and flickering lights, and softens pulsing combat effects. It does not guarantee a trigger-free experience.</p>
         </div>
         <label class="launch-choice" for="launch-reduced-flashing">
-          <span class="launch-choice-text">Reduced flashing<small>You can change this later in Settings.</small></span>
+          <span>Reduced flashing</span>
           <input id="launch-reduced-flashing" type="checkbox" role="switch" checked>
           <span class="launch-switch" aria-hidden="true"></span>
         </label>
-        <div class="launch-footer">
-          <p id="launch-status" aria-live="polite">Loading…</p>
-          <button id="launch-continue" type="button"><kbd>ENTER</kbd>CONTINUE</button>
-        </div>
       </div>
+      <p id="launch-status" aria-live="polite">LOADING</p>
     </section>
     <style>
       html,body { margin:0; height:100%; background:#000; color:#fff; font-family:'Bahnschrift','Segoe UI',Arial,sans-serif; }
-      #launch-warning { position:fixed; inset:0; z-index:100; box-sizing:border-box; padding:24px; display:grid; place-items:center; overflow:auto;
-        background:radial-gradient(ellipse at center, rgba(0,0,0,.5), rgba(0,0,0,.86)); backdrop-filter:blur(10px) saturate(.6); -webkit-backdrop-filter:blur(10px) saturate(.6);
-        transition:opacity .4s ease; animation:launch-in .5s ease both; }
+      #launch-warning { position:fixed; inset:0; z-index:100; box-sizing:border-box; padding:24px; display:flex; align-items:center; justify-content:center; overflow:auto;
+        background:rgba(0,0,0,.93); transition:opacity .5s ease; animation:launch-in .6s ease both; }
       #launch-warning.closing { opacity:0; pointer-events:none; }
       @keyframes launch-in { from { opacity:0; } to { opacity:1; } }
-      .launch-card { position:relative; box-sizing:border-box; width:min(620px,100%); padding:34px 40px 30px; background:rgba(9,13,17,.94);
-        border:1px solid rgba(255,255,255,.1); border-top:3px solid #e8b866; box-shadow:0 40px 100px rgba(0,0,0,.7);
-        clip-path:polygon(0 0,100% 0,100% calc(100% - 22px),calc(100% - 22px) 100%,0 100%); animation:card-in .6s cubic-bezier(.2,.8,.2,1) both .1s; }
-      @keyframes card-in { from { opacity:0; transform:translateY(14px) scale(.985); } to { opacity:1; transform:none; } }
-      .launch-eyebrow { display:flex; align-items:center; gap:12px; font-size:12px; letter-spacing:5px; font-weight:700; color:#e8b866; }
-      .launch-icon { width:22px; height:22px; fill:none; stroke:#e8b866; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
-      #launch-heading { margin:16px 0 18px; font-size:34px; line-height:1.1; font-weight:700; letter-spacing:.5px; outline:none; }
-      #launch-description p { font-size:16px; line-height:1.65; margin:0 0 14px; color:rgba(242,244,247,.78); }
-      .launch-choice { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:22px 0 0; padding:16px 18px;
-        background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); cursor:pointer; position:relative; }
-      .launch-choice-text { font-size:16px; font-weight:600; }
-      .launch-choice small { display:block; margin-top:4px; font-size:12px; font-weight:400; color:rgba(242,244,247,.55); }
+      .launch-copy { max-width:680px; text-align:center; }
+      #launch-heading { margin:0 0 26px; font-size:34px; line-height:1.15; font-weight:700; letter-spacing:1px; outline:none; }
+      #launch-description p { font-size:17px; line-height:1.7; margin:0 0 16px; }
+      .launch-choice { display:inline-flex; align-items:center; gap:16px; margin-top:18px; font-size:16px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; position:relative; }
       .launch-choice input { position:absolute; opacity:0; width:1px; height:1px; }
-      .launch-switch { flex:none; width:52px; height:26px; border-radius:13px; background:rgba(255,255,255,.16); position:relative; transition:background .2s; }
-      .launch-switch::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#f2f4f7; transition:transform .2s; }
-      .launch-choice input:checked + .launch-switch { background:#e8b866; }
-      .launch-choice input:checked + .launch-switch::after { transform:translateX(26px); background:#15110a; }
-      .launch-choice:has(input:focus-visible) { outline:2px solid #e8b866; outline-offset:3px; }
-      .launch-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:26px; }
-      #launch-status { margin:0; font-size:12px; letter-spacing:2px; color:rgba(242,244,247,.5); text-transform:uppercase; }
-      #launch-continue { display:inline-flex; align-items:center; gap:12px; padding:13px 26px 13px 14px; border:0; color:#15110a; background:#e8b866;
-        font:700 14px 'Bahnschrift','Segoe UI',Arial,sans-serif; letter-spacing:4px; cursor:pointer; clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%); transition:filter .15s, transform .15s; }
-      #launch-continue kbd { font:700 11px 'Bahnschrift','Segoe UI',Arial,sans-serif; letter-spacing:1px; padding:4px 7px; background:rgba(21,17,10,.85); color:#e8b866; border-radius:3px; }
-      #launch-continue:hover { filter:brightness(1.12); transform:translateY(-1px); }
-      #launch-continue:focus-visible { outline:2px solid #fff; outline-offset:4px; }
-      #launch-continue:disabled { cursor:wait; filter:saturate(.4) brightness(.8); transform:none; }
-      @media(max-width:600px) { .launch-card { padding:26px 22px 24px; } #launch-heading { font-size:26px; } .launch-footer { flex-direction:column-reverse; align-items:stretch; } #launch-continue { justify-content:center; } }
-      @media(prefers-reduced-motion:reduce) { #launch-warning,.launch-card { animation:none; transition:none; } }
+      .launch-switch { flex:none; width:48px; height:24px; border-radius:12px; border:2px solid #fff; box-sizing:border-box; position:relative; transition:background .2s; }
+      .launch-switch::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; transition:transform .2s, background .2s; }
+      .launch-choice input:checked + .launch-switch { background:#fff; }
+      .launch-choice input:checked + .launch-switch::after { transform:translateX(24px); background:#000; }
+      .launch-choice:has(input:focus-visible) .launch-switch { outline:2px solid #fff; outline-offset:4px; }
+      #launch-status { position:fixed; left:0; right:0; bottom:9vh; margin:0; text-align:center; font-size:15px; letter-spacing:7px; font-weight:700; text-transform:uppercase; }
+      #launch-status.ready { animation:launch-breathe 2.4s ease-in-out infinite; }
+      @keyframes launch-breathe { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+      @media(max-width:600px) { #launch-heading { font-size:26px; } #launch-status { letter-spacing:4px; font-size:13px; } }
+      @media(prefers-reduced-motion:reduce) { #launch-warning { animation:none; transition:none; } #launch-status.ready { animation:none; } }
     </style>
     <script type="module" src="/src/bootstrap.ts"></script>
   </body>
