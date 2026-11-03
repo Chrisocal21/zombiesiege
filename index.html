@@ -4,49 +4,68 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="Zombie Siege. Hold the garage. Survive the night." />
+    <meta name="description" content="Zombie Siege. Fight up the tower. Survive the night." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Zombie Siege / Nightfall</title>
   </head>
   <body>
     <section id="launch-warning" role="dialog" aria-modal="true" aria-labelledby="launch-heading" aria-describedby="launch-description">
-      <div class="launch-copy">
-        <div class="launch-eyebrow">ZOMBIE SIEGE / BEFORE YOU PLAY</div>
-        <svg class="launch-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5 45 41H3Z"/><path d="M24 17v11m0 5v1"/></svg>
-        <h1 id="launch-heading" tabindex="-1">Seizure &amp; photosensitivity warning</h1>
+      <div class="launch-card">
+        <div class="launch-eyebrow">
+          <svg class="launch-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5 45 41H3Z"/><path d="M24 17v11m0 5v1"/></svg>
+          HEALTH WARNING
+        </div>
+        <h1 id="launch-heading" tabindex="-1">Photosensitivity warning</h1>
         <div id="launch-description">
           <p>This game contains flashing lights, muzzle flashes, flickering lighting, and rapidly changing visuals. These effects may trigger seizures or discomfort in some people.</p>
-          <p>Reduced flashing disables muzzle flashes and flickering lights, and softens pulsing combat effects. It does not guarantee a trigger-free experience.</p>
+          <p>Reduced flashing turns off muzzle flashes and flickering lights, and softens pulsing combat effects. It does not guarantee a trigger-free experience.</p>
         </div>
-      </div>
-      <div class="launch-actions">
         <label class="launch-choice" for="launch-reduced-flashing">
-          <input id="launch-reduced-flashing" type="checkbox" checked>
-          <span>Reduced flashing<small>You can change this later in Settings.</small></span>
+          <span class="launch-choice-text">Reduced flashing<small>You can change this later in Settings.</small></span>
+          <input id="launch-reduced-flashing" type="checkbox" role="switch" checked>
+          <span class="launch-switch" aria-hidden="true"></span>
         </label>
-        <button id="launch-continue" type="button">CONTINUE</button>
-        <p id="launch-status" aria-live="polite"></p>
+        <div class="launch-footer">
+          <p id="launch-status" aria-live="polite">Loading…</p>
+          <button id="launch-continue" type="button"><kbd>ENTER</kbd>CONTINUE</button>
+        </div>
       </div>
     </section>
     <style>
-      html,body { margin:0; height:100%; background:#000; color:#fff; font-family:'Segoe UI',Arial,sans-serif; }
-      #launch-warning { position:fixed; inset:0; z-index:100; background:#000; color:#fff; box-sizing:border-box; padding:7vh 6vw; overflow:auto; display:flex; align-items:center; justify-content:center; }
-      .launch-copy { max-width:760px; text-align:center; }
-      .launch-eyebrow { font-size:12px; letter-spacing:4px; font-weight:700; }
-      .launch-icon { display:block; width:44px; height:44px; margin:34px auto 0; fill:none; stroke:#fff; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
-      #launch-heading { margin:22px 0 28px; font-size:38px; line-height:1.15; font-weight:650; outline:none; }
-      #launch-description p { font-size:17px; line-height:1.7; margin:0 0 18px; }
-      .launch-actions { position:fixed; right:6vw; bottom:6vh; display:flex; flex-direction:column; align-items:flex-end; gap:18px; }
-      .launch-choice { display:flex; align-items:center; gap:14px; font-size:16px; cursor:pointer; text-align:left; }
-      .launch-choice input { width:22px; height:22px; margin:0; accent-color:#fff; cursor:pointer; }
-      .launch-choice small { display:block; margin-top:4px; font-size:12px; opacity:.65; }
-      #launch-continue { min-width:200px; padding:14px 30px; border:2px solid #fff; border-radius:0; color:#000; background:#fff; font:700 14px 'Segoe UI',Arial,sans-serif; letter-spacing:3px; cursor:pointer; }
-      #launch-continue:hover { background:#000; color:#fff; }
-      #launch-continue:focus-visible,.launch-choice:has(input:focus-visible) { outline:2px solid #fff; outline-offset:4px; }
-      #launch-continue:disabled { cursor:wait; opacity:.6; }
-      #launch-status { margin:0; font-size:12px; opacity:.65; }
-      #launch-status:empty { display:none; }
-      @media(max-width:600px) { #launch-heading { font-size:28px; } .launch-actions { position:static; margin-top:32px; align-items:stretch; } }
+      html,body { margin:0; height:100%; background:#000; color:#fff; font-family:'Bahnschrift','Segoe UI',Arial,sans-serif; }
+      #launch-warning { position:fixed; inset:0; z-index:100; box-sizing:border-box; padding:24px; display:grid; place-items:center; overflow:auto;
+        background:radial-gradient(ellipse at center, rgba(0,0,0,.5), rgba(0,0,0,.86)); backdrop-filter:blur(10px) saturate(.6); -webkit-backdrop-filter:blur(10px) saturate(.6);
+        transition:opacity .4s ease; animation:launch-in .5s ease both; }
+      #launch-warning.closing { opacity:0; pointer-events:none; }
+      @keyframes launch-in { from { opacity:0; } to { opacity:1; } }
+      .launch-card { position:relative; box-sizing:border-box; width:min(620px,100%); padding:34px 40px 30px; background:rgba(9,13,17,.94);
+        border:1px solid rgba(255,255,255,.1); border-top:3px solid #e8b866; box-shadow:0 40px 100px rgba(0,0,0,.7);
+        clip-path:polygon(0 0,100% 0,100% calc(100% - 22px),calc(100% - 22px) 100%,0 100%); animation:card-in .6s cubic-bezier(.2,.8,.2,1) both .1s; }
+      @keyframes card-in { from { opacity:0; transform:translateY(14px) scale(.985); } to { opacity:1; transform:none; } }
+      .launch-eyebrow { display:flex; align-items:center; gap:12px; font-size:12px; letter-spacing:5px; font-weight:700; color:#e8b866; }
+      .launch-icon { width:22px; height:22px; fill:none; stroke:#e8b866; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+      #launch-heading { margin:16px 0 18px; font-size:34px; line-height:1.1; font-weight:700; letter-spacing:.5px; outline:none; }
+      #launch-description p { font-size:16px; line-height:1.65; margin:0 0 14px; color:rgba(242,244,247,.78); }
+      .launch-choice { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:22px 0 0; padding:16px 18px;
+        background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); cursor:pointer; position:relative; }
+      .launch-choice-text { font-size:16px; font-weight:600; }
+      .launch-choice small { display:block; margin-top:4px; font-size:12px; font-weight:400; color:rgba(242,244,247,.55); }
+      .launch-choice input { position:absolute; opacity:0; width:1px; height:1px; }
+      .launch-switch { flex:none; width:52px; height:26px; border-radius:13px; background:rgba(255,255,255,.16); position:relative; transition:background .2s; }
+      .launch-switch::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#f2f4f7; transition:transform .2s; }
+      .launch-choice input:checked + .launch-switch { background:#e8b866; }
+      .launch-choice input:checked + .launch-switch::after { transform:translateX(26px); background:#15110a; }
+      .launch-choice:has(input:focus-visible) { outline:2px solid #e8b866; outline-offset:3px; }
+      .launch-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:26px; }
+      #launch-status { margin:0; font-size:12px; letter-spacing:2px; color:rgba(242,244,247,.5); text-transform:uppercase; }
+      #launch-continue { display:inline-flex; align-items:center; gap:12px; padding:13px 26px 13px 14px; border:0; color:#15110a; background:#e8b866;
+        font:700 14px 'Bahnschrift','Segoe UI',Arial,sans-serif; letter-spacing:4px; cursor:pointer; clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%); transition:filter .15s, transform .15s; }
+      #launch-continue kbd { font:700 11px 'Bahnschrift','Segoe UI',Arial,sans-serif; letter-spacing:1px; padding:4px 7px; background:rgba(21,17,10,.85); color:#e8b866; border-radius:3px; }
+      #launch-continue:hover { filter:brightness(1.12); transform:translateY(-1px); }
+      #launch-continue:focus-visible { outline:2px solid #fff; outline-offset:4px; }
+      #launch-continue:disabled { cursor:wait; filter:saturate(.4) brightness(.8); transform:none; }
+      @media(max-width:600px) { .launch-card { padding:26px 22px 24px; } #launch-heading { font-size:26px; } .launch-footer { flex-direction:column-reverse; align-items:stretch; } #launch-continue { justify-content:center; } }
+      @media(prefers-reduced-motion:reduce) { #launch-warning,.launch-card { animation:none; transition:none; } }
     </style>
     <script type="module" src="/src/bootstrap.ts"></script>
   </body>

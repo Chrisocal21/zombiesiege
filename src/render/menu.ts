@@ -1,10 +1,12 @@
 import { GLOVES, OUTFITS, appearance, saveAppearance, selectedGloves, selectedOutfit } from '../client/appearance';
 import { ACTIONS, type Action, bindings, keyLabel, rebind, resetBindings } from '../client/bindings';
 import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } from '../client/settings';
+import { stops, storeyLabel } from '../game/tower';
 import { outfitTexture } from './gearTextures';
-import { COLOR, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
+import { COLOR, FONT, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
 
-export type Screen = 'main' | 'pause' | 'controls' | 'settings' | 'character' | 'victory';
+// 'title' is the press-any-key screen the game opens on; 'main' is the menu behind it.
+export type Screen = 'title' | 'main' | 'pause' | 'controls' | 'settings' | 'character' | 'victory';
 
 // What the victory screen reports about the run that just ended.
 export interface RunStats {
@@ -14,6 +16,8 @@ export interface RunStats {
   seconds: number;
 }
 
+export type MenuSound = 'move' | 'select' | 'back' | 'start';
+
 export interface MenuCallbacks {
   // Start the game from the title screen.
   play(): void;
@@ -22,6 +26,8 @@ export interface MenuCallbacks {
   restart(): void;
   // Leave the game and go back to the title screen.
   toTitle(): void;
+  // A sound for moving between, choosing, and leaving menu items.
+  sound?(kind: MenuSound): void;
 }
 
 export interface Menu {
@@ -31,6 +37,8 @@ export interface Menu {
   onTitle(): boolean;
   open(screen: Screen, stats?: RunStats): void;
   close(): void;
+  // The menu ignores the keyboard and mouse until the photosensitivity warning is dismissed.
+  release(): void;
   draw(context: CanvasRenderingContext2D, width: number, height: number, time: number): void;
 }
 
@@ -42,19 +50,152 @@ interface Mouse {
   clicked: boolean;
 }
 
-// The title screen, the pause menu, the controls list where keys are rebound, and the settings.
-// Drawn on the HUD canvas, driven by the mouse.
+interface Entry {
+  label: string;
+  detail: string;
+  action(): void;
+}
+
+const ease = (t: number) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+
+// The logo is painted once on its own canvas, so the worn edges and stencil cuts can be taken
+// out of the letters without touching anything drawn behind them. Sizes are for a 1080p screen.
+const LOGO_HEIGHT = 330;
+let logoCanvas: HTMLCanvasElement | null = null;
+let logoWidth = 0;
+
+function logo(): { canvas: HTMLCanvasElement; width: number } {
+  if (logoCanvas) return { canvas: logoCanvas, width: logoWidth };
+  const scale = 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200 * scale;
+  canvas.height = LOGO_HEIGHT * scale;
+  const c = canvas.getContext('2d')!;
+  c.scale(scale, scale);
+  const styled = c as unknown as { letterSpacing: string; fontStretch: string };
+  c.font = `800 176px ${FONT}`;
+  styled.fontStretch = 'condensed';
+  styled.letterSpacing = '6px';
+  const word = (value: string, baseline: number, top: string, bottom: string): number => {
+    const gradient = c.createLinearGradient(0, baseline - 130, 0, baseline);
+    gradient.addColorStop(0, top);
+    gradient.addColorStop(1, bottom);
+    c.fillStyle = gradient;
+    c.fillText(value, 0, baseline);
+    return c.measureText(value).width;
+  };
+  logoWidth = Math.max(word('ZOMBIE', 150, '#ffffff', '#b4b9bf'), word('SIEGE', 310, '#f5cd7d', '#bd7a26'));
+
+  // Wear: specks and scratches out of the paint, and a stencil cut through each word.
+  let seed = 7;
+  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  c.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 1400; i++) {
+    c.globalAlpha = 0.25 + random() * 0.75;
+    const size = 0.8 + random() * 2.6;
+    c.fillRect(random() * logoWidth, random() * LOGO_HEIGHT, size, size);
+  }
+  c.lineCap = 'round';
+  for (let i = 0; i < 16; i++) {
+    c.globalAlpha = 0.5 + random() * 0.5;
+    c.lineWidth = 0.8 + random() * 1.6;
+    const x = random() * logoWidth;
+    const y = random() * LOGO_HEIGHT;
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(x + 20 + random() * 70, y + (random() - 0.5) * 14);
+    c.stroke();
+  }
+  c.globalAlpha = 1;
+  c.fillRect(0, 150 - 66, logoWidth, 5);
+  c.fillRect(0, 310 - 66, logoWidth, 5);
+  c.globalCompositeOperation = 'source-over';
+  logoCanvas = canvas;
+  return { canvas, width: logoWidth };
+}
+
+// Fine moving film grain, laid over every menu.
+let grain: CanvasPattern | null = null;
+const GRAIN_SIZE = 192;
+
+function drawGrain(context: CanvasRenderingContext2D, width: number, height: number, time: number): void {
+  if (!grain) {
+    const noise = document.createElement('canvas');
+    noise.width = noise.height = GRAIN_SIZE;
+    const c = noise.getContext('2d')!;
+    const image = c.createImageData(GRAIN_SIZE, GRAIN_SIZE);
+    for (let i = 0; i < image.data.length; i += 4) {
+      const value = Math.random() < 0.5 ? 0 : 255;
+      image.data[i] = image.data[i + 1] = image.data[i + 2] = value;
+      image.data[i + 3] = Math.random() * 26;
+    }
+    c.putImageData(image, 0, 0);
+    grain = context.createPattern(noise, 'repeat');
+  }
+  // Still when flashing is reduced; otherwise it moves at a film's frame rate.
+  const frame = settings.reducedFlashing ? 0 : Math.floor(time * 12);
+  const ox = (frame * 61) % GRAIN_SIZE;
+  const oy = (frame * 113) % GRAIN_SIZE;
+  context.save();
+  context.translate(-ox, -oy);
+  context.fillStyle = grain!;
+  context.fillRect(ox, oy, width, height);
+  context.restore();
+}
+
+// A low red glow rising from the bottom of the screen.
+function drawGlow(context: CanvasRenderingContext2D, width: number, height: number): void {
+  context.save();
+  context.translate(width / 2, height * 1.08);
+  context.scale(width / height, 1);
+  const gradient = context.createRadialGradient(0, 0, 0, 0, 0, height * 0.6);
+  gradient.addColorStop(0, 'rgba(150,18,12,0.32)');
+  gradient.addColorStop(1, 'rgba(150,18,12,0)');
+  context.fillStyle = gradient;
+  context.fillRect(-height * 0.6, -height * 0.6, height * 1.2, height * 0.6);
+  context.restore();
+}
+
+function drawVignette(context: CanvasRenderingContext2D, width: number, height: number, strength: number): void {
+  const gradient = context.createRadialGradient(width / 2, height / 2, height * 0.35, width / 2, height / 2, Math.hypot(width, height) * 0.62);
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, `rgba(0,0,0,${strength})`);
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+}
+
+// The title screen, the main menu, the pause menu, the controls list where keys are rebound, and
+// the settings. Drawn on the HUD canvas, driven by the keyboard and the mouse.
 export function createMenu(callbacks: MenuCallbacks): Menu {
-  let current: Screen | null = 'main';
+  let current: Screen | null = 'title';
   // Which of the two top screens the controls and settings screens go back to.
   let parent: 'main' | 'pause' = 'main';
   let stats: RunStats = { floors: 0, points: 0, lives: 0, seconds: 0 };
   let rebinding: Action | null = null;
   let dragging: string | null = null;
   let focusedItem = 0;
+  let itemCount = 3;
   let keyboardMode = false;
   let activate = false;
+  let blocked = true;
+  // When the current screen was opened, for the way its parts slide in.
+  let shown: Screen | null = null;
+  let shownAt = 0;
+  let startedAt = -1;
   const mouse: Mouse = { x: 0, y: 0, down: false, clicked: false };
+  const sound = (kind: MenuSound) => callbacks.sound?.(kind);
+
+  // Press any key: the title screen gives way to the main menu.
+  const leaveTitle = () => {
+    if (current !== 'title' || blocked) return;
+    current = 'main';
+    focusedItem = 0;
+    sound('start');
+  };
+  const back = () => {
+    current = parent;
+    sound('back');
+  };
 
   window.addEventListener('mousemove', (event) => {
     keyboardMode = false;
@@ -62,7 +203,11 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
     mouse.y = event.clientY;
   });
   window.addEventListener('mousedown', (event) => {
-    if (current === null) return;
+    if (current === null || blocked) return;
+    if (current === 'title') {
+      leaveTitle();
+      return;
+    }
     if (rebinding) {
       // A mouse button can be bound too.
       rebind(rebinding, `Mouse${event.button}`);
@@ -81,7 +226,14 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   window.addEventListener(
     'keydown',
     (event) => {
-      if (current === null) return;
+      if (current === null || blocked) return;
+      if (current === 'title') {
+        if (!['Shift', 'Control', 'Alt', 'Meta'].includes(event.key) && !event.repeat) {
+          event.preventDefault();
+          leaveTitle();
+        }
+        return;
+      }
       if (rebinding) {
         event.preventDefault();
         event.stopPropagation();
@@ -89,12 +241,15 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         rebinding = null;
         return;
       }
-      if ((current === 'main' || current === 'pause' || current === 'victory') && ['ArrowUp', 'ArrowDown', 'Enter'].includes(event.code)) {
-        event.preventDefault(); keyboardMode = true;
-        const count = current === 'main' ? 3 : current === 'victory' ? 2 : 4;
-        if (event.code === 'ArrowUp') focusedItem = (focusedItem + count - 1) % count;
-        if (event.code === 'ArrowDown') focusedItem = (focusedItem + 1) % count;
-        if (event.code === 'Enter') activate = true;
+      if ((current === 'main' || current === 'pause' || current === 'victory') && ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', 'Enter', 'Space'].includes(event.code)) {
+        event.preventDefault();
+        keyboardMode = true;
+        const up = event.code === 'ArrowUp' || event.code === 'KeyW';
+        const down = event.code === 'ArrowDown' || event.code === 'KeyS';
+        if (up) focusedItem = (focusedItem + itemCount - 1) % itemCount;
+        if (down) focusedItem = (focusedItem + 1) % itemCount;
+        if (up || down) sound('move');
+        if (event.code === 'Enter' || event.code === 'Space') activate = true;
       }
       if (current === 'character' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.code)) {
         event.preventDefault();
@@ -108,9 +263,14 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           appearance.gloves = GLOVES[(index + direction + GLOVES.length) % GLOVES.length].id;
         }
         saveAppearance();
+        sound('move');
       }
-      if (current === 'character' && event.code === 'Enter') { event.preventDefault(); callbacks.play(); }
-      if (event.code === 'Escape'  && (current === 'controls' || current === 'settings' || current === 'character')) current = parent;
+      if (current === 'character' && event.code === 'Enter') {
+        event.preventDefault();
+        sound('select');
+        callbacks.play();
+      }
+      if (event.code === 'Escape' && (current === 'controls' || current === 'settings' || current === 'character')) back();
     },
     true,
   );
@@ -131,145 +291,268 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
       rebinding = null;
       document.body.style.cursor = 'none';
     },
+    release() {
+      blocked = false;
+    },
     draw(context, width, height, time) {
       if (current === null) return;
       const unit = height / 1080;
       let hovering = false;
+      if (current !== shown) {
+        shown = current;
+        shownAt = time;
+      }
+      if (startedAt < 0) startedAt = time;
+      const since = time - shownAt;
 
       const inside = (x: number, y: number, w: number, h: number) =>
         mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
-
-      // A line of the main menu: big text on the left, with an amber bar when pointed at.
-      const item = (label: string, x: number, y: number, index: number): boolean => {
-        const size = 40 * unit;
-        const w = Math.max(measure(context, label, size, 600, 3 * unit) + 60 * unit, 360 * unit);
-        const h = size * 1.5;
-        const hover = keyboardMode ? focusedItem === index : inside(x - 24 * unit, y - size, w, h);
-        if (hover) hovering = true;
-        if (hover) {
-          context.fillStyle = COLOR.accent;
-          context.fillRect(x - 24 * unit, y - size * 0.9, 5 * unit, size * 1.15);
-          const wash = context.createLinearGradient(x - 24 * unit, 0, x + w, 0);
-          wash.addColorStop(0, 'rgba(245,165,36,0.2)');
-          wash.addColorStop(1, 'rgba(245,165,36,0)');
-          context.fillStyle = wash;
-          context.fillRect(x - 24 * unit, y - size * 0.9, w, size * 1.15);
-        }
-        text(context, label, x + (hover ? 10 * unit : 0), y, { size, color: hover ? COLOR.text : COLOR.dim, spacing: 3 * unit });
-        return hover && (keyboardMode ? activate : mouse.clicked);
-      };
 
       // A rectangular button, for the bottom of the controls and settings panels.
       const button = (label: string, x: number, y: number, w: number, h: number, accent = false): boolean => {
         const hover = inside(x, y, w, h);
         if (hover) hovering = true;
-        roundedRect(context, x, y, w, h, 6 * unit);
-        context.fillStyle = hover ? (accent ? COLOR.accent : 'rgba(255,255,255,0.16)') : accent ? 'rgba(245,165,36,0.22)' : 'rgba(255,255,255,0.07)';
+        roundedRect(context, x, y, w, h, 4 * unit);
+        context.fillStyle = hover ? (accent ? COLOR.accent : 'rgba(255,255,255,0.16)') : accent ? 'rgba(232,184,102,0.2)' : 'rgba(255,255,255,0.07)';
         context.fill();
         context.strokeStyle = accent ? COLOR.accent : COLOR.border;
         context.lineWidth = 1;
         context.stroke();
         text(context, label, x + w / 2, y + h * 0.64, {
-          size: h * 0.42,
+          size: h * 0.4,
           align: 'center',
-          spacing: 2 * unit,
+          spacing: 3 * unit,
+          weight: 700,
           color: hover && accent ? '#15110a' : COLOR.text,
           shadow: false,
         });
+        if (hover && mouse.clicked) sound(accent ? 'select' : 'back');
         return hover && mouse.clicked;
       };
 
-      // The darkening on the left, so the title reads over any scene.
-      const wash = context.createLinearGradient(0, 0, width * 0.7, 0);
-      wash.addColorStop(0, 'rgba(4,6,9,0.94)');
-      wash.addColorStop(0.55, 'rgba(4,6,9,0.62)');
-      wash.addColorStop(1, 'rgba(4,6,9,0.12)');
-      context.fillStyle = wash;
-      context.fillRect(0, 0, width, height);
-      // Letterbox bars, for the film look.
-      context.fillStyle = 'rgba(0,0,0,0.55)';
-      context.fillRect(0, 0, width, 56 * unit);
-      context.fillRect(0, height - 56 * unit, width, 56 * unit);
+      // The strip along the bottom: what the keys do here, and the studio and build.
+      const promptBar = (prompts: [string, string][]) => {
+        const barH = 64 * unit;
+        const shade = context.createLinearGradient(0, height - barH * 1.6, 0, height);
+        shade.addColorStop(0, 'rgba(0,0,0,0)');
+        shade.addColorStop(1, 'rgba(0,0,0,0.7)');
+        context.fillStyle = shade;
+        context.fillRect(0, height - barH * 1.6, width, barH * 1.6);
+        context.fillStyle = 'rgba(255,255,255,0.08)';
+        context.fillRect(0, height - barH, width, 1);
+        let x = width * 0.07;
+        const y = height - barH / 2 + 9 * unit;
+        for (const [key, label] of prompts) {
+          for (const part of key.split(' ')) x += keycap(context, part, x, y, 26 * unit) + 6 * unit;
+          text(context, label, x + 4 * unit, y - 3 * unit, { size: 14 * unit, weight: 700, spacing: 3 * unit, color: COLOR.dim, shadow: false });
+          x += measure(context, label, 14 * unit, 700, 3 * unit) + 40 * unit;
+        }
+        text(context, 'PROBABLY FINE STUDIOS  ·  PRE-ALPHA BUILD', width * 0.93, y - 3 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, align: 'right', shadow: false });
+      };
 
-      const left = width * 0.075;
+      // The logo at a scale where 1 is its full 1080p size, from a left edge or a centre.
+      const drawLogo = (x: number, y: number, scale: number, centred = false) => {
+        const { canvas, width: inkWidth } = logo();
+        const s = scale * unit;
+        const left = centred ? x - (inkWidth * s) / 2 : x;
+        context.drawImage(canvas, 0, 0, inkWidth * 2, LOGO_HEIGHT * 2, left, y, inkWidth * s, LOGO_HEIGHT * s);
+        return { left, right: left + inkWidth * s, bottom: y + LOGO_HEIGHT * s };
+      };
 
-      if (current === 'victory') {
-        text(context, 'OPERATION 001', left, height * 0.22, { size: 20 * unit, color: COLOR.accent, spacing: 8 * unit });
-        text(context, 'EXTRACTED', left, height * 0.32, { size: 118 * unit, weight: 800, spacing: 10 * unit });
-        context.fillStyle = COLOR.accent;
-        context.fillRect(left, height * 0.32 + 26 * unit, 150 * unit, 5 * unit);
-        text(context, 'THE CHOPPER IS HERE. YOU MADE IT OUT OF THE TOWER', left, height * 0.32 + 72 * unit, { size: 22 * unit, color: COLOR.dim, spacing: 4 * unit });
-        const minutes = Math.floor(stats.seconds / 60);
-        const rows: [string, string][] = [
-          ['FLOORS CLEARED', String(stats.floors)],
-          ['POINTS', String(stats.points)],
-          ['LIVES LEFT', String(stats.lives)],
-          ['TIME', `${minutes}:${String(Math.floor(stats.seconds % 60)).padStart(2, '0')}`],
-        ];
-        rows.forEach(([label, value], i) => {
-          const rowY = height * 0.5 + i * 44 * unit;
-          text(context, label, left, rowY, { size: 18 * unit, color: COLOR.dim, spacing: 4 * unit });
-          text(context, value, left + 330 * unit, rowY, { size: 30 * unit, weight: 800, align: 'right' });
+      // A column of big menu lines. One is always selected; the mouse selects what it is over.
+      const list = (entries: Entry[], x: number, top: number, delay: number) => {
+        itemCount = entries.length;
+        focusedItem = Math.min(focusedItem, entries.length - 1);
+        const row = 68 * unit;
+        let chosen = -1;
+        entries.forEach((entry, index) => {
+          const y = top + index * row;
+          const appear = ease((since - delay - index * 0.05) / 0.45);
+          const hitX = x - 30 * unit;
+          const hitY = y - 48 * unit;
+          if (!keyboardMode && inside(hitX, hitY, 560 * unit, row - 4 * unit)) {
+            hovering = true;
+            if (focusedItem !== index) {
+              focusedItem = index;
+              sound('move');
+            }
+            if (mouse.clicked) chosen = index;
+          }
+          const selected = focusedItem === index;
+          const offset = (1 - appear) * -50 * unit;
+          context.save();
+          context.globalAlpha = appear;
+          if (selected) {
+            // A slanted bar of light behind the selected line, with a solid edge.
+            const w = 540 * unit;
+            const h = 60 * unit;
+            const bx = hitX + offset;
+            const by = y - 45 * unit;
+            const wash = context.createLinearGradient(bx, 0, bx + w, 0);
+            wash.addColorStop(0, 'rgba(232,184,102,0.32)');
+            wash.addColorStop(0.6, 'rgba(232,184,102,0.08)');
+            wash.addColorStop(1, 'rgba(232,184,102,0)');
+            context.fillStyle = wash;
+            context.beginPath();
+            context.moveTo(bx, by);
+            context.lineTo(bx + w, by);
+            context.lineTo(bx + w - 14 * unit, by + h);
+            context.lineTo(bx, by + h);
+            context.closePath();
+            context.fill();
+            context.fillStyle = COLOR.accent;
+            context.fillRect(bx, by, 5 * unit, h);
+          }
+          text(context, String(index + 1).padStart(2, '0'), x + offset, y - 6 * unit, { size: 15 * unit, weight: 700, spacing: 2 * unit, color: selected ? COLOR.accent : COLOR.faint });
+          text(context, entry.label, x + 46 * unit + offset + (selected ? 6 * unit : 0), y, {
+            size: (selected ? 44 : 34) * unit,
+            weight: 800,
+            spacing: 4 * unit,
+            color: selected ? COLOR.text : 'rgba(242,244,247,0.55)',
+          });
+          context.restore();
         });
-        let y = height * 0.74;
-        const entries: [string, () => void][] = [
-          ['PLAY AGAIN', () => callbacks.restart()],
-          ['MAIN MENU', () => { callbacks.toTitle(); }],
-        ];
-        for (const [index, [label, action]] of entries.entries()) {
-          if (item(label, left, y, index)) action();
-          y += 62 * unit;
-        }
-      } else if (current === 'main' || current === 'pause') {
-        text(context, 'PROBABLY FINE STUDIOS', left, height * 0.22, { size: 20 * unit, color: COLOR.accent, spacing: 8 * unit });
-        text(context, 'ZOMBIE', left, height * 0.32, { size: 118 * unit, weight: 800, spacing: 10 * unit });
-        text(context, 'SIEGE', left, height * 0.32 + 112 * unit, { size: 118 * unit, weight: 800, spacing: 10 * unit });
+        // What the selected line does, under the list.
+        const detailY = top + entries.length * row + 4 * unit;
+        const detailAppear = ease((since - delay - 0.25) / 0.4);
+        context.save();
+        context.globalAlpha = detailAppear;
         context.fillStyle = COLOR.accent;
-        context.fillRect(left, height * 0.32 + 138 * unit, 150 * unit, 5 * unit);
-        text(context, 'NIGHTFALL  /  B1 OPERATIONS', left, height * 0.32 + 184 * unit, { size: 22 * unit, color: COLOR.dim, spacing: 6 * unit });
+        context.fillRect(x, detailY - 6 * unit, 36 * unit, 2 * unit);
+        text(context, entries[focusedItem].detail, x + 50 * unit, detailY, { size: 19 * unit, color: COLOR.dim, spacing: 0.5 * unit });
+        context.restore();
+        if (activate) chosen = focusedItem;
+        if (chosen >= 0) {
+          sound('select');
+          entries[chosen].action();
+        }
+      };
 
-        // Briefing stays off the combat HUD and makes the first run's sequence clear.
-        const bx = width * 0.68, by = height * 0.56;
-        const bw = width * 0.255;
-        panel(context, bx, by, bw, 285 * unit, 'rgba(10,20,26,0.76)', 8 * unit);
-        text(context, 'OPERATION 001', bx + 26 * unit, by + 37 * unit, { size: 15 * unit, color: COLOR.accent, spacing: 4 * unit });
-        text(context, 'HOLD THE GARAGE', bx + 26 * unit, by + 78 * unit, { size: 27 * unit, weight: 800 });
-        ['Enter from the street.', 'Seal the gate. Find the boards.', 'Survive five waves, then ride up.'].forEach((line, i) => text(context, line, bx + 26 * unit, by + (119 + i * 31) * unit, { size: 18 * unit, color: COLOR.dim }));
-        context.fillStyle = COLOR.border; context.fillRect(bx + 26 * unit, by + 218 * unit, bw - 52 * unit, 1);
-        text(context, 'SOLO  /  5 WAVES  /  P9', bx + 26 * unit, by + 254 * unit, { size: 14 * unit, color: COLOR.accent, spacing: 2 * unit });
-        let y = height * 0.66;
-        const step = 62 * unit;
-        const entries: [string, () => void][] =
-          current === 'main'
-            ? [
-                ['PLAY', () => (current = 'character')],
-                ['CONTROLS', () => (current = 'controls')],
-                ['SETTINGS', () => (current = 'settings')],
-              ]
-            : [
-                ['RESUME', () => callbacks.resume()],
-                ['RESTART LEVEL', () => callbacks.restart()],
-                ['CONTROLS', () => (current = 'controls')],
-                ['SETTINGS', () => (current = 'settings')],
-              ];
-        if (current === 'pause') {
-          text(context, 'PAUSED', left, y - step * 0.9, { size: 20 * unit, color: COLOR.dim, spacing: 8 * unit });
+      const left = width * 0.07;
+
+      if (current === 'title') {
+        // The opening screen: the logo over the scene, and an invitation to press a key.
+        context.fillStyle = 'rgba(3,5,9,0.42)';
+        context.fillRect(0, 0, width, height);
+        drawGlow(context, width, height);
+        drawVignette(context, width, height, 0.9);
+        const shade = context.createLinearGradient(0, height * 0.45, 0, height);
+        shade.addColorStop(0, 'rgba(0,0,0,0)');
+        shade.addColorStop(1, 'rgba(0,0,0,0.75)');
+        context.fillStyle = shade;
+        context.fillRect(0, height * 0.45, width, height * 0.55);
+        drawGrain(context, width, height, time);
+
+        const appear = ease((time - startedAt - 0.3) / 1.4);
+        context.save();
+        context.globalAlpha = appear;
+        text(context, 'PROBABLY FINE STUDIOS PRESENTS', width / 2, height * 0.12, { size: 15 * unit, weight: 700, spacing: 8 * unit, color: COLOR.dim, align: 'center' });
+        const mark = drawLogo(width / 2, height * 0.145 + (1 - appear) * 20 * unit, 0.78, true);
+        context.fillStyle = COLOR.accent;
+        context.fillRect(width / 2 - 60 * unit, mark.bottom + 18 * unit, 120 * unit, 3 * unit);
+        text(context, 'THE TOWER  ·  NIGHTFALL', width / 2 + 4 * unit, mark.bottom + 58 * unit, { size: 20 * unit, weight: 700, spacing: 9 * unit, color: COLOR.text, align: 'center' });
+        context.restore();
+
+        if (!blocked) {
+          // A slow breath, not a blink.
+          const breath = settings.reducedFlashing ? 1 : 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(time * 2.2));
+          const label = 'PRESS ANY KEY TO START';
+          const size = 22 * unit;
+          const spacing = 7 * unit;
+          const w = measure(context, label, size, 700, spacing);
+          const y = height * 0.82;
+          context.save();
+          context.globalAlpha = breath * ease((time - startedAt - 1.2) / 0.8);
+          text(context, label, width / 2 + spacing / 2, y, { size, weight: 700, spacing, align: 'center' });
+          context.fillStyle = 'rgba(255,255,255,0.5)';
+          context.fillRect(width / 2 - w / 2 - 110 * unit, y - 8 * unit, 80 * unit, 1);
+          context.fillRect(width / 2 + w / 2 + 30 * unit, y - 8 * unit, 80 * unit, 1);
+          context.restore();
         }
-        for (const [index, [label, action]] of entries.entries()) {
-          if (item(label, left, y, index)) action();
-          y += step;
+        text(context, 'PROBABLY FINE STUDIOS', left, height - 40 * unit, { size: 12 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint });
+        text(context, 'PRE-ALPHA BUILD  ·  NOT FINAL GAME', width - left, height - 40 * unit, { size: 12 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint, align: 'right' });
+      } else if (current === 'main' || current === 'pause' || current === 'victory') {
+        // The scene stays visible on the right; the left is shaded for the menu.
+        const wash = context.createLinearGradient(0, 0, width * 0.75, 0);
+        wash.addColorStop(0, 'rgba(3,5,8,0.92)');
+        wash.addColorStop(0.5, 'rgba(3,5,8,0.6)');
+        wash.addColorStop(1, 'rgba(3,5,8,0.05)');
+        context.fillStyle = current === 'pause' ? 'rgba(3,5,8,0.55)' : 'rgba(3,5,9,0.3)';
+        context.fillRect(0, 0, width, height);
+        if (current === 'main') drawGlow(context, width, height);
+        context.fillStyle = wash;
+        context.fillRect(0, 0, width, height);
+        drawVignette(context, width, height, 0.7);
+        drawGrain(context, width, height, time);
+
+        const headAppear = ease(since / 0.5);
+        context.save();
+        context.globalAlpha = headAppear;
+        if (current === 'main') {
+          drawLogo(left, 70 * unit, 0.42);
+        } else {
+          text(context, current === 'pause' ? 'OPERATION 001  ·  THE TOWER' : 'OPERATION 001  ·  COMPLETE', left, 130 * unit, { size: 15 * unit, weight: 700, spacing: 6 * unit, color: COLOR.accent });
+          text(context, current === 'pause' ? 'PAUSED' : 'EXTRACTED', left - 4 * unit, 230 * unit, { size: 104 * unit, weight: 800, spacing: 10 * unit });
+          context.fillStyle = COLOR.accent;
+          context.fillRect(left, 258 * unit, 120 * unit, 4 * unit);
         }
-        text(context, 'Arrows Select   /   Enter Confirm   /   Esc Pause', left, height - 80 * unit, { size: 17 * unit, color: COLOR.faint, spacing: 1 * unit });
+        context.restore();
+
+        if (current === 'main') {
+          list([
+            { label: 'DEPLOY', detail: 'Solo survival. Fight up the hospital tower to the roof.', action: () => (current = 'character') },
+            { label: 'CONTROLS', detail: 'See and rebind every key and mouse button.', action: () => (current = 'controls') },
+            { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
+          ], left, height * 0.5, 0.1);
+          drawSurvivorCard(context, width - left, 70 * unit, unit, ease((since - 0.15) / 0.5));
+          drawOperationCard(context, width - left, height * 0.3, unit, ease((since - 0.2) / 0.55));
+          promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);
+        } else if (current === 'pause') {
+          list([
+            { label: 'RESUME', detail: 'Back into the fight.', action: () => callbacks.resume() },
+            { label: 'RESTART RUN', detail: 'Start again from the garage with fresh lives.', action: () => callbacks.restart() },
+            { label: 'CONTROLS', detail: 'See and rebind every key and mouse button.', action: () => (current = 'controls') },
+            { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
+            { label: 'QUIT TO TITLE', detail: 'Leave this run. Progress is lost.', action: () => callbacks.toTitle() },
+          ], left, height * 0.42, 0.05);
+          promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);
+        } else {
+          text(context, 'THE HELICOPTER IS HERE. YOU MADE IT OUT OF THE TOWER', left, 300 * unit, { size: 19 * unit, color: COLOR.dim, spacing: 4 * unit });
+          const minutes = Math.floor(stats.seconds / 60);
+          const rows: [string, string][] = [
+            ['FLOORS CLEARED', String(stats.floors)],
+            ['POINTS', String(stats.points)],
+            ['LIVES LEFT', String(stats.lives)],
+            ['TIME', `${minutes}:${String(Math.floor(stats.seconds % 60)).padStart(2, '0')}`],
+          ];
+          rows.forEach(([label, value], i) => {
+            const rowY = 380 * unit + i * 50 * unit;
+            context.fillStyle = 'rgba(255,255,255,0.08)';
+            context.fillRect(left, rowY + 14 * unit, 420 * unit, 1);
+            text(context, label, left, rowY, { size: 16 * unit, weight: 700, color: COLOR.dim, spacing: 4 * unit });
+            text(context, value, left + 420 * unit, rowY, { size: 30 * unit, weight: 800, align: 'right' });
+          });
+          list([
+            { label: 'PLAY AGAIN', detail: 'Back to the garage for another run.', action: () => callbacks.restart() },
+            { label: 'MAIN MENU', detail: 'Back to the title screen.', action: () => callbacks.toTitle() },
+          ], left, height * 0.68, 0.2);
+          promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);
+        }
       } else {
-        // The controls and settings screens share a centred panel.
+        // The controls and settings screens share a centred panel over the darkened scene.
+        context.fillStyle = 'rgba(3,5,8,0.7)';
+        context.fillRect(0, 0, width, height);
+        drawVignette(context, width, height, 0.7);
+        drawGrain(context, width, height, time);
         const panelWidth = Math.min(width * 0.84, 1180 * unit);
         const panelHeight = height * 0.74;
         const px = (width - panelWidth) / 2;
-        const py = height * 0.13;
-        panel(context, px, py, panelWidth, panelHeight, COLOR.panelSolid, 10 * unit);
-        text(context, current === 'controls' ? 'CONTROLS' : current === 'character' ? 'YOUR SURVIVOR' : 'SETTINGS', px + 44 * unit, py + 70 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
+        const py = height * 0.11;
+        panel(context, px, py, panelWidth, panelHeight, COLOR.panelSolid, 4 * unit);
         context.fillStyle = COLOR.accent;
-        context.fillRect(px + 44 * unit, py + 90 * unit, 90 * unit, 4 * unit);
+        context.fillRect(px, py, panelWidth, 3 * unit);
+        text(context, (parent === 'main' ? 'MAIN MENU' : 'PAUSED') + '  /', px + 44 * unit, py + 40 * unit, { size: 13 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint, shadow: false });
+        text(context, current === 'controls' ? 'CONTROLS' : current === 'character' ? 'YOUR SURVIVOR' : 'SETTINGS', px + 44 * unit, py + 86 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
 
         const buttonHeight = 54 * unit;
         const buttonY = py + panelHeight - buttonHeight - 30 * unit;
@@ -291,7 +574,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             outline(x, y, appearance.outfit === outfit.id);
             if (inside(x, y, swatchSize, swatchSize)) {
               hovering = true;
-              if (mouse.clicked) { appearance.outfit = outfit.id; saveAppearance(); }
+              if (mouse.clicked) { appearance.outfit = outfit.id; saveAppearance(); sound('move'); }
             }
           });
           GLOVES.forEach((gloves, i) => {
@@ -304,7 +587,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             outline(x, y, appearance.gloves === gloves.id);
             if (inside(x, y, swatchSize, swatchSize)) {
               hovering = true;
-              if (mouse.clicked) { appearance.gloves = gloves.id; saveAppearance(); }
+              if (mouse.clicked) { appearance.gloves = gloves.id; saveAppearance(); sound('move'); }
             }
           });
           const preview = outfitPreviewRect(width, height);
@@ -319,7 +602,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           text(context, 'P9 service pistol / 12 rounds', px + 44 * unit, py + 506 * unit, { size: 22 * unit, color: COLOR.text });
           text(context, selectedOutfit().description + '.', px + 44 * unit, py + 541 * unit, { size: 16 * unit, color: COLOR.dim });
           text(context, 'Left and right change camouflage, up and down change gloves. Enter to deploy.', px + 44 * unit, buttonY - 40 * unit, { size: 20 * unit, color: COLOR.dim });
-          if (button('ENTER THE GARAGE', px + 44 * unit, buttonY, 370 * unit, buttonHeight, true)) callbacks.play();
+          if (button('DEPLOY', px + 44 * unit, buttonY, 370 * unit, buttonHeight, true)) callbacks.play();
         } else if (current === 'controls') {
           const columnWidth = (panelWidth - 132 * unit) / 2;
           const rowHeight = 50 * unit;
@@ -358,6 +641,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
                 if (hover && mouse.clicked && rebinding === null) {
                   rebinding = action.id;
                   mouse.clicked = false;
+                  sound('select');
                 }
                 y += rowHeight;
               }
@@ -427,6 +711,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             if (hover && mouse.clicked) {
               settings[key] = !settings[key];
               saveSettings();
+              sound('move');
             }
             const on = settings[key];
             roundedRect(context, tx, ty, w, h, h / 2);
@@ -447,11 +732,124 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           if (button('RESET TO DEFAULTS', x, buttonY, 300 * unit, buttonHeight)) resetSettings();
         }
         if (button('BACK', px + panelWidth - 44 * unit - 220 * unit, buttonY, 220 * unit, buttonHeight, true)) current = parent;
+        promptBar(current === 'character' ? [['← →', 'CAMOUFLAGE'], ['↑ ↓', 'GLOVES'], ['ENTER', 'DEPLOY'], ['ESC', 'BACK']] : [['ESC', 'BACK']]);
       }
 
-      document.body.style.cursor = hovering ? 'pointer' : 'default';
+      document.body.style.cursor = current === 'title' ? 'default' : hovering ? 'pointer' : 'default';
       mouse.clicked = false;
       activate = false;
     },
   };
+}
+
+// Top right of the main menu: the survivor you will deploy as.
+function drawSurvivorCard(context: CanvasRenderingContext2D, right: number, top: number, unit: number, appear: number): void {
+  const w = 330 * unit;
+  const h = 84 * unit;
+  const x = right - w + (1 - appear) * 40 * unit;
+  context.save();
+  context.globalAlpha = appear;
+  roundedRect(context, x, top, w, h, 3 * unit);
+  context.fillStyle = 'rgba(8,12,16,0.72)';
+  context.fill();
+  context.strokeStyle = 'rgba(255,255,255,0.1)';
+  context.lineWidth = 1;
+  context.stroke();
+  const swatch = h - 20 * unit;
+  context.drawImage(outfitTexture(appearance.outfit).image as HTMLCanvasElement, 0, 0, 320, 320, x + 10 * unit, top + 10 * unit, swatch, swatch);
+  context.strokeStyle = COLOR.accent;
+  context.strokeRect(x + 10 * unit, top + 10 * unit, swatch, swatch);
+  const tx = x + swatch + 26 * unit;
+  text(context, 'SURVIVOR', tx, top + 28 * unit, { size: 12 * unit, weight: 700, spacing: 4 * unit, color: COLOR.accent, shadow: false });
+  text(context, selectedOutfit().name.toUpperCase(), tx, top + 54 * unit, { size: 22 * unit, weight: 800, spacing: 2 * unit, shadow: false });
+  text(context, selectedGloves().name, tx, top + 74 * unit, { size: 14 * unit, color: COLOR.dim, shadow: false });
+  // Online status, for when there is any.
+  context.fillStyle = COLOR.good;
+  context.beginPath();
+  context.arc(x + w - 70 * unit, top + 24 * unit, 3.5 * unit, 0, Math.PI * 2);
+  context.fill();
+  text(context, 'SOLO', x + w - 14 * unit, top + 28 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: COLOR.dim, align: 'right', shadow: false });
+  context.restore();
+}
+
+// Right of the main menu: the operation, with the tower drawn as a route from the garage to the
+// roof, every stop and its waves.
+function drawOperationCard(context: CanvasRenderingContext2D, right: number, top: number, unit: number, appear: number): void {
+  const w = 430 * unit;
+  const pad = 32 * unit;
+  const rowH = 46 * unit;
+  const rows = stops.length + 1;
+  const h = 236 * unit + rows * rowH + 96 * unit;
+  const x = right - w + (1 - appear) * 60 * unit;
+  const cut = 22 * unit;
+  context.save();
+  context.globalAlpha = appear;
+  // Glass card with one corner cut away.
+  context.beginPath();
+  context.moveTo(x, top);
+  context.lineTo(x + w, top);
+  context.lineTo(x + w, top + h - cut);
+  context.lineTo(x + w - cut, top + h);
+  context.lineTo(x, top + h);
+  context.closePath();
+  context.fillStyle = 'rgba(8,12,16,0.78)';
+  context.fill();
+  context.strokeStyle = 'rgba(255,255,255,0.1)';
+  context.lineWidth = 1;
+  context.stroke();
+  context.fillStyle = COLOR.accent;
+  context.fillRect(x, top, w, 3 * unit);
+
+  text(context, 'OPERATION 001', x + pad, top + 44 * unit, { size: 13 * unit, weight: 700, spacing: 5 * unit, color: COLOR.accent, shadow: false });
+  text(context, 'THE TOWER', x + pad, top + 98 * unit, { size: 48 * unit, weight: 800, spacing: 4 * unit, shadow: false });
+  text(context, 'Fight up a hospital tower to the helicopter.', x + pad, top + 132 * unit, { size: 17 * unit, color: COLOR.dim, shadow: false });
+  text(context, 'THREAT', x + w - pad, top + 44 * unit, { size: 11 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, align: 'right', shadow: false });
+  for (let i = 0; i < 5; i++) {
+    context.fillStyle = i < 4 ? COLOR.danger : 'rgba(255,255,255,0.14)';
+    context.fillRect(x + w - pad - (5 - i) * 12 * unit + 4 * unit, top + 54 * unit, 8 * unit, 14 * unit);
+  }
+  context.fillStyle = 'rgba(255,255,255,0.1)';
+  context.fillRect(x + pad, top + 160 * unit, w - pad * 2, 1);
+
+  // The route, roof at the top. A line runs down through a node for each stop.
+  text(context, 'ROUTE', x + pad, top + 194 * unit, { size: 12 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint, shadow: false });
+  const routeTop = top + 222 * unit;
+  const lineX = x + pad + 9 * unit;
+  context.fillStyle = 'rgba(232,184,102,0.35)';
+  context.fillRect(lineX - 1 * unit, routeTop + rowH / 2, 2 * unit, (rows - 1) * rowH);
+  for (let i = 0; i < rows; i++) {
+    const floor = rows - 1 - i;
+    const roof = floor >= stops.length;
+    const y = routeTop + i * rowH;
+    const middle = y + rowH / 2;
+    context.fillStyle = roof ? COLOR.accent : '#0b1015';
+    context.strokeStyle = COLOR.accent;
+    context.lineWidth = 2 * unit;
+    context.beginPath();
+    context.arc(lineX, middle, (roof ? 7 : 5.5) * unit, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    const label = storeyLabel(floor);
+    const boxX = x + pad + 30 * unit;
+    roundedRect(context, boxX, middle - 13 * unit, 52 * unit, 26 * unit, 2 * unit);
+    context.fillStyle = roof ? 'rgba(232,184,102,0.2)' : 'rgba(255,255,255,0.07)';
+    context.fill();
+    text(context, label, boxX + 26 * unit, middle + 6 * unit, { size: 15 * unit, weight: 800, spacing: 1 * unit, align: 'center', color: roof ? COLOR.accent : COLOR.text, shadow: false });
+    text(context, roof ? 'Helipad' : stops[floor].name, boxX + 68 * unit, middle + 7 * unit, { size: 19 * unit, weight: 600, color: roof ? COLOR.accent : COLOR.text, shadow: false });
+    text(context, roof ? 'EXTRACT' : `${stops[floor].waves} WAVES`, x + w - pad, middle + 5 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: roof ? COLOR.accent : COLOR.faint, align: 'right', shadow: false });
+  }
+
+  // The run at a glance.
+  const footY = routeTop + rows * rowH + 18 * unit;
+  context.fillStyle = 'rgba(255,255,255,0.1)';
+  context.fillRect(x + pad, footY, w - pad * 2, 1);
+  const totalWaves = stops.reduce((sum, stop) => sum + stop.waves, 0);
+  const facts: [string, string][] = [[String(totalWaves), 'WAVES'], [String(stops.length), 'STOPS'], ['1', 'WAY OUT']];
+  const column = (w - pad * 2) / facts.length;
+  facts.forEach(([value, label], i) => {
+    const fx = x + pad + i * column;
+    text(context, value, fx, footY + 48 * unit, { size: 32 * unit, weight: 800, shadow: false });
+    text(context, label, fx, footY + 70 * unit, { size: 11 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, shadow: false });
+  });
+  context.restore();
 }

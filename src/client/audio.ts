@@ -14,12 +14,16 @@ interface ZombieMemory {
 export interface Audio {
   // Called every frame. `paused` is true behind the menus, when nothing should play.
   update(state: GameState, player: Player, paused: boolean, dt: number): void;
+  // Menu sounds, which play while the game itself is silent.
+  ui(kind: 'move' | 'select' | 'back' | 'start'): void;
 }
 
 export function createAudio(): Audio {
   let context: AudioContext | null = null;
   let master: GainNode;
   let noise: AudioBuffer;
+  // Menu sounds skip the master volume, which is turned down behind the menus.
+  let uiBus: GainNode;
 
   // Browsers only allow sound after a click or key press.
   const wake = (): void => {
@@ -30,6 +34,8 @@ export function createAudio(): Audio {
       master = context.createGain();
       const compressor = context.createDynamicsCompressor();
       master.connect(compressor);
+      uiBus = context.createGain();
+      uiBus.connect(compressor);
       compressor.connect(context.destination);
       noise = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
       const data = noise.getChannelData(0);
@@ -395,6 +401,32 @@ export function createAudio(): Audio {
   }
 
   return {
+    ui(kind) {
+      // The first key press of the session can arrive here before the audio has woken.
+      wake();
+      if (!context) return;
+      uiBus.gain.value = settings.volume;
+      const t = context.currentTime;
+      const out = output(0, 1);
+      out.disconnect();
+      out.connect(uiBus);
+      if (kind === 'move') {
+        tone(out, t, 0.045, 'sine', 2100, 1700, 0.1, 0.002);
+        burst(out, t, 0.02, 'highpass', 5000, 7000, 0.04);
+      } else if (kind === 'select') {
+        tone(out, t, 0.09, 'triangle', 620, 600, 0.2, 0.003);
+        tone(out, t + 0.06, 0.18, 'triangle', 930, 920, 0.18, 0.003);
+        burst(out, t, 0.22, 'lowpass', 1400, 140, 0.12);
+      } else if (kind === 'back') {
+        tone(out, t, 0.12, 'triangle', 720, 430, 0.18, 0.003);
+      } else {
+        // A deep hit as the title gives way to the menu.
+        tone(out, t, 1.6, 'sine', 62, 28, 0.9, 0.006);
+        tone(out, t, 0.7, 'sawtooth', 96, 48, 0.06, 0.01);
+        burst(out, t, 1.8, 'lowpass', 1600, 50, 0.4);
+        burst(out, t + 0.02, 0.05, 'highpass', 2500, 5000, 0.15);
+      }
+    },
     update(state, player, paused, dt) {
       if (!context || context.state !== 'running') return;
       master.gain.value = paused ? 0 : settings.volume;

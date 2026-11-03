@@ -3,8 +3,9 @@ import { createAudio } from './client/audio';
 import { createLocalInput } from './client/localInput';
 import { loadSettings, settings } from './client/settings';
 import { config } from './config';
-import { createGameState, eyeY } from './game/state';
+import { createGameState, eyeY, type GameState } from './game/state';
 import { MAX_PITCH, step } from './game/update';
+import { spawnZombie } from './game/zombies';
 import { level0 } from './levels/level0';
 import { createEffects } from './render/effects';
 import { createHud } from './render/hud';
@@ -21,7 +22,13 @@ loadSettings();
 loadBindings();
 
 const level = level0;
-let state = createGameState(level);
+// Where the camera stands behind the title screen: in the garage, looking out at the gate.
+const TITLE_CAMERA = { x: -1.2, y: 1.3, z: -5.5, yaw: -2.75, pitch: 0.14 };
+// Where the title's zombies stand, and how far each is turned from facing the camera.
+const TITLE_ZOMBIES: [number, number, number][] = [[0.24, -1.23, 0.1], [2.29, -0.99, -0.25], [-0.39, 0.66, 0.3], [4.45, 1.36, -0.4], [2.07, 4.51, 0.15], [1.27, 7.0, -0.2], [3.4, 9.0, 0.35]];
+// Whether the title's zombies are still standing in the state, to be cleared when the game starts.
+let dressed = false;
+let state = dressTitle(createGameState(level));
 const view = createView(level);
 const input = createLocalInput(view.renderer.domElement);
 const viewmodel = createViewmodel(view.viewScene);
@@ -40,6 +47,26 @@ let renderedShot = -1;
 let bodycamRoll = 0;
 let bodycamLastYaw: number | null = null;
 
+// Behind the title, a few of them stand in the garage between the camera and the open gate,
+// lit from the street. They go before the game starts.
+function dressTitle(next: GameState): GameState {
+  // A moment into the game, so they can be caught mid-reach with their arms out.
+  next.tick = 33;
+  TITLE_ZOMBIES.forEach(([x, z, turn], index) => {
+    spawnZombie(next, x, z, null);
+    const zombie = next.zombies[next.zombies.length - 1];
+    zombie.yaw = Math.atan2(x - TITLE_CAMERA.x, z - TITLE_CAMERA.z) + turn;
+    zombie.lastAttackTick = (index * 5) % 14;
+  });
+  dressed = true;
+  return next;
+}
+
+// The menu is held until the photosensitivity warning over it is dismissed.
+export function releaseTitle(): void {
+  menu.release();
+}
+
 function startPose() {
   const player = state.players[0];
   return { x: player.x, y: eyeY(player), z: player.z };
@@ -54,7 +81,16 @@ async function enterGame(): Promise<void> {
 }
 
 const menu = createMenu({
-  play: enterGame,
+  play() {
+    // A game not yet started still has the title's zombies standing in it.
+    if (dressed) {
+      state.zombies = [];
+      state.tick = 0;
+      dressed = false;
+    }
+    enterGame();
+  },
+  sound: (kind) => audio.ui(kind),
   resume: enterGame,
   restart() {
     state = createGameState(level);
@@ -63,7 +99,7 @@ const menu = createMenu({
     enterGame();
   },
   toTitle() {
-    state = createGameState(level);
+    state = dressTitle(createGameState(level));
     previous = startPose();
     leftover = 0;
     menu.open('main');
@@ -120,16 +156,15 @@ view.renderer.setAnimationLoop((now) => {
   };
   const onTitle = menu.onTitle();
   if (onTitle) {
-    // Behind the title, the camera drifts slowly along the street.
+    // Behind the title, a slow handheld drift in the garage, looking out at the gate.
     const t = now / 1000;
-    const spawn = level.streetSpawns[0];
     pose = {
-      x: spawn.x - 6 + Math.sin(t * 0.09) * 5,
-      y: spawn.y + 2.1,
-      z: spawn.z + 1,
-      yaw: 0.35 + Math.sin(t * 0.07) * 0.22,
-      pitch: 0.02,
-      roll: 0,
+      x: TITLE_CAMERA.x + Math.sin(t * 0.11) * 0.45,
+      y: TITLE_CAMERA.y + Math.sin(t * 0.37) * 0.015,
+      z: TITLE_CAMERA.z + Math.sin(t * 0.07) * 0.35,
+      yaw: TITLE_CAMERA.yaw + Math.sin(t * 0.09) * 0.035,
+      pitch: TITLE_CAMERA.pitch + Math.sin(t * 0.13) * 0.008,
+      roll: Math.sin(t * 0.21) * 0.004,
     };
   }
 
