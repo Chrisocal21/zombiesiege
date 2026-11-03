@@ -118,39 +118,61 @@ export function createAudio(): Audio {
     return room;
   }
 
-  // Soft clipping, so the loudest part of a shot has weight instead of a clean hiss.
-  function crunch(amount: number): WaveShaperNode {
-    const shaper = context!.createWaveShaper();
-    const curve = new Float32Array(1024);
-    for (let i = 0; i < curve.length; i++) {
-      const x = (i / (curve.length - 1)) * 2 - 1;
-      curve[i] = Math.tanh(x * amount);
+  // A gunshot is rendered sample by sample, because what makes it read as a gun is a transient
+  // that starts at full strength in the first millisecond, which a ramped envelope cannot give.
+  const shotBuffers = new Map<number, AudioBuffer>();
+  function shotBuffer(size: number): AudioBuffer {
+    const ctx = context!;
+    const cached = shotBuffers.get(size);
+    if (cached) return cached;
+    const rate = ctx.sampleRate;
+    const buffer = ctx.createBuffer(1, Math.floor(rate * 0.9 * size), rate);
+    const data = buffer.getChannelData(0);
+    let mid = 0;
+    let rumble = 0;
+    let phase = 0;
+    let peak = 0;
+    for (let i = 0; i < data.length; i++) {
+      const t = i / rate;
+      const white = Math.random() * 2 - 1;
+      // The crack: raw noise, gone in a few milliseconds.
+      const crack = white * Math.exp(-t / (0.005 * size)) * 1.3;
+      // The blast: noise with the top rolled off, lasting a few tens of milliseconds.
+      mid += (white - mid) * 0.35;
+      const blast = mid * Math.exp(-t / (0.03 * size)) * 1.5;
+      // The boom: a low note that falls away, and a rumble under it.
+      phase += (2 * Math.PI * (45 / size + 110 * Math.exp(-t / 0.03)) ) / rate;
+      const boom = Math.sin(phase) * Math.exp(-t / (0.07 * size)) * 1.1;
+      rumble += (white - rumble) * 0.04;
+      const low = rumble * Math.exp(-t / (0.2 * size)) * 3;
+      const x = Math.tanh((crack + blast + boom + low) * 1.8);
+      data[i] = x;
+      peak = Math.max(peak, Math.abs(x));
     }
-    shaper.curve = curve;
-    return shaper;
+    for (let i = 0; i < data.length; i++) data[i] = (data[i] / peak) * 0.95;
+    shotBuffers.set(size, buffer);
+    return buffer;
   }
 
-  // The body of a gunshot: a crushed burst, a heavy low thump, a sharp crack and a long tail.
   function bang(out: AudioNode, t: number, size: number): void {
-    const drive = crunch(3);
-    const driven = context!.createGain();
-    driven.gain.value = 0.8;
-    drive.connect(driven);
-    driven.connect(out);
-    burst(drive, t, 0.16 * size, 'lowpass', 3800, 300, 1.4);
-    burst(drive, t, 0.03, 'bandpass', 1400, 900, 1.2, 0.6);
-    tone(out, t, 0.28 * size, 'sine', 95, 30, 1.3, 0.002);
-    tone(out, t, 0.09, 'triangle', 260, 60, 0.6, 0.002);
-    burst(out, t, 0.012, 'highpass', 2000, 4000, 0.9);
-    const tail = context!.createGain();
-    tail.gain.value = 0.9;
-    tail.connect(reverb());
-    burst(tail, t, 0.35 * size, 'lowpass', 2500, 250, 0.7);
-    burst(out, t + 0.05, 0.9 * size, 'lowpass', 600, 80, 0.22);
+    const ctx = context!;
+    const source = ctx.createBufferSource();
+    source.buffer = shotBuffer(size);
+    // Every shot a touch different, so a run of them does not machine-gun.
+    source.playbackRate.value = 0.95 + Math.random() * 0.1;
+    const dry = ctx.createGain();
+    dry.gain.value = 1;
+    const send = ctx.createGain();
+    send.gain.value = 0.7;
+    source.connect(dry);
+    dry.connect(out);
+    source.connect(send);
+    send.connect(reverb());
+    source.start(t);
   }
 
   function shotgun(): void {
-    bang(output(0, 1), context!.currentTime, 1.7);
+    bang(output(0, 1), context!.currentTime, 1.6);
   }
 
   function shot(): void {
