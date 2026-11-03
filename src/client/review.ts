@@ -3,7 +3,7 @@ import { boardBox, closeGate } from '../game/doors';
 import { spawnZombie } from '../game/zombies';
 import { enterLevel } from '../game/state';
 import { levelForFloor } from '../levels';
-import { giveShotgun } from '../game/weapons';
+import { equipWeapon, giveShotgun, weaponStats, type WeaponId } from '../game/weapons';
 import type { Level } from '../levels/types';
 import type { Hud } from '../render/hud';
 import type { Menu } from '../render/menu';
@@ -33,8 +33,8 @@ export function installReview(context: ReviewContext): void {
       player.x = -5; player.z = 44; player.y = context.level.ramp?.rise ?? 0;
       player.yaw = -0.3; player.pitch = -0.03;
       context.menu.close();
-      if (name === 'character' || name === 'settings' || name === 'controls') context.menu.open(name);
-      if (['garage', 'combat', 'map', 'aim', 'zombie-close'].includes(name) || name.includes('reload') || name.startsWith('bodycam')) {
+      if (name === 'character' || name === 'settings' || name === 'controls' || name === 'admin') context.menu.open(name);
+      if (['garage', 'combat', 'map', 'aim', 'zombie-close'].includes(name) || name.includes('reload') || name.startsWith('bodycam') || name.includes('shotgun') || name.includes('machete') || name.includes('bat') || name.includes('melee')) {
         player.x = 0; player.z = 7; player.y = 0; player.yaw = 0.22; player.pitch = -0.04;
         state.gate.closed = true; state.gate.closedTick = 100;
         state.waves.phase = 'active'; state.waves.number = 3; state.waves.toSpawn = 8;
@@ -51,9 +51,16 @@ export function installReview(context: ReviewContext): void {
         spawnZombie(state, -2, 2, null);
         state.zombies[0].yaw = Math.PI;
       }
+      if (name.includes('shotgun')) giveShotgun(player, 0);
+      if (name.includes('machete')) equipWeapon(player,'machete',0);
+      if (name.includes('bat')) equipWeapon(player,'bat',0);
+      if (name.includes('strike') || name.includes('melee')) {
+        player.meleeLeft=weaponStats(player.weapon).melee.seconds*.62;
+        player.lastMeleeTick=state.tick-20;
+      }
       if (name.includes('reload')) {
         player.ammo = 0;
-        player.reloadLeft = config.pistol.reloadSeconds * (name.includes('drop') ? 0.86 : name.includes('return') ? 0.08 : 0.43);
+        player.reloadLeft = weaponStats(player.weapon).reloadSeconds * (name.includes('drop') ? 0.86 : name.includes('return') ? 0.08 : 0.43);
       }
       if (name.includes('aim')) { player.aiming = true; player.cameraDrop = 0; }
       if (name === 'vehicles') { player.x = -1; player.z = 40; player.yaw = -Math.PI / 2; }
@@ -64,7 +71,7 @@ export function installReview(context: ReviewContext): void {
     // A free placement, for marketing shots: where the camera is, what the gate and doors are doing,
     // and which zombies stand where.
     place(options: {
-      x: number; y?: number; z: number; yaw: number; pitch?: number; aim?: boolean;
+      x: number; y?: number; z: number; yaw: number; pitch?: number; aim?: boolean; weapon?: WeaponId;
       gate?: boolean; boarded?: number[]; phase?: 'entry' | 'prep' | 'active'; wave?: number; timer?: number;
       zombies?: [number, number, number?][]; health?: number; ammo?: number; fire?: boolean; lunge?: boolean; floor?: number; shotgun?: boolean; points?: number; banner?: boolean; reload?: number; menu?: 'character' | 'settings' | 'controls' | 'main';
       // Objective dressing: breakers thrown, charge filled (seconds), a case in hand, cases delivered, the light.
@@ -78,6 +85,8 @@ export function installReview(context: ReviewContext): void {
       player.yaw = options.yaw; player.pitch = options.pitch ?? 0;
       player.aiming = !!options.aim;
       if (options.shotgun) giveShotgun(player, 0);
+      if (options.weapon==='shotgun') giveShotgun(player,0);
+      else if (options.weapon) equipWeapon(player,options.weapon,0);
       if (options.points !== undefined) state.points[player.id] = options.points;
       if (options.health !== undefined) player.health = options.health;
       if (options.ammo !== undefined) player.ammo = options.ammo;
@@ -127,7 +136,7 @@ export function installReview(context: ReviewContext): void {
       for (let i = 0; i < ticks; i++) {
         step(state, [{ playerId: 0, moveForward: 0, moveRight: 0, lookYaw: 0, lookPitch: 0, fire: false, reload: false, aim: false, lean: 0, crouch: false, jump: false, toggleCover: false, use: false, swap: false, toggleFreeze: false, ...input }], 1 / config.ticksPerSecond);
         // A press is one tick long.
-        input = { ...input, use: false, swap: false, toggleLight: false };
+        input = { ...input, use: false, swap: false, selectWeapon: undefined, toggleLight: false };
       }
       return { phase: state.waves.phase, wave: state.waves.number, floor: state.floor, done: state.objective.done, charge: state.objective.charge, zombies: state.zombies.filter((zombie) => !zombie.dead).length };
     },
@@ -135,6 +144,7 @@ export function installReview(context: ReviewContext): void {
       return { scenario, calls: context.view.renderer.info.render.calls, triangles: context.view.renderer.info.render.triangles,
         geometries: context.view.renderer.info.memory.geometries, textures: context.view.renderer.info.memory.textures,
         menu: context.menu.screen(), cameraStyle: settings.cameraStyle, cameraFov: context.view.camera.fov, cameraDrop: context.state().players[0].cameraDrop,
+        weapon: context.state().players[0].weapon, melee: context.state().players[0].meleeLeft,
         ammo: context.state().players[0].ammo, reload: context.state().players[0].reloadLeft, x: context.state().players[0].x, z: context.state().players[0].z, locked: !!document.pointerLockElement,
         canvases: document.querySelectorAll('canvas').length, phase: context.state().waves.phase };
     },

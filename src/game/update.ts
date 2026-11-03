@@ -6,7 +6,8 @@ import type { InputMessage } from './inputs';
 import { moveBody } from './movement';
 import { dropCase } from './objectives';
 import { eyeY, type GameState, type Player, type Zombie } from './state';
-import { swapWeapon, weaponStats } from './weapons';
+import { equipWeapon, isMelee, swapWeapon, weaponStats } from './weapons';
+import { resolveMelee, startMelee } from './melee';
 import { updateWaves } from './waves';
 import { damageZombie, raycastZombies, updateZombies } from './zombies';
 
@@ -25,7 +26,7 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     look(player, input);
     // You can't look down the sights mid-reload, while hanging off a ladder or a ledge, or with
     // both hands round a case.
-    player.aiming = input.aim && player.reloadLeft === 0 && !player.ladder && !player.mantle && player.carrying < 0;
+    player.aiming = input.aim && !isMelee(player.weapon) && player.meleeLeft === 0 && player.reloadLeft === 0 && !player.ladder && !player.mantle && player.carrying < 0;
     moveBody(player, input, dt, level);
     player.cameraStyle = input.cameraStyle === 'bodycam' ? 'bodycam' : 'standard';
     const targetDrop = player.cameraStyle === 'bodycam' && !player.aiming && !player.ladder && !player.mantle
@@ -88,6 +89,15 @@ function weapon(
   level: Level,
 ): void {
   player.cooldown = Math.max(0, player.cooldown - dt);
+  if (player.meleeLeft > 0) {
+    player.meleeLeft = Math.max(0, player.meleeLeft - dt);
+    const attack = weaponStats(player.weapon).melee;
+    if (player.meleeHitPending && player.meleeLeft <= attack.seconds - attack.windup) {
+      player.meleeHitPending = false;
+      if (!player.ladder && !player.mantle && player.carrying < 0) resolveMelee(state, player);
+    }
+    return;
+  }
   // Carrying a case, the gun is down. Pulling the trigger sets the case down and brings it up.
   if (player.carrying >= 0) {
     if (input.fire) {
@@ -97,8 +107,16 @@ function weapon(
     }
     return;
   }
-  if (input.swap && player.stowed && !player.ladder && !player.mantle) swapWeapon(player, state.tick);
+  if (!player.ladder && !player.mantle) {
+    if (input.selectWeapon) equipWeapon(player, input.selectWeapon, state.tick);
+    else if (input.swap) swapWeapon(player, state.tick, input.swapDirection);
+  }
   const pistol = weaponStats(player.weapon);
+  if (!player.ladder && !player.mantle && (input.melee || (isMelee(player.weapon) && input.fire && player.cooldown === 0))) {
+    startMelee(state, player);
+    return;
+  }
+  if (isMelee(player.weapon)) return;
 
   if (player.reloadLeft > 0) {
     player.reloadLeft -= dt;

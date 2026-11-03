@@ -34,7 +34,7 @@ async function main() {
     };
     const send = (method, params = {}) => new Promise((resolve, reject) => {
       const key = ++id;
-      const timer = setTimeout(() => { pending.delete(key); reject(new Error(`Timed out: ${method}`)); }, 30000);
+      const timer = setTimeout(() => { pending.delete(key); reject(new Error(`Timed out: ${method}`)); }, method === 'Page.captureScreenshot' ? 90000 : 30000);
       pending.set(key, { resolve: value => { clearTimeout(timer); resolve(value); }, reject: value => { clearTimeout(timer); reject(value); } });
       ws.send(JSON.stringify({ id: key, method, params }));
     });
@@ -51,7 +51,8 @@ async function main() {
     await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable');
     await send('Emulation.setFocusEmulationEnabled', { enabled: true });
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
-    await send('Page.navigate', { url: 'http://127.0.0.1:3000/?review' });
+    const page = process.argv.find(arg => arg.startsWith('--page='))?.slice('--page='.length) ?? '/?review';
+    await send('Page.navigate', { url: `http://127.0.0.1:3000${page}` });
     for (let i = 0; i < 120; i++) {
       const ready = await evaluate(`(() => {
         document.getElementById('launch-continue')?.click();
@@ -60,8 +61,12 @@ async function main() {
       if (ready) break;
       await delay(500);
     }
+    if (await evaluate("Boolean(document.getElementById('launch-warning'))")) {
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
+    }
     await delay(1500);
-    await capture('title');
+    if (!process.argv.includes('--scenarios')) await capture('title');
     if (process.argv.includes('--interactions')) {
       const key = async code => {
         const value = code === 'Enter' ? { key: 'Enter', code, windowsVirtualKeyCode: 13 } : { key: code.replace('Key', '').toLowerCase(), code, windowsVirtualKeyCode: code.charCodeAt(3) };
@@ -132,6 +137,86 @@ async function main() {
       }
       console.log(JSON.stringify(await evaluate('window.__siegeReview.inspect()')));
     }
+    if (process.argv.includes('--melee-check')) {
+      const result = await evaluate(`(async () => {
+        const [THREE,{createViewmodel},{createGameState},{level0},weapons] = await Promise.all([
+          import('/node_modules/.vite/deps/three.js'),import('/src/render/viewmodel.ts'),
+          import('/src/game/state.ts'),import('/src/levels/level0.ts'),import('/src/game/weapons.ts')
+        ]);
+        const scene=new THREE.Scene(),model=createViewmodel(scene),player=createGameState(level0).players[0];
+        const pose={x:0,y:0,z:0,yaw:0,pitch:0,roll:0};
+        await new Promise(resolve=>setTimeout(resolve,2000));
+        weapons.giveShotgun(player,0);
+        let visible=true,finite=true,ammo=true,swing=true;
+        for(const weapon of weapons.WEAPON_IDS) {
+          player.meleeLeft=0;weapons.equipWeapon(player,weapon,0);
+          for(let i=0;i<60;i++)model.update(player,pose,1/60);
+          visible &&= scene.getObjectByName('Machete').visible===(weapon==='machete') &&
+            scene.getObjectByName('Spiked baseball bat').visible===(weapon==='bat') &&
+            scene.getObjectByName('Sawed-off shotgun').visible===(weapon==='shotgun') &&
+            scene.getObjectByName('Pistol slide').visible===(weapon==='pistol') &&
+            scene.getObjectByName('Pistol magazine').visible===(weapon==='pistol') &&
+            scene.getObjectByName('Support hand anchor').visible===(weapon!=='machete');
+          const before=[player.ammo,player.reserve,player.lastShotTick];
+          const root=scene.getObjectByName('Weapon viewmodel'),rest=root.matrixWorld.clone();
+          for(const phase of [.1,.3,.5,.8]) {
+            player.meleeLeft=weapons.weaponStats(weapon).melee.seconds*(1-phase);
+            model.update(player,pose,1/60);
+            scene.traverse(object=>{finite &&= object.matrixWorld.elements.every(Number.isFinite)});
+          }
+          swing &&= !root.matrixWorld.equals(rest);
+          ammo &&= JSON.stringify(before)===JSON.stringify([player.ammo,player.reserve,player.lastShotTick]);
+        }
+        let hands=0;scene.traverse(object=>{if(object.isSkinnedMesh)hands++});
+        return {visible,finite,ammo,swing,singlePairOfHands:hands===2};
+      })()`);
+      if(!Object.values(result).every(Boolean))throw new Error('Melee model check failed: '+JSON.stringify(result));
+      console.log('PASS: four-weapon visibility, hand grips, swing transforms and no fake shots '+JSON.stringify(result));
+    }
+    if (process.argv.includes('--shotgun-check')) {
+      const results = await evaluate(`(async () => {
+        const [THREE, {createViewmodel}, {createGameState}, {level0}] = await Promise.all([
+          import('/node_modules/.vite/deps/three.js'), import('/src/render/viewmodel.ts'),
+          import('/src/game/state.ts'), import('/src/levels/level0.ts')
+        ]);
+        const scene = new THREE.Scene(), model = createViewmodel(scene);
+        const player = createGameState(level0).players[0];
+        const pose = {x:0,y:0,z:0,yaw:0,pitch:0,roll:0};
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const settle = () => { for(let i=0;i<90;i++) model.update(player,pose,1/60); };
+        const marker = new THREE.Vector3(), expected = new THREE.Vector3();
+        const shotgun = scene.getObjectByName('Sawed-off shotgun');
+        const action = scene.getObjectByName('Shotgun break action');
+        const magazine = scene.getObjectByName('Pistol magazine');
+        player.weapon='shotgun';player.ammo=2;settle();
+        const held = shotgun.visible && !magazine.visible && action.rotation.x === 0;
+        player.aiming=true;settle();
+        const camera = new THREE.PerspectiveCamera(75,1.6,.02,10);
+        const bead = scene.getObjectByName('Shotgun front bead').getWorldPosition(new THREE.Vector3()).project(camera);
+        const aimed = Math.abs(bead.x)<.01 && Math.abs(bead.y)<.01;
+        player.aiming=false;
+        let reload=true, muzzle=true, arms=true;
+        for(const ammo of [0,1]) for(const progress of [.14,.28,.44,.62,.84,.98]) {
+          player.ammo=ammo;player.reloadLeft=2.3*(1-progress);settle();
+          reload &&= (progress<.96 ? action.rotation.x<0 : action.rotation.x===0) && !magazine.visible;
+          model.getMuzzle(marker);
+          scene.getObjectByName('Shotgun muzzle').getWorldPosition(expected);
+          muzzle &&= marker.distanceTo(expected)<1e-8 && marker.toArray().every(Number.isFinite);
+          for(const name of ['Primary tactical sleeve and glove gauntlet','Support tactical sleeve and glove gauntlet']) {
+            const arm=scene.getObjectByName(name), cloth=arm.children.find(child=>child.geometry?.type==='LatheGeometry');
+            arms &&= cloth.scale.y*arm.parent.scale.x<=.340001 && arm.position.toArray().every(Number.isFinite);
+          }
+        }
+        player.reloadLeft=0;player.ammo=2;settle();
+        const closed=action.rotation.x===0;
+        player.weapon='pistol';player.ammo=12;settle();
+        const restored=!shotgun.visible && magazine.visible;
+        let hands=0;scene.traverse(object=>{if(object.isSkinnedMesh)hands++});
+        return {held,aimed,reload,muzzle,arms,closed,restored,singlePairOfHands:hands===2};
+      })()`);
+      if (!Object.values(results).every(Boolean)) throw new Error('Shotgun model check failed: '+JSON.stringify(results));
+      console.log('PASS: shotgun stance, sights, reload stages, muzzle, arm length and pistol restoration '+JSON.stringify(results));
+    }
     if (process.argv.includes('--camera-check')) {
       const results = await evaluate(`(async () => {
         const [{createGameState,eyeY}, {step}, {level0}, {config}] = await Promise.all([import('/src/game/state.ts'),import('/src/game/update.ts'),import('/src/levels/level0.ts'),import('/src/config.ts')]);
@@ -199,7 +284,6 @@ async function main() {
     fs.writeFileSync(path.join(output, 'browser-errors.json'), JSON.stringify(errors, null, 2));
     console.log(`Captured browser views. Runtime errors: ${errors.length}`);
     if (errors.length) process.exitCode = 1;
-    await send('Browser.close');
   } finally {
     ws?.close();
     browser.kill();

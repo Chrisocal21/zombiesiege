@@ -12,6 +12,11 @@ export type Action =
   | 'aim'
   | 'reload'
   | 'swap'
+  | 'melee'
+  | 'weapon1'
+  | 'weapon2'
+  | 'weapon3'
+  | 'weapon4'
   | 'leanLeft'
   | 'leanRight'
   | 'cover'
@@ -38,6 +43,11 @@ export const ACTIONS: ActionInfo[] = [
   { id: 'aim', label: 'Aim down sights', group: 'Combat' },
   { id: 'reload', label: 'Reload', group: 'Combat' },
   { id: 'swap', label: 'Swap weapon (or scroll wheel)', group: 'Combat' },
+  { id: 'melee', label: 'Quick melee', group: 'Combat' },
+  { id: 'weapon1', label: 'Pistol', group: 'Weapons' },
+  { id: 'weapon2', label: 'Shotgun', group: 'Weapons' },
+  { id: 'weapon3', label: 'Machete', group: 'Weapons' },
+  { id: 'weapon4', label: 'Spiked bat', group: 'Weapons' },
   { id: 'leanLeft', label: 'Lean left', group: 'Combat' },
   { id: 'leanRight', label: 'Lean right', group: 'Combat' },
   { id: 'cover', label: 'Take cover', group: 'Interaction' },
@@ -59,6 +69,11 @@ const DEFAULTS: Record<Action, string> = {
   aim: 'Mouse2',
   reload: 'KeyR',
   swap: 'KeyX',
+  melee: 'KeyB',
+  weapon1: 'Digit1',
+  weapon2: 'Digit2',
+  weapon3: 'Digit3',
+  weapon4: 'Digit4',
   leanLeft: 'KeyQ',
   leanRight: 'KeyV',
   cover: 'KeyF',
@@ -81,6 +96,16 @@ export function loadBindings(): void {
     for (const action of Object.keys(DEFAULTS) as Action[]) {
       if (typeof parsed[action] === 'string') bindings[action] = parsed[action]!;
     }
+    // New combat shortcuts must not take a key the player already assigned elsewhere.
+    let migrated = false;
+    for (const action of ['melee','weapon1','weapon2','weapon3','weapon4'] as Action[]) {
+      if (typeof parsed[action] === 'string') continue;
+      const occupied = new Set((Object.keys(DEFAULTS) as Action[]).filter(id=>id!==action).map(id=>bindings[id]));
+      if (!occupied.has(bindings[action])) continue;
+      const spare = ['Mouse1',...'567890'.split('').map(key=>`Digit${key}`),...'HJNUIKLYZABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(key=>`Key${key}`)].find(key=>!occupied.has(key));
+      if (spare) { bindings[action] = spare; migrated = true; }
+    }
+    if (migrated) saveBindings();
     // Use moved from G to E, and lean right from E to V. Only bindings still on the old
     // defaults are moved; anything the player chose is kept.
     if (parsed.use === 'KeyG' && parsed.leanRight === 'KeyE') {

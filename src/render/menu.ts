@@ -5,7 +5,7 @@ import { config } from '../config';
 import { changePoints, spawnAmmo, spawnWeapon, type AdminResult } from '../game/admin';
 import type { GameState } from '../game/state';
 import { stops, storeyLabel } from '../game/tower';
-import { WEAPON_IDS, weaponStats, type WeaponId } from '../game/weapons';
+import { WEAPON_IDS, isMelee, owns, weaponStats, type WeaponId } from '../game/weapons';
 import { outfitTexture } from './gearTextures';
 import { COLOR, FONT, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
 
@@ -93,10 +93,10 @@ function adminHitboxes(width: number, height: number): AdminHitbox[] {
     { id: 'points', x, y: py + 265 * unit, w: columnWidth, h: fieldHeight },
     { id: 'add', x, y: py + 329 * unit, w: half, h: fieldHeight },
     { id: 'remove', x: x + half + 12 * unit, y: py + 329 * unit, w: half, h: fieldHeight },
-    ...WEAPON_IDS.map((weapon, index): AdminHitbox => ({ id: `weapon:${weapon}`, x: rightX, y: py + (176 + index * 56) * unit, w: columnWidth, h: fieldHeight })),
-    { id: 'spawnWeapon', x: rightX, y: py + 304 * unit, w: columnWidth, h: fieldHeight },
-    { id: 'ammo', x: rightX, y: py + 415 * unit, w: half, h: fieldHeight },
-    { id: 'spawnAmmo', x: rightX + half + 12 * unit, y: py + 415 * unit, w: half, h: fieldHeight },
+    ...WEAPON_IDS.map((weapon, index): AdminHitbox => ({ id: `weapon:${weapon}`, x: rightX, y: py + (176 + index * 44) * unit, w: columnWidth, h: 40 * unit })),
+    { id: 'spawnWeapon', x: rightX, y: py + 360 * unit, w: columnWidth, h: fieldHeight },
+    { id: 'ammo', x: rightX, y: py + 465 * unit, w: half, h: fieldHeight },
+    { id: 'spawnAmmo', x: rightX + half + 12 * unit, y: py + 465 * unit, w: half, h: fieldHeight },
     { id: 'back', x: px + panelWidth - 264 * unit, y: py + panelHeight - 84 * unit, w: 220 * unit, h: 54 * unit },
   ];
 }
@@ -800,27 +800,29 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           adminButton('remove', 'REMOVE POINTS');
 
           text(context, 'INVENTORY', x, py + 458 * unit, { size: 19 * unit, color: COLOR.accent, spacing: 4 * unit });
-          const inventory = [
+          const guns = [
             { weapon: player.weapon, ammo: player.ammo, reserve: player.reserve, position: 'IN HAND' },
             ...(player.stowed ? [{ ...player.stowed, position: 'STOWED' }] : []),
+            ...(player.holsteredGun ? [{ ...player.holsteredGun, position: 'HOLSTERED' }] : []),
           ];
+          const inventory = WEAPON_IDS.filter(weapon => owns(player,weapon)).map(weapon =>
+            guns.find(item=>item.weapon===weapon) ?? {weapon,ammo:0,reserve:0,position:'READY'});
           inventory.forEach((item, index) => {
-            const y = py + (500 + index * 45) * unit;
+            const y = py + (500 + index * 38) * unit;
             text(context, `${weaponStats(item.weapon).name}  /  ${item.position}`, x, y, { size: 16 * unit, color: COLOR.text });
-            text(context, `${item.ammo} LOADED  /  ${item.reserve} SPARE`, x + columnWidth, y + 21 * unit, { size: 13 * unit, color: COLOR.dim, align: 'right' });
+            text(context, isMelee(item.weapon) ? 'NO AMMO REQUIRED' : `${item.ammo} LOADED  /  ${item.reserve} SPARE`, x + columnWidth, y + 17 * unit, { size: 12 * unit, color: COLOR.dim, align: 'right' });
           });
-          if (!player.stowed) text(context, 'SPARE WEAPON SLOT EMPTY', x, py + 545 * unit, { size: 16 * unit, color: COLOR.faint });
 
           text(context, 'WEAPON LIST', rightX, py + 158 * unit, { size: 19 * unit, color: COLOR.accent, spacing: 4 * unit });
           WEAPON_IDS.forEach((weapon) => {
             adminButton(`weapon:${weapon}`, weaponStats(weapon).name, adminWeapon === weapon);
           });
           adminButton('spawnWeapon', 'SPAWN WEAPON', true);
-          text(context, 'SPARE AMMO  /  CLICK TO TYPE', rightX, py + 402 * unit, { size: 15 * unit, color: COLOR.dim, spacing: 1 * unit });
+          text(context, 'SPARE AMMO  /  CLICK TO TYPE', rightX, py + 450 * unit, { size: 15 * unit, color: COLOR.dim, spacing: 1 * unit });
           amountField('ammo', ammoAmount);
           adminButton('spawnAmmo', 'SPAWN AMMO', true);
-          text(context, `Selected weapon reserve limit: ${weaponStats(adminWeapon).reserveMax}`, rightX, py + 492 * unit, { size: 16 * unit, color: COLOR.dim });
-          text(context, 'Ammo goes directly to that weapon\'s inventory.', rightX, py + 522 * unit, { size: 16 * unit, color: COLOR.dim });
+          text(context, isMelee(adminWeapon) ? 'Melee weapons need no ammunition.' : `Selected weapon reserve limit: ${weaponStats(adminWeapon).reserveMax}`, rightX, py + 542 * unit, { size: 16 * unit, color: COLOR.dim });
+          text(context, 'Ammo goes directly to that weapon\'s inventory.', rightX, py + 568 * unit, { size: 16 * unit, color: COLOR.dim });
           if (adminNotice) text(context, adminNotice.message, x, buttonY - 28 * unit, { size: 18 * unit, color: adminNotice.ok ? COLOR.good : COLOR.danger });
           adminButton('back', 'BACK', true);
         } else if (current === 'character') {
@@ -871,8 +873,8 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           if (button('DEPLOY', px + 44 * unit, buttonY, 370 * unit, buttonHeight, true)) callbacks.play();
         } else if (current === 'controls') {
           const columnWidth = (panelWidth - 132 * unit) / 2;
-          const rowHeight = 45 * unit;
-          const columns = [['Movement', 'System'], ['Combat', 'Interaction']];
+          const rowHeight = 34 * unit;
+          const columns = [['Movement', 'Weapons', 'System'], ['Combat', 'Interaction']];
           columns.forEach((columnGroups, columnIndex) => {
             const x = px + 44 * unit + columnIndex * (columnWidth + 44 * unit);
             let y = py + 150 * unit;
@@ -888,7 +890,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
                   context.fillStyle = 'rgba(255,255,255,0.07)';
                   context.fill();
                 }
-                text(context, action.label, x + 14 * unit, rowY + rowHeight * 0.6, { size: 24 * unit, color: hover ? COLOR.text : COLOR.dim, shadow: false });
+                text(context, action.label, x + 14 * unit, rowY + rowHeight * 0.6, { size: 20 * unit, color: hover ? COLOR.text : COLOR.dim, shadow: false });
                 if (rebinding === action.id) {
                   const pulse = 0.55 + 0.45 * Math.sin(time * 7);
                   const label = 'PRESS A KEY';
@@ -900,7 +902,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
                   context.stroke();
                   text(context, label, x + columnWidth - 6 * unit - w / 2, rowY + rowHeight * 0.58, { size: 18 * unit, align: 'center', weight: 700, spacing: 2 * unit, color: COLOR.accent, shadow: false });
                 } else {
-                  keycap(context, keyLabel(bindings[action.id]), x + columnWidth - 6 * unit, rowY + rowHeight * 0.64, 34 * unit, 'right');
+                  keycap(context, keyLabel(bindings[action.id]), x + columnWidth - 6 * unit, rowY + rowHeight * 0.64, 26 * unit, 'right');
                 }
                 if (hover && mouse.clicked && rebinding === null) {
                   rebinding = action.id;

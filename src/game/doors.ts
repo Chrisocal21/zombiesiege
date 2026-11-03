@@ -2,7 +2,7 @@ import { config } from '../config';
 import type { Door, LevelBox } from '../levels/types';
 import { objectiveTarget, useObjective, type ObjectiveTarget } from './objectives';
 import type { GameState, Player } from './state';
-import { giveShotgun, owns, reserveOf, setReserve, weaponStats } from './weapons';
+import { giveShotgun, isMelee, owns, reserveOf, setReserve, weaponStats } from './weapons';
 import { spawnZombie } from './zombies';
 
 export type Interaction =
@@ -162,10 +162,10 @@ export function stationOffer(state: GameState, player: Player, index: number): O
     return { action: 'weapon', label: 'Buy sawed-off shotgun', cost: config.stations.shotgunCost, status: points >= config.stations.shotgunCost ? 'ok' : 'poor' };
   }
   // The ammo locker fills whatever is in hand, and the weapon wall fills its own gun's shells.
-  const weapon = kind === 'shotgun' ? 'shotgun' : player.weapon;
+  const weapon = kind === 'shotgun' ? 'shotgun' : isMelee(player.weapon) ? player.holsteredGun?.weapon ?? 'pistol' : player.weapon;
   const cost = kind === 'shotgun' ? config.stations.shellCost : config.stations.ammoCost;
   const full = reserveOf(player, weapon) >= weaponStats(weapon).reserveMax;
-  return { action: 'ammo', label: kind === 'shotgun' ? 'Buy shells' : 'Buy ammo', cost, status: full ? 'full' : points >= cost ? 'ok' : 'poor' };
+  return { action: 'ammo', label: kind === 'shotgun' ? 'Buy shells' : isMelee(player.weapon) ? `Buy ${weaponStats(weapon).name} ammo` : 'Buy ammo', cost, status: full ? 'full' : points >= cost ? 'ok' : 'poor' };
 }
 
 function buy(state: GameState, player: Player, index: number): void {
@@ -174,7 +174,7 @@ function buy(state: GameState, player: Player, index: number): void {
   state.points[player.id] -= offer.cost;
   if (offer.action === 'weapon') giveShotgun(player, state.tick);
   else {
-    const weapon = state.level.stations[index].kind === 'shotgun' ? 'shotgun' : player.weapon;
+    const weapon = state.level.stations[index].kind === 'shotgun' ? 'shotgun' : isMelee(player.weapon) ? player.holsteredGun?.weapon ?? 'pistol' : player.weapon;
     setReserve(player, weapon, weaponStats(weapon).reserveMax);
   }
   player.lastBuyTick = state.tick;

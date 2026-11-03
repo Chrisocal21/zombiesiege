@@ -54,6 +54,79 @@ export const LEFT_HAND_SUPPORT: HandSpec = {
   },
 };
 
+// The firing palm sits farther back around the shotgun's swept wooden stock.
+export const RIGHT_HAND_ON_SHOTGUN: HandSpec = {
+  ...RIGHT_HAND_ON_GRIP,
+  forward: v(-0.55, 0.45, -0.70),
+  thumbSide: v(0.15, 0.65, -0.75),
+  middleKnuckle: new THREE.Vector3(0.026, -0.012, 0.069),
+  pose: {
+    ...RIGHT_HAND_ON_GRIP.pose,
+    index: [v(-0.28, -0.3, -1), v(-1, -0.02, -0.35), v(-0.7, 0.1, -0.7)],
+    middle: [v(-0.9, 0, -0.3), v(-0.05, 0.96, 0.25), v(0.05, 0.95, 0.3)],
+    ring: [v(-0.65, 0.5, -0.2), v(0.03, 0.95, 0.3), v(0.8, 0.1, 0.6)],
+    pinky: [v(-0.6, 0.65, -0.25), v(0, 0.95, 0.3), v(0.65, 0.2, 0.7)],
+    thumb: [v(-0.7, 0.7, -0.14), v(-0.9, 0.35, -0.2), v(-0.8, -0.1, -0.6)],
+  },
+};
+
+export const RIGHT_HAND_ON_TOOL: HandSpec = {
+  ...RIGHT_HAND_ON_GRIP,
+  middleKnuckle: new THREE.Vector3(.024,-.025,-.016),
+  pose: {
+    index: [v(-.9,0,-.15),v(.1,0,1),v(.8,0,.6)],
+    middle: [v(-.9,0,-.15),v(.1,0,1),v(.8,0,.6)],
+    ring: [v(-.9,.12,-.15),v(.1,.05,1),v(.8,.03,.6)],
+    pinky: [v(-.9,.22,-.12),v(.1,.1,1),v(.8,.05,.6)],
+    thumb: RIGHT_HAND_ON_GRIP.pose.thumb,
+  },
+};
+
+export const LEFT_HAND_ON_BAT: HandSpec = {
+  ...LEFT_HAND_SUPPORT,
+  forward: v(.12,.6,-.79),
+  middleKnuckle: new THREE.Vector3(-.024,-.110,-.018),
+  pose: {
+    index: [v(.9,0,-.15),v(-.1,0,1),v(-.8,0,.6)],
+    middle: [v(.9,0,-.15),v(-.1,0,1),v(-.8,0,.6)],
+    ring: [v(.9,.12,-.15),v(-.1,.05,1),v(-.8,.03,.6)],
+    pinky: [v(.9,.22,-.12),v(-.1,.1,1),v(-.8,.05,.6)],
+    thumb: LEFT_HAND_SUPPORT.pose.thumb,
+  },
+};
+
+// A cupped support palm under the shotgun's wood fore-end. The knuckles run along
+// the barrels, with the fingers wrapping up the far side instead of stacking on the grip.
+export const LEFT_HAND_ON_FOREND: HandSpec = {
+  url: '/models/left-hand.glb',
+  forward: v(0.65, 0.45, -0.61),
+  thumbSide: v(0, 0, -1),
+  middleKnuckle: new THREE.Vector3(0.006, 0.027, -0.165),
+  pose: {
+    index: [v(0.7, 0.68, 0.15), v(-0.8, 0.49, 0.11), v(-0.8, -0.49, -0.11)],
+    middle: [v(0.7, 0.68, 0.15), v(-0.8, 0.49, 0.11), v(-0.8, -0.49, -0.11)],
+    ring: [v(0.72, 0.66, 0.18), v(-0.8, 0.49, 0.15), v(-0.8, -0.49, -0.08)],
+    pinky: [v(0.74, 0.64, 0.23), v(-0.8, 0.49, 0.18), v(-0.8, -0.49, -0.05)],
+    thumb: [v(-0.2, 0.7, -0.68), v(0.1, 0.25, -1), v(0.1, 0, -1)],
+  },
+};
+
+// Pinch the brass ends of the fresh shells at the exposed breech. The hand follows
+// the barrel hinge and the shells' insertion travel during the break-action reload.
+export const LEFT_HAND_LOADING_SHOTGUN: HandSpec = {
+  url: '/models/left-hand.glb',
+  forward: v(0.8, 0.6, -0.05),
+  thumbSide: v(0, 0, -1),
+  middleKnuckle: new THREE.Vector3(-0.025, 0.065, -0.025),
+  pose: {
+    index: [v(0.95, -0.1, -0.3), v(0.2, -1, 0), v(-0.7, -0.3, 0)],
+    middle: [v(0.95, -0.2, -0.1), v(0.1, -1, 0), v(-0.8, -0.3, 0)],
+    ring: [v(0.85, -0.4, 0.1), v(-0.3, -0.9, 0), v(-0.8, 0.1, 0)],
+    pinky: [v(0.8, -0.5, 0.2), v(-0.4, -0.9, 0), v(-0.8, 0.2, 0)],
+    thumb: [v(0.3, 0.6, -0.7), v(0.65, -0.65, -0.3), v(0.2, -0.9, 0)],
+  },
+};
+
 // An overhand rack. The palm crosses the top/rear of the slide rather than passing
 // through the receiver. This is used only after inserting an empty-gun reload.
 export const LEFT_HAND_ON_SLIDE: HandSpec = {
@@ -168,6 +241,12 @@ export function loadHand(parent: THREE.Object3D, spec: HandSpec): Hand {
       point.fromBufferAttribute(vertexPositions, i);
       const fromWrist = point.clone().sub(wristOrigin);
       const along = fromWrist.dot(forward), depth = fromWrist.dot(side);
+      // The source includes a long, irregular wrist tail. Keep a short overlap inside
+      // the cuff so it cannot protrude through the shirt when a weapon changes the grip.
+      if (along < 0) {
+        point.addScaledVector(forward, -along * 0.8);
+        vertexPositions.setXYZ(i, point.x, point.y, point.z);
+      }
       let weight = 0;
       for (const center of knuckles) weight = Math.max(weight, Math.exp(-point.distanceToSquared(center) / 0.00012));
       for (const center of fingerJoints) weight = Math.max(weight, Math.exp(-point.distanceToSquared(center) / 0.000035) * 0.7);
@@ -175,6 +254,8 @@ export function loadHand(parent: THREE.Object3D, spec: HandSpec): Hand {
       panelWeights[i] = depth > 0 ? weight : weight * 0.38;
       seams[i] = Math.abs(along - 0.022) < 0.0014 ? 0.55 : 0;
     }
+    vertexPositions.needsUpdate = true;
+    mesh.geometry.computeVertexNormals();
     const colorArray = new Float32Array(vertexPositions.count * 3);
     mesh.geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
     let currentGloves = '';
@@ -260,6 +341,12 @@ export function loadHand(parent: THREE.Object3D, spec: HandSpec): Hand {
         bone.position.copy(a.joints[i].position).lerp(b.joints[i].position, t);
         bone.quaternion.copy(a.joints[i].quaternion).slerp(b.joints[i].quaternion, t);
       });
+      // Trigger pulls start from the active weapon's index pose after a grip change.
+      index.forEach((bone, i) => {
+        rest[i].position.copy(bone.position);
+        rest[i].quaternion.copy(bone.quaternion);
+      });
+      axis.set(0, 1, 0).applyQuaternion(gltf.scene.quaternion.clone().invert());
     };
     hand.getWrist = out => {
       out.copy(bones.get('wrist')!.position).applyQuaternion(gltf.scene.quaternion).add(gltf.scene.position);

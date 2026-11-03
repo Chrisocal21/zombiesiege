@@ -21,6 +21,13 @@ Press **P** or **Esc** during a run to pause. The pause menu has controls and se
 again to resume. Controls can be rebound, including pause. **O** freezes the zombies and wave
 clock for testing (older saved bindings are moved off P).
 
+Use **1** for the pistol, **2** for the shotgun once purchased, **3** for the machete, and **4**
+for the spiked bat. **X** or the scroll wheel cycles owned weapons. The melee weapons are
+available from the start; left click swings them. **B** performs a quick melee attack with any
+weapon, including an empty gun, and interrupts a reload without spending ammunition.
+The machete has a faster sweeping slash; the bat hits harder and knocks targets back.
+Attacks have limited reach and cannot hit through walls. All these shortcuts can be rebound.
+
 The pause menu's **Admin Menu** is a testing aid for the current run. Enter an amount to add or
 remove points, select a P9 pistol or sawed-off shotgun from the list to spawn it, or add spare
 ammo to an owned weapon. Weapons appear in the spare inventory slot; use X or the scroll wheel to
@@ -30,6 +37,7 @@ not replaced, and points cannot go below zero. Restarting a run resets these cha
 
 The focused regression check is [check-admin.mjs](./tools/check-admin.mjs); it requires Node
 22.15 or newer with `--experimental-strip-types`.
+Run `node tools/check-melee.mjs` for melee timing, damage, cover, inventory, and input checks.
 
 ## Door rush
 

@@ -3,7 +3,7 @@ import { bindings, keyLabel } from '../client/bindings';
 import { settings } from '../client/settings';
 import { config } from '../config';
 import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
-import { weaponStats } from '../game/weapons';
+import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
 import { floorTitle, stopAt, stops, wavesOnFloor } from '../game/tower';
@@ -71,6 +71,7 @@ export function createHud(menu: Menu): Hud {
   let hitUntil = 0;
   let hitIsKill = false;
   let lastShotAt = -10;
+  let seenMeleeHitTick = -1;
   let seenHurtTick = -1;
   let hurtAt = -10;
   const marks: DamageMark[] = [];
@@ -106,6 +107,14 @@ export function createHud(menu: Menu): Hud {
             hitIsKill = player.lastShotKill;
             if (hitIsKill) { killAt = time; killWasHead = player.lastShotHead; }
           }
+        }
+      }
+      if (player.lastMeleeHitTick !== seenMeleeHitTick) {
+        seenMeleeHitTick = player.lastMeleeHitTick;
+        if (seenMeleeHitTick >= 0 && player.lastMeleeContact === 'zombie') {
+          hitIsKill = player.lastMeleeKill;
+          hitUntil = time + (hitIsKill ? KILL_MARKER_SECONDS : HIT_MARKER_SECONDS);
+          if (hitIsKill) { killAt = time; killWasHead = false; }
         }
       }
       const points = state.points[player.id] ?? 0;
@@ -704,12 +713,25 @@ export function createHud(menu: Menu): Hud {
     const nameWidth = measure(context, stats.name, 15 * unit, 700, 5 * unit);
     context.fillStyle = COLOR.accent;
     context.fillRect(right - nameWidth - 18 * unit, nameY - 6 * unit, 10 * unit, 2 * unit);
-    if (player.stowed) {
-      const other = weaponStats(player.stowed.weapon).name;
+    {
+      const other = weaponStats(nextWeapon(player)).name;
       const otherRight = right - nameWidth - 34 * unit;
       text(context, other, otherRight, nameY, { size: 13 * unit, align: 'right', spacing: 3 * unit, color: COLOR.faint, weight: 700 });
       const otherWidth = measure(context, other, 13 * unit, 700, 3 * unit);
       keycap(context, keyLabel(bindings.swap), otherRight - otherWidth - 8 * unit, nameY + 1 * unit, 20 * unit, 'right');
+    }
+
+    if (isMelee(player.weapon)) {
+      const swinging = player.meleeLeft > 0;
+      text(context, swinging ? 'SWINGING' : 'READY', right, base - 35 * unit,
+        { size: 38 * unit, weight: 800, align: 'right', color: swinging ? COLOR.accent : COLOR.text, spacing: 3 * unit });
+      text(context, `${keyLabel(bindings.fire)} SWING  /  ${keyLabel(bindings.melee)} MELEE`, right, base + 10 * unit,
+        { size: 13 * unit, align: 'right', color: COLOR.dim, spacing: 1 * unit });
+      if (swinging) {
+        context.fillStyle = COLOR.accent;
+        context.fillRect(right - 190 * unit, base - 15 * unit, 190 * unit * (1 - player.meleeLeft / stats.melee.seconds), 3 * unit);
+      }
+      return;
     }
 
     if (reloading) {
@@ -821,7 +843,7 @@ export function createHud(menu: Menu): Hud {
 
     // Reminders of the less obvious keys, faint along the bottom.
     const hintY = height - margin + 26 * unit;
-    const hints = [[bindings.map, 'MAP'], [bindings.reload, 'RELOAD'], [bindings.cover, 'COVER'], [bindings.light, 'LIGHT']];
+    const hints = [[bindings.map, 'MAP'], [bindings.melee, 'MELEE'], [bindings.swap, 'CYCLE'], [bindings.cover, 'COVER'], [bindings.light, 'LIGHT']];
     const hintSize = 20 * unit;
     const widths = hints.map(([key, label]) => Math.max(hintSize, measure(context, keyLabel(key), hintSize * 0.62, 700, 0.5) + hintSize * 0.7) + 6 * unit + measure(context, label, 11 * unit, 700, 2 * unit));
     const spacing = 26 * unit;

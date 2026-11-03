@@ -59,6 +59,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
   const muzzle = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
   let seenShotTick = -1;
+  let seenMeleeHitTick = -1;
   const shotLight = new THREE.PointLight('#ffb968', 0, 4, 2); scene.add(shotLight);
   let flashLeft = 0;
 
@@ -86,7 +87,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
     sprite.userData.opacity = opacity; sprite.userData.size = scale;
     addParticle(sprite, at, new THREE.Vector3((Math.random() - 0.5) * 0.13, 0.16, 0), 0.65, -0.06);
   }
-  function impact(flight: Flight): void {
+  function impact(flight: Pick<Flight, 'blood' | 'surface' | 'normal' | 'end'>): void {
     const metal = ['car', 'van', 'container', 'barrel', 'gate'].includes(flight.surface);
     const wood = ['crate', 'board', 'cartons'].includes(flight.surface);
     for (let i = 0; i < (flight.blood ? 9 : 11); i++) {
@@ -110,6 +111,13 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
   }
   return {
     update(player, dt, level) {
+      if (player.lastMeleeHitTick !== seenMeleeHitTick) {
+        seenMeleeHitTick = player.lastMeleeHitTick;
+        const at = new THREE.Vector3(player.lastMeleeEnd.x, player.lastMeleeEnd.y, player.lastMeleeEnd.z);
+        if (seenMeleeHitTick >= 0 && player.lastMeleeContact === 'zombie') {
+          impact({ blood: true, surface: 'wall', end: at, normal: new THREE.Vector3(player.x-at.x,0,player.z-at.z).normalize() });
+        } else if (seenMeleeHitTick >= 0 && player.lastMeleeContact === 'wall') smoke(at,.12,'#b0aaa0',.12);
+      }
       tracerMaterial.opacity = settings.reducedFlashing ? 0 : 0.6;
       if (player.lastShotTick !== seenShotTick) {
         seenShotTick = player.lastShotTick;
@@ -127,12 +135,15 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
           mesh.quaternion.setFromUnitVectors(up, velocity); scene.add(mesh);
           flights.push({ mesh, end, velocity: velocity.multiplyScalar(config.pistol.bulletSpeed), left: end.distanceTo(muzzle) / config.pistol.bulletSpeed,
             hit: player.lastShotHit, blood: player.lastShotZombie, normal: hit ? new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z) : new THREE.Vector3(0, 1, 0), surface: hit?.box.surface ?? 'wall' });
-          const eject = weaponToWorld(viewmodel.getEjection(new THREE.Vector3()));
-          const shell = new THREE.Mesh(shellGeometry, brass);
-          const ejectVelocity = new THREE.Vector3(1.5 + Math.random(), 1.5 + Math.random(), 0.3).applyQuaternion(camera.quaternion);
-          const ground = raycastBoxHit(level, eject, new THREE.Vector3(0, -1, 0), 20);
-          const floor = ground ? eject.y - ground.distance + 0.008 : 0;
-          addParticle(shell, eject, ejectVelocity, 2.8, 9.8, floor, true);
+          // A break-action shotgun keeps its hulls in the chambers until it is opened.
+          if (player.weapon === 'pistol') {
+            const eject = weaponToWorld(viewmodel.getEjection(new THREE.Vector3()));
+            const shell = new THREE.Mesh(shellGeometry, brass);
+            const ejectVelocity = new THREE.Vector3(1.5 + Math.random(), 1.5 + Math.random(), 0.3).applyQuaternion(camera.quaternion);
+            const ground = raycastBoxHit(level, eject, new THREE.Vector3(0, -1, 0), 20);
+            const floor = ground ? eject.y - ground.distance + 0.008 : 0;
+            addParticle(shell, eject, ejectVelocity, 2.8, 9.8, floor, true);
+          }
           smoke(muzzle, 0.11, '#a8b3b8', 0.14);
           shotLight.position.copy(muzzle); flashLeft = 0.045;
         }

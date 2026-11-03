@@ -173,6 +173,7 @@ function respawn(old: Player, level: Level, keepGuns: boolean): Player {
   if (!keepGuns) return player;
   player.weapon = old.weapon;
   player.stowed = old.stowed;
+  player.holsteredGun = old.holsteredGun;
   player.ammo = old.ammo;
   player.reserve = old.reserve;
   guaranteeAmmo(player);

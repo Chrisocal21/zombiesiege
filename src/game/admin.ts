@@ -1,5 +1,5 @@
 import type { GameState, Player } from './state';
-import { owns, reserveOf, setReserve, weaponStats, type WeaponId } from './weapons';
+import { isMelee, owns, reserveOf, setReserve, weaponStats, type WeaponId } from './weapons';
 
 export interface AdminResult {
   ok: boolean;
@@ -37,6 +37,7 @@ export function spawnWeapon(player: Player, weapon: WeaponId): AdminResult {
 }
 
 export function spawnAmmo(player: Player, weapon: WeaponId, amount: number): AdminResult {
+  if (isMelee(weapon)) return { ok: false, message: 'Melee weapons do not need ammunition.' };
   if (!Number.isSafeInteger(amount) || amount <= 0) {
     return { ok: false, message: 'Enter a positive whole number of rounds.' };
   }

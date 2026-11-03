@@ -3,14 +3,15 @@ import { appearance, selectedGloves } from '../client/appearance';
 import { gloveTexture, outfitTexture } from './gearTextures';
 import { paintTexture } from './materials';
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { config } from '../config';
 import type { Player } from '../game/state';
-import { weaponStats } from '../game/weapons';
-import { LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, LEFT_HAND_SUPPORT, RIGHT_HAND_ON_GRIP, loadHand } from './hand';
+import { isMelee, weaponStats, type WeaponId } from '../game/weapons';
+import { LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, LEFT_HAND_SUPPORT, LEFT_HAND_ON_FOREND, LEFT_HAND_LOADING_SHOTGUN, RIGHT_HAND_ON_GRIP, RIGHT_HAND_ON_SHOTGUN, RIGHT_HAND_ON_TOOL, LEFT_HAND_ON_BAT, loadHand } from './hand';
 import type { CameraPose } from './view';
 import { buildLampCase } from './objectives';
+import { box, softBox, profile, barrelPart } from './weaponGeometry';
+import { createShotgun } from './shotgun';
+import { createMeleeWeapons } from './meleeWeapons';
 
 // Everything here is in meters. The gun points down -z, +x is right, +y is up.
 const REST_POSITION = new THREE.Vector3(0.11, -0.18, -0.64);
@@ -22,6 +23,10 @@ const REST_PITCH = 0.03;
 // Aimed, the sights sit dead on the camera's center line. The pitch levels the rear dots
 // with the front dot, and the height puts that line through the eye.
 const AIM_POSITION = new THREE.Vector3(0, -0.1120, -0.50);
+const SHOTGUN_REST_POSITION = new THREE.Vector3(0.14, -0.19, -0.75);
+const SHOTGUN_BODYCAM_POSITION = new THREE.Vector3(0.02, -0.12, -0.67);
+const SHOTGUN_AIM_POSITION = new THREE.Vector3(0, -0.1120, -0.68);
+const TOOL_POSITION = new THREE.Vector3(0.23, -0.20, -0.68);
 const AIM_PITCH = 0.0157;
 const FLASH_SECONDS = 0.05;
 const FLASH_SIZE = 0.13;
@@ -96,92 +101,6 @@ function flashTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-// One corner of a side profile: forward along the gun, up, and how much to round the corner.
-type Corner = [number, number, number];
-
-function trace<T extends THREE.Path>(path: T, corners: Corner[]): T {
-  const point = (i: number) => {
-    const [x, y] = corners[(i + corners.length) % corners.length];
-    return new THREE.Vector2(x, y);
-  };
-  corners.forEach(([, , radius], i) => {
-    const here = point(i);
-    const entry = point(i - 1).sub(here).normalize().multiplyScalar(radius).add(here);
-    const exit = point(i + 1).sub(here).normalize().multiplyScalar(radius).add(here);
-    if (i === 0) path.moveTo(entry.x, entry.y);
-    else path.lineTo(entry.x, entry.y);
-    path.quadraticCurveTo(here.x, here.y, exit.x, exit.y);
-  });
-  path.closePath();
-  return path;
-}
-
-// Turns a side profile into a solid part with bevelled edges, centered across the gun.
-function profile(
-  parent: THREE.Object3D,
-  corners: Corner[],
-  width: number,
-  bevel: number,
-  material: THREE.Material,
-  hole?: Corner[],
-): THREE.Mesh {
-  const shape = trace(new THREE.Shape(), corners);
-  if (hole) shape.holes.push(trace(new THREE.Path(), hole));
-  const depth = width - bevel * 2;
-  const extruded = new THREE.ExtrudeGeometry(shape, {
-    depth,
-    bevelEnabled: true,
-    bevelThickness: bevel,
-    bevelSize: bevel,
-    bevelOffset: -bevel,
-    bevelSegments: 4,
-    curveSegments: 10,
-  });
-  extruded.translate(0, 0, -depth / 2);
-  extruded.rotateY(Math.PI / 2);
-  const mesh = new THREE.Mesh(toCreasedNormals(extruded, Math.PI / 4), material);
-  parent.add(mesh);
-  return mesh;
-}
-
-function softBox(
-  parent: THREE.Object3D,
-  size: [number, number, number],
-  radius: number,
-  material: THREE.Material,
-  position: [number, number, number],
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new RoundedBoxGeometry(...size, 3, radius), material);
-  mesh.position.set(...position);
-  parent.add(mesh);
-  return mesh;
-}
-
-function barrelPart(
-  parent: THREE.Object3D,
-  radius: number,
-  length: number,
-  material: THREE.Material,
-  position: [number, number, number],
-): void {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 24), material);
-  mesh.rotation.x = Math.PI / 2;
-  mesh.position.set(...position);
-  parent.add(mesh);
-}
-
-function box(
-  parent: THREE.Object3D,
-  size: [number, number, number],
-  material: THREE.Material,
-  position: [number, number, number],
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
-  mesh.position.set(...position);
-  parent.add(mesh);
-  return mesh;
-}
-
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -237,6 +156,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
   // The slide is its own group so it can slide back on each shot.
   const slide = new THREE.Group();
+  slide.name = 'Pistol slide';
   root.add(slide);
   profile(
     slide,
@@ -350,6 +270,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   root.add(grip);
 
   const magazine = new THREE.Group();
+  magazine.name = 'Pistol magazine';
   grip.add(magazine);
   box(magazine, [0.022, 0.066, 0.036], darkMetal, [0, -0.04, -0.002]);
   softBox(magazine, [0.0275, 0.008, 0.047], 0.0028, polymer, [0, -0.0775, -0.002]);
@@ -378,50 +299,13 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   grip.add(leftHand);
   const supportHand = loadHand(leftHand, LEFT_HAND_SUPPORT);
 
-  // The sawed-off shotgun: two short barrels that hinge open over the same pistol grip, shown
-  // in place of the pistol so both share the hands and sleeves.
-  const pistolParts = root.children.filter((part) => part !== grip);
-  const slideParts = slide.children.filter((part) => part !== muzzle);
-  const wood = new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.74, metalness: 0.02 });
-  const shotgunParts = new THREE.Group();
-  shotgunParts.name = 'Sawed-off shotgun';
-  shotgunParts.visible = false;
-  root.add(shotgunParts);
-  const barrels = new THREE.Group();
-  barrels.position.set(0, 0.035, 0);
-  shotgunParts.add(barrels);
-  for (const x of [-0.0118, 0.0118]) {
-    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.0115, 0.0115, 0.19, 24), slideMetal);
-    tube.rotation.x = Math.PI / 2;
-    tube.position.set(x, 0.012, -0.095);
-    barrels.add(tube);
-    barrelPart(barrels, 0.0078, 0.0012, darkMetal, [x, 0.012, -0.1903]);
-  }
-  box(barrels, [0.006, 0.004, 0.19], brightMetal, [0, 0.0225, -0.095]);
-  // The bead sits on the same sight line as the pistol's dots.
-  box(barrels, [0.0036, 0.0108, 0.004], darkMetal, [0, 0.0289, -0.185]);
-  box(barrels, [0.0024, 0.0024, 0.0008], sight, [0, 0.0343, -0.1828]);
-  softBox(shotgunParts, [0.034, 0.042, 0.1], 0.004, slideMetal, [0, 0.045, 0.03]);
-  softBox(shotgunParts, [0.02, 0.0035, 0.01], 0.001, darkMetal, [0, 0.0678, 0.052]);
-  for (const x of [-0.0066, 0.0066]) {
-    softBox(shotgunParts, [0.0056, 0.0068, 0.009], 0.001, darkMetal, [x, 0.0728, 0.052]);
-    box(shotgunParts, [0.0024, 0.0024, 0.0008], sight, [x, 0.0732, 0.0568]);
-  }
-  softBox(shotgunParts, [0.03, 0.02, 0.12], 0.003, polymer, [0, 0.014, 0.02]);
-  box(shotgunParts, [0.0045, 0.018, 0.005], darkMetal, [0, 0.002, 0]);
-  softBox(shotgunParts, [0.007, 0.012, 0.014], 0.002, darkMetal, [0, 0.0725, 0.082]);
-  profile(
-    shotgunParts,
-    [
-      [-0.0235, -0.004, 0.003],
-      [-0.0417, -0.0777, 0.004],
-      [-0.0856, -0.0678, 0.006],
-      [-0.0695, 0.0044, 0.004],
-    ],
-    0.03,
-    0.0056,
-    wood,
-  );
+  const pistolParts = root.children.filter(part => part !== grip);
+  const shotgun = createShotgun({ steel: slideMetal, dark: darkMetal, edge: brightMetal, rubber: gripPolymer });
+  root.add(shotgun.root);
+  const tools = createMeleeWeapons(slideMetal, gripPolymer);
+  root.add(tools.machete, tools.bat);
+  const gripInverse = grip.matrix.clone().invert();
+  const supportMatrix = new THREE.Matrix4();
 
   const forwardAxis = new THREE.Vector3(0, 0, 1);
   // Cover the wrist cut without extending a second, cylindrical "palm" into the hand.
@@ -430,6 +314,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const SLEEVE_RADIUS = 0.025;
   // Account for the viewmodel's overall scale when bounding the wrist-to-elbow length.
   const FOREARM_LENGTH = 0.34 / SCALE;
+  const UPPER_ARM_LENGTH = 0.30 / SCALE;
   const sleeveProfile = Array.from({ length: 36 }, (_, i) => {
     const t = i / 35;
     const radius = SLEEVE_RADIUS + t * 0.008 + Math.sin(t * Math.PI * 13) * 0.0008 * Math.sin(t * Math.PI);
@@ -439,6 +324,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   // The source wrist cut is slightly oval/irregular. The glove cuff covers its seam.
   const cuffGeometry = new THREE.CylinderGeometry(0.020, 0.022, 0.028, 28);
   const bandGeometry = new THREE.TorusGeometry(SLEEVE_RADIUS, 0.0016, 6, 28);
+  const elbowGeometry = new THREE.SphereGeometry(SLEEVE_RADIUS + 0.008, 20, 12);
   const makeArm = () => {
     const rig = new THREE.Group(); root.add(rig);
     const cuff = new THREE.Mesh(cuffGeometry, sleeveCuff);
@@ -448,7 +334,12 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     // A stitched shirt cuff overlaps the glove at the wrist.
     const band = new THREE.Mesh(bandGeometry, sleeve);
     band.position.z = SLEEVE_START; rig.add(band);
-    return { rig, cloth };
+    const joint = new THREE.Mesh(elbowGeometry, sleeve); rig.add(joint);
+    const upperRig = new THREE.Group(); root.add(upperRig);
+    const upperCloth = new THREE.Mesh(sleeveGeometry, sleeve);
+    upperCloth.rotation.x = Math.PI / 2;
+    upperCloth.scale.set(1.32, 1, 1.32); upperRig.add(upperCloth);
+    return { rig, cloth, joint, upperRig, upperCloth };
   };
   const rightArm = makeArm();
   const leftArm = makeArm();
@@ -457,16 +348,29 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const rightWrist = new THREE.Vector3();
   const leftWrist = new THREE.Vector3();
   const armDirection = new THREE.Vector3();
+  const upperDirection = new THREE.Vector3();
   const elbow = new THREE.Vector3();
-  const syncArm = (arm: ReturnType<typeof makeArm>, wrist: THREE.Vector3, side: number, bodycam: number) => {
+  const syncArm = (arm: ReturnType<typeof makeArm>, wrist: THREE.Vector3, side: number, bodycam: number, shotgun: boolean) => {
     // Bent elbows sit below and behind the wrists, close enough to avoid long,
     // straight sleeves stretching toward targets behind the camera.
     elbow.set(side * (0.09 + bodycam * 0.01), -0.25, 0.30);
+    if (shotgun) {
+      if (side < 0) elbow.set(-0.09, -0.35, 0.20);
+      else elbow.set(0.20, -0.10, 0.37);
+    }
     armDirection.copy(elbow).sub(wrist);
     arm.rig.position.copy(wrist);
     arm.rig.quaternion.setFromUnitVectors(forwardAxis, armDirection.clone().normalize());
     const length = Math.min(FOREARM_LENGTH, Math.max(0.12, armDirection.length() - SLEEVE_START));
     arm.cloth.scale.y = length;
+    // A bent upper arm continues below the frame when a reload lifts the elbow into view.
+    // Both segments have bounded lengths; the forearm never stretches to fill the screen.
+    arm.joint.position.z = length;
+    elbow.copy(wrist).addScaledVector(armDirection, length / armDirection.length());
+    arm.upperRig.position.copy(elbow);
+    upperDirection.set(side * 0.20, -0.48, 0.48).sub(elbow);
+    arm.upperCloth.scale.y = Math.min(UPPER_ARM_LENGTH, upperDirection.length());
+    arm.upperRig.quaternion.setFromUnitVectors(forwardAxis, upperDirection.normalize());
   };
 
   // Muzzle flash: a soft glowing burst, shown for a moment after each shot.
@@ -504,7 +408,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   let carry = 0;
 
   let seenShotTick = -1;
-  let wasShotgun = false;
+  let heldWeapon: WeaponId = 'pistol';
   let swapDip = 0;
   let flashLeft = 0;
 
@@ -531,12 +435,15 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   return {
     update(player, pose, frameSeconds, preview = false) {
       const shotgunHeld = player.weapon === 'shotgun';
-      if (shotgunHeld !== wasShotgun) {
-        wasShotgun = shotgunHeld;
-        for (const part of pistolParts) part.visible = !shotgunHeld;
-        for (const part of slideParts) part.visible = !shotgunHeld;
-        shotgunParts.visible = shotgunHeld;
-        muzzle.position.set(0, 0.0475, shotgunHeld ? -0.195 : -0.14);
+      const toolHeld = isMelee(player.weapon);
+      if (player.weapon !== heldWeapon) {
+        heldWeapon = player.weapon;
+        for (const part of pistolParts) part.visible = player.weapon === 'pistol';
+        tools.machete.visible = player.weapon === 'machete';
+        tools.bat.visible = player.weapon === 'bat';
+        shotgun.root.visible = shotgunHeld;
+        (shotgunHeld ? shotgun.muzzle : slide).add(muzzle);
+        muzzle.position.set(0, shotgunHeld ? 0 : 0.0475, shotgunHeld ? 0 : -0.14);
         swapDip = 1;
       }
       swapDip *= Math.exp(-frameSeconds * 8);
@@ -572,6 +479,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       slideKick = Math.max(0, slideKick - frameSeconds * 14);
       triggerPull = Math.max(0, triggerPull - frameSeconds * 9);
       trigger.rotation.x = -TRIGGER_TRAVEL * triggerPull;
+      const firingGrip = toolHeld ? RIGHT_HAND_ON_TOOL : shotgunHeld ? RIGHT_HAND_ON_SHOTGUN : RIGHT_HAND_ON_GRIP;
+      rightHand.blendPose(firingGrip, firingGrip, 0);
       rightHand.pullIndex(triggerPull);
       flash.visible = !settings.reducedFlashing && flashLeft > 0;
       flashLight.intensity = !settings.reducedFlashing && flashLeft > 0 ? 0.6 : 0;
@@ -630,7 +539,18 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
       leftHand.visible = true;
       leftHand.position.set(0, 0, 0);
-      if (reloading) {
+      leftHand.quaternion.identity();
+      if (toolHeld) {
+        magazine.visible = false;
+        leftHand.visible = player.weapon === 'bat';
+        supportHand.blendPose(LEFT_HAND_ON_BAT, LEFT_HAND_ON_BAT, 0);
+      } else if (shotgunHeld) {
+        magazine.visible = false;
+        const loading = shotgun.update(player.ammo, progress, reloading, triggerPull);
+        supportHand.blendPose(LEFT_HAND_ON_FOREND, LEFT_HAND_LOADING_SHOTGUN, loading);
+        supportMatrix.copy(gripInverse).multiply(shotgun.supportTransform).multiply(grip.matrix);
+        supportMatrix.decompose(leftHand.position, leftHand.quaternion, leftHand.scale);
+      } else if (reloading) {
         // Keep both hands joined as the pistol rolls inward, then bring a fresh
         // magazine up from the belt, insert it, work the slide and rebuild the grip.
         magazine.visible = progress > 0.22;
@@ -655,8 +575,6 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         magazine.position.set(0, 0, 0);
         supportHand.blendPose(LEFT_HAND_SUPPORT, LEFT_HAND_SUPPORT, 0);
       }
-      if (shotgunHeld) magazine.visible = false;
-      barrels.rotation.x = shotgunHeld ? -0.45 * stage(0.1, 0.3) * (1 - stage(0.72, 0.9)) : 0;
       // Track the hand-model wrists, including reload pose changes, instead of
       // guessing sleeve attachment points and leaving gaps at the cuffs.
       if (rightHand.getWrist(rightWrist)) {
@@ -669,8 +587,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       const bodycamTarget = settings.cameraStyle === 'bodycam' && !preview ? 1 : 0;
       bodycamAmount += (bodycamTarget - bodycamAmount) * (1 - Math.exp(-frameSeconds * 12));
       if (frameSeconds === 0) bodycamAmount = bodycamTarget;
-      syncArm(rightArm, rightWrist, 1, bodycamAmount);
-      syncArm(leftArm, leftWrist, -1, bodycamAmount);
+      syncArm(rightArm, rightWrist, 1, bodycamAmount, shotgunHeld);
+      syncArm(leftArm, leftWrist, -1, bodycamAmount, shotgunHeld);
+
+      leftArm.rig.visible = leftArm.upperRig.visible = player.weapon !== 'machete';
 
       // The gun jolts up a little as the magazine is pushed home.
       const seat = stage(0.64, 0.68) * (1 - stage(0.68, 0.74));
@@ -684,7 +604,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       aimProgress = clamp(aimProgress + (player.aiming ? aimStep : -aimStep), 0, 1);
       aim = smooth(aimProgress);
       const loose = 1 - aim * 0.8;
-      basePosition.copy(REST_POSITION).lerp(BODYCAM_POSITION, bodycamAmount).lerp(AIM_POSITION, aim);
+      basePosition.copy(shotgunHeld ? SHOTGUN_REST_POSITION : REST_POSITION)
+        .lerp(shotgunHeld ? SHOTGUN_BODYCAM_POSITION : BODYCAM_POSITION, bodycamAmount)
+        .lerp(shotgunHeld ? SHOTGUN_AIM_POSITION : AIM_POSITION, aim);
+      if (toolHeld) basePosition.copy(TOOL_POSITION);
 
       root.position.set(
         basePosition.x + bobX * loose * motion - tilt * 0.03,
@@ -693,9 +616,32 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       );
       root.rotation.set(
         REST_PITCH + (AIM_PITCH - REST_PITCH) * aim + swayPitch * loose + recoil * 0.75 * (1 - aim * 0.6) + tilt * 0.3,
-        REST_YAW * (1 - bodycamAmount) * (1 - aim) + swayYaw * loose,
+        (shotgunHeld ? 0.23 : REST_YAW) * (1 - bodycamAmount) * (1 - aim) + swayYaw * loose,
         -tilt * 0.5 + Math.sin(bobPhase) * walking * 0.012 * loose * motion,
       );
+      if (toolHeld) {
+        root.rotation.x -= .13;
+        root.rotation.z -= player.weapon === 'bat' ? .25 : .18;
+      }
+      if (player.meleeLeft > 0) {
+        const phase = 1 - player.meleeLeft / stats.melee.seconds;
+        const lift = smooth(clamp(phase / .18, 0, 1));
+        const strike = smooth(clamp((phase - .18) / .24, 0, 1));
+        const recover = 1 - smooth(clamp((phase - .58) / .42, 0, 1));
+        const sweep = (lift - strike * 2) * recover;
+        if (toolHeld) {
+          root.position.x += sweep * .22;
+          root.position.y += (lift * .08 - strike * .14) * recover;
+          root.position.z -= strike * recover * .12;
+          root.rotation.z -= sweep * (player.weapon === 'bat' ? 1.05 : .82);
+          root.rotation.x -= lift * recover * .25;
+        } else {
+          root.position.z -= Math.sin(phase * Math.PI) * .18;
+          root.position.y += Math.sin(phase * Math.PI) * .035;
+          root.rotation.z += Math.sin(phase * Math.PI) * (shotgunHeld ? .2 : .4);
+          root.rotation.x -= Math.sin(phase * Math.PI) * .16;
+        }
+      }
       if (preview) {
         root.position.set(0.01, -0.07, -0.58);
         root.rotation.set(0.02, -0.6, -0.13);

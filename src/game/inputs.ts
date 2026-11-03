@@ -1,3 +1,5 @@
+import type { WeaponId } from './weapons';
+
 // What a player asked for during one tick. A networked player will send the same thing.
 export interface InputMessage {
   // Optional for older clients/replays. The host chooses the fixed camera-height preset.
@@ -22,6 +24,9 @@ export interface InputMessage {
   use: boolean;
   // True when the swap-weapon key was pressed since the last message.
   swap: boolean;
+  swapDirection?: -1 | 1;
+  selectWeapon?: WeaponId;
+  melee?: boolean;
   // True when the freeze key was pressed since the last message. A testing aid.
   toggleFreeze: boolean;
   // True when the flashlight key was pressed since the last message.

@@ -466,6 +466,8 @@ export function createAudio(): Audio {
 
   let seenTick = 0;
   let shotTick = -1;
+  let meleeTick = -1;
+  let meleeHitTick = -1;
   let reloading = false;
   let hurtTick = -1;
   let dryTick = -1;
@@ -537,6 +539,19 @@ export function createAudio(): Audio {
       const thrown = state.objective.thrown.filter((tick) => tick >= 0).length;
       const delivered = state.objective.items.filter((item) => item.delivered).length;
       if (watching) {
+        if (player.lastMeleeTick !== meleeTick && player.lastMeleeTick >= 0) {
+          const t = context.currentTime, heavy = player.weapon === 'bat';
+          const out = output(0, .55);
+          burst(out, t, heavy ? .25 : .16, 'bandpass', heavy ? 1100 : 2600, heavy ? 170 : 550, .6);
+        }
+        if (player.lastMeleeHitTick !== meleeHitTick && player.lastMeleeHitTick >= 0) {
+          if (player.lastMeleeContact === 'zombie') {
+            impact(player.lastMeleeKill, false);
+            tone(output(0,.55),context.currentTime,.12,'triangle',player.weapon==='bat'?110:190,40,.65);
+          } else if (player.lastMeleeContact === 'wall') {
+            burst(output(0,.45),context.currentTime,.11,'bandpass',1800,280,.65);
+          }
+        }
         if (player.lastShotTick !== shotTick && player.lastShotTick >= 0) {
           if (player.weapon === 'shotgun') shotgun(); else shot();
           if (player.lastShotZombie) impact(player.lastShotKill, player.lastShotHead);
@@ -544,7 +559,7 @@ export function createAudio(): Audio {
         if (player.lastDryTick !== dryTick && player.lastDryTick >= 0) dryClick();
         if (player.lastBuyTick !== buyTick && player.lastBuyTick >= 0) purchase();
         if (player.reloadLeft > 0 && !reloading) reloadOut();
-        if (player.reloadLeft === 0 && reloading && alive) reloadIn();
+        if (player.reloadLeft === 0 && reloading && alive && player.meleeLeft === 0) reloadIn();
         if (player.lastHurtTick !== hurtTick && player.lastHurtTick >= 0) hurt();
         if (player.onGround && !wasOnGround && player.vy < -4) land();
         if (!alive && wasAlive) death();
@@ -591,6 +606,8 @@ export function createAudio(): Audio {
         }
       }
       shotTick = player.lastShotTick;
+      meleeTick = player.lastMeleeTick;
+      meleeHitTick = player.lastMeleeHitTick;
       reloading = player.reloadLeft > 0;
       hurtTick = player.lastHurtTick;
       dryTick = player.lastDryTick;

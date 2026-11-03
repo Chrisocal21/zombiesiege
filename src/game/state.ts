@@ -1,6 +1,6 @@
 import { config } from '../config';
 import type { Elevator, Ladder, Level, LevelBox, Lock, Vec3 } from '../levels/types';
-import type { WeaponId } from './weapons';
+import type { WeaponId, WeaponLoadout } from './weapons';
 
 // A pull-up onto a ledge, played out over a fixed time. Nothing else moves the player meanwhile.
 export interface Mantle {
@@ -58,6 +58,15 @@ export interface Player {
   weapon: WeaponId;
   // The other weapon, put away with its own rounds, or null while only the pistol is owned.
   stowed: { weapon: WeaponId; ammo: number; reserve: number } | null;
+  // The active firearm put away while a machete or bat is in hand.
+  holsteredGun: WeaponLoadout | null;
+  meleeLeft: number;
+  meleeHitPending: boolean;
+  lastMeleeTick: number;
+  lastMeleeHitTick: number;
+  lastMeleeContact: 'none' | 'zombie' | 'wall';
+  lastMeleeEnd: Vec3;
+  lastMeleeKill: boolean;
   // Tick of the last weapon swap or purchase of a weapon, or -1.
   lastSwapTick: number;
   ammo: number;
@@ -293,6 +302,14 @@ export function createPlayer(id: number, spawn: Vec3): Player {
     lastHurtZ: 0,
     weapon: 'pistol',
     stowed: null,
+    holsteredGun: null,
+    meleeLeft: 0,
+    meleeHitPending: false,
+    lastMeleeTick: -1,
+    lastMeleeHitTick: -1,
+    lastMeleeContact: 'none',
+    lastMeleeEnd: { x: 0, y: 0, z: 0 },
+    lastMeleeKill: false,
     lastSwapTick: -1,
     ammo: config.pistol.magazineSize,
     reserve: config.pistol.reserveStart,

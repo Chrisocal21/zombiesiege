@@ -2,6 +2,7 @@ import { config } from '../config';
 import type { InputMessage } from '../game/inputs';
 import { type Action, bindings } from './bindings';
 import { settings } from './settings';
+import { WEAPON_IDS, type WeaponId } from '../game/weapons';
 
 export interface LocalInput {
   // Turns what the keyboard and mouse did since the last call into one message.
@@ -23,7 +24,7 @@ export interface LocalInput {
 }
 
 // Presses that are remembered until the next message goes out, even if released first.
-const LATCHED: Action[] = ['jump', 'cover', 'use', 'freeze', 'swap', 'light'];
+const LATCHED: Action[] = ['jump', 'cover', 'use', 'freeze', 'swap', 'light', 'melee'];
 
 export function createLocalInput(element: HTMLElement): LocalInput {
   const down = new Set<string>();
@@ -33,6 +34,8 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   // A click is remembered until the next message goes out, even if the button
   // is released before then, so quick clicks are never dropped.
   let clickQueued = false;
+  let selectedWeapon: WeaponId | undefined;
+  let wheelDirection: -1 | 1 = 1;
   const queued = new Set<Action>();
   let unlockCallback: () => void = () => {};
   let pauseCallback: () => void = () => {};
@@ -44,6 +47,9 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     down.add(code);
     for (const action of LATCHED) if (bindings[action] === code) queued.add(action);
     if (bindings.fire === code) clickQueued = true;
+    WEAPON_IDS.forEach((weapon, index) => {
+      if (bindings[`weapon${index + 1}` as Action] === code) selectedWeapon = weapon;
+    });
   }
 
   window.addEventListener('keydown', (event) => {
@@ -86,14 +92,14 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     press(code);
   });
   window.addEventListener('mouseup', (event) => down.delete(`Mouse${event.button}`));
-  // The scroll wheel swaps weapons. With two guns, either direction goes to the other one, and a
-  // spin of the wheel counts once.
+  // Cycle owned weapons in the wheel's direction; a spin counts once.
   let lastWheel = 0;
   window.addEventListener('wheel', (event) => {
     if (!isLocked()) return;
     event.preventDefault();
     if (event.timeStamp - lastWheel < 250) return;
     lastWheel = event.timeStamp;
+    wheelDirection = event.deltaY < 0 ? -1 : 1;
     queued.add('swap');
   }, { passive: false });
 
@@ -123,6 +129,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
       down.clear();
       queued.clear();
       clickQueued = false;
+      selectedWeapon = undefined;
       yaw = 0;
       pitch = 0;
     },
@@ -148,12 +155,17 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         toggleCover: queued.has('cover'),
         use: queued.has('use'),
         swap: queued.has('swap'),
+        swapDirection: wheelDirection,
+        selectWeapon: selectedWeapon,
+        melee: queued.has('melee') || held('melee'),
         toggleFreeze: queued.has('freeze'),
         toggleLight: queued.has('light'),
       };
       yaw = 0;
       pitch = 0;
       clickQueued = false;
+      selectedWeapon = undefined;
+      wheelDirection = 1;
       queued.clear();
       return message;
     },
