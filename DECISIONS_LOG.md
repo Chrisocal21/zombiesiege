@@ -66,6 +66,7 @@ Decisions made during the build, and every open question.
 | Nov 2, 2026 | Sound is synthesized in the browser (no audio files) with a volume slider; tuning deferred. A win screen shows at the top floor | Chris deferred tuning; synthesis is the coding Claude's |
 | Nov 2, 2026 | Ammo is limited: 12 round magazine plus 48 spare (max 96). An ammo locker sells a refill for 100 points, and every wave starts with at least one reload of spare rounds so a run can never lock | Chris asked for limited ammo and wall stations; numbers are the coding Claude's |
 | Nov 2, 2026 | Second weapon is bought at a wall station: a sawed-off shotgun for 500 points (8 pellets, 2 shells, shells 200 points), swapped with X; it replaces the pistol in hand rather than dual wielding. Weapons are kept when a life is lost and lost only when all three lives are gone | Chris said so; dual wielding is still open |
+| Nov 2, 2026 | The tower is a hospital, which is why it has a helipad. Floors above the garage each have their own objective, not one shared route: floor 1 find a keycard behind doors that cost points, floor 2 flip breakers in the dark, floor 3 hold a room while something charges. Each gives one part toward switching on the roof's helipad lights, and all are needed before the helicopter will land. Floors have different room layouts (offices, pharmacy and lab, surgery) | Chris's idea; the floor list and objectives are the coding Claude's draft |
 
 ---
 
