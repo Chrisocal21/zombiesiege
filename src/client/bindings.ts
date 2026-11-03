@@ -18,7 +18,8 @@ export type Action =
   | 'use'
   | 'light'
   | 'freeze'
-  | 'map';
+  | 'map'
+  | 'pause';
 
 export interface ActionInfo {
   id: Action;
@@ -43,7 +44,8 @@ export const ACTIONS: ActionInfo[] = [
   { id: 'use', label: 'Use and pick up', group: 'Interaction' },
   { id: 'light', label: 'Flashlight', group: 'Interaction' },
   { id: 'map', label: 'Tactical map', group: 'Interaction' },
-  { id: 'freeze', label: 'Freeze zombies (testing)', group: 'Interaction' },
+  { id: 'pause', label: 'Pause game', group: 'System' },
+  { id: 'freeze', label: 'Freeze zombies (testing)', group: 'System' },
 ];
 
 const DEFAULTS: Record<Action, string> = {
@@ -62,8 +64,9 @@ const DEFAULTS: Record<Action, string> = {
   cover: 'KeyF',
   use: 'KeyE',
   light: 'KeyT',
-  freeze: 'KeyP',
+  freeze: 'KeyO',
   map: 'KeyM',
+  pause: 'KeyP',
 };
 
 const STORAGE_KEY = 'zombiesiege.bindings';
@@ -83,6 +86,18 @@ export function loadBindings(): void {
     if (parsed.use === 'KeyG' && parsed.leanRight === 'KeyE') {
       bindings.use = DEFAULTS.use;
       bindings.leanRight = DEFAULTS.leanRight;
+      saveBindings();
+    }
+    // Older saves used P for freezing, or may have reassigned it to another action.
+    if (typeof parsed.pause !== 'string') {
+      const actions = Object.keys(DEFAULTS) as Action[];
+      const displaced = actions.find((action) => action !== 'pause' && bindings[action] === DEFAULTS.pause);
+      if (displaced) {
+        const used = new Set(actions.filter((action) => action !== displaced).map((action) => bindings[action]));
+        const candidates = [DEFAULTS[displaced], DEFAULTS.freeze, ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letter) => `Key${letter}`)];
+        const replacement = candidates.find((code) => !used.has(code));
+        if (replacement) bindings[displaced] = replacement;
+      }
       saveBindings();
     }
   } catch {

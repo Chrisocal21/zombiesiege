@@ -1,5 +1,6 @@
 import { config } from '../config';
 import type { Elevator, Ladder, Level, LevelBox, Lock, Vec3 } from '../levels/types';
+import type { WeaponId } from './weapons';
 
 // A pull-up onto a ledge, played out over a fixed time. Nothing else moves the player meanwhile.
 export interface Mantle {
@@ -54,9 +55,9 @@ export interface Player {
   lastHurtX: number;
   lastHurtZ: number;
   // The weapon in hand. Its magazine and spare rounds are `ammo` and `reserve`.
-  weapon: 'pistol' | 'shotgun';
+  weapon: WeaponId;
   // The other weapon, put away with its own rounds, or null while only the pistol is owned.
-  stowed: { weapon: 'pistol' | 'shotgun'; ammo: number; reserve: number } | null;
+  stowed: { weapon: WeaponId; ammo: number; reserve: number } | null;
   // Tick of the last weapon swap or purchase of a weapon, or -1.
   lastSwapTick: number;
   ammo: number;

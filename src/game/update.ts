@@ -177,7 +177,8 @@ function weapon(
   let anyKill = false;
   let anyHead = false;
   for (const [zombie, head] of struck) {
-    state.points[player.id] += head ? config.points.perHeadshot : zombie.dead ? config.points.perKill : config.points.perHit;
+    const earned = head ? config.points.perHeadshot : zombie.dead ? config.points.perKill : config.points.perHit;
+    state.points[player.id] = Math.min(Number.MAX_SAFE_INTEGER, state.points[player.id] + earned);
     if (zombie.dead) anyKill = true;
     if (head) anyHead = true;
   }

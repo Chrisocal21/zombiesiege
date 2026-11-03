@@ -76,7 +76,10 @@ function startPose() {
 // The title screen and the pause menu both end by capturing the mouse and going back to the game.
 async function enterGame(): Promise<void> {
   input.reset();
-  if (!(await input.lock())) return;
+  if (!(await input.lock())) {
+    menu.showError('Mouse capture failed. Click RESUME or DEPLOY to try again.');
+    return;
+  }
   menu.close();
   lastTime = performance.now();
 }
@@ -102,6 +105,7 @@ const menu = createMenu({
     enterGame();
   },
   resume: enterGame,
+  gameState: () => state,
   restart() {
     state = createGameState(level);
     previous = startPose();
@@ -116,6 +120,12 @@ const menu = createMenu({
   },
 });
 const hud = createHud(menu);
+
+input.onPause(() => {
+  if (menu.isOpen()) return;
+  menu.open('pause');
+  document.exitPointerLock();
+});
 
 // Esc, or anything else that releases the mouse, opens the pause menu.
 input.onUnlock(() => {

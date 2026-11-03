@@ -2,12 +2,15 @@ import { GLOVES, OUTFITS, appearance, saveAppearance, selectedGloves, selectedOu
 import { ACTIONS, type Action, bindings, keyLabel, rebind, resetBindings } from '../client/bindings';
 import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } from '../client/settings';
 import { config } from '../config';
+import { changePoints, spawnAmmo, spawnWeapon, type AdminResult } from '../game/admin';
+import type { GameState } from '../game/state';
 import { stops, storeyLabel } from '../game/tower';
+import { WEAPON_IDS, weaponStats, type WeaponId } from '../game/weapons';
 import { outfitTexture } from './gearTextures';
 import { COLOR, FONT, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
 
 // 'title' is the press-any-key screen the game opens on; 'main' is the menu behind it.
-export type Screen = 'title' | 'main' | 'pause' | 'controls' | 'settings' | 'character' | 'victory';
+export type Screen = 'title' | 'main' | 'pause' | 'controls' | 'settings' | 'admin' | 'character' | 'victory';
 
 // What the victory screen reports about the run that just ended.
 export interface RunStats {
@@ -26,6 +29,7 @@ export interface MenuCallbacks {
   playFloor(floor: number): void;
   // Go back to the game from the pause menu.
   resume(): void;
+  gameState(): GameState;
   restart(): void;
   // Leave the game and go back to the title screen.
   toTitle(): void;
@@ -40,6 +44,7 @@ export interface Menu {
   onTitle(): boolean;
   open(screen: Screen, stats?: RunStats): void;
   close(): void;
+  showError(message: string): void;
   // The menu ignores the keyboard and mouse until the photosensitivity warning is dismissed.
   release(): void;
   draw(context: CanvasRenderingContext2D, width: number, height: number, time: number): void;
@@ -57,6 +62,43 @@ interface Entry {
   label: string;
   detail: string;
   action(): void;
+}
+
+type AdminAmount = 'points' | 'ammo';
+type AdminControl = AdminAmount | 'add' | 'remove' | `weapon:${WeaponId}` | 'spawnWeapon' | 'spawnAmmo' | 'back';
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface AdminHitbox extends Rect {
+  id: AdminControl;
+}
+
+function adminHitboxes(width: number, height: number): AdminHitbox[] {
+  const unit = height / 1080;
+  const panelWidth = Math.min(width * 0.84, 1180 * unit);
+  const panelHeight = height * 0.74;
+  const px = (width - panelWidth) / 2;
+  const py = height * 0.11;
+  const columnWidth = (panelWidth - 132 * unit) / 2;
+  const x = px + 44 * unit;
+  const rightX = x + columnWidth + 44 * unit;
+  const half = (columnWidth - 12 * unit) / 2;
+  const fieldHeight = 48 * unit;
+  return [
+    { id: 'points', x, y: py + 265 * unit, w: columnWidth, h: fieldHeight },
+    { id: 'add', x, y: py + 329 * unit, w: half, h: fieldHeight },
+    { id: 'remove', x: x + half + 12 * unit, y: py + 329 * unit, w: half, h: fieldHeight },
+    ...WEAPON_IDS.map((weapon, index): AdminHitbox => ({ id: `weapon:${weapon}`, x: rightX, y: py + (176 + index * 56) * unit, w: columnWidth, h: fieldHeight })),
+    { id: 'spawnWeapon', x: rightX, y: py + 304 * unit, w: columnWidth, h: fieldHeight },
+    { id: 'ammo', x: rightX, y: py + 415 * unit, w: half, h: fieldHeight },
+    { id: 'spawnAmmo', x: rightX + half + 12 * unit, y: py + 415 * unit, w: half, h: fieldHeight },
+    { id: 'back', x: px + panelWidth - 264 * unit, y: py + panelHeight - 84 * unit, w: 220 * unit, h: 54 * unit },
+  ];
 }
 
 const ease = (t: number) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
@@ -181,6 +223,15 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   let keyboardMode = false;
   let activate = false;
   let blocked = true;
+  const adminControls = adminHitboxes(window.innerWidth, window.innerHeight).map((hitbox) => hitbox.id);
+  let adminFocus = 0;
+  let adminWeapon: WeaponId = WEAPON_IDS[0];
+  let pointsAmount = '1000';
+  let ammoAmount = '12';
+  let editingAmount: AdminAmount | null = null;
+  let replaceAmount = true;
+  let adminNotice: AdminResult | null = null;
+  let error: { screen: Screen | null; message: string } | null = null;
   // When the current screen was opened, for the way its parts slide in.
   let shown: Screen | null = null;
   let shownAt = 0;
@@ -197,7 +248,37 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   };
   const back = () => {
     current = parent;
+    editingAmount = null;
+    error = null;
     sound('back');
+  };
+  const openAdmin = () => {
+    current = 'admin';
+    adminWeapon = callbacks.gameState().players[0].weapon;
+    adminFocus = 0;
+    editingAmount = null;
+    replaceAmount = true;
+    adminNotice = null;
+    error = null;
+  };
+  const useAdminControl = (control: Exclude<AdminControl, AdminAmount>) => {
+    if (control === 'back') {
+      back();
+      return;
+    }
+    const state = callbacks.gameState();
+    const player = state.players[0];
+    if (control === 'add') adminNotice = changePoints(state, player.id, Number(pointsAmount));
+    else if (control === 'remove') adminNotice = changePoints(state, player.id, -Number(pointsAmount));
+    else if (control === 'spawnWeapon') adminNotice = spawnWeapon(player, adminWeapon);
+    else if (control === 'spawnAmmo') adminNotice = spawnAmmo(player, adminWeapon, Number(ammoAmount));
+    else {
+      const weapon = WEAPON_IDS.find((id) => control === `weapon:${id}`);
+      if (!weapon) throw new Error(`Unknown admin control: ${control}`);
+      adminWeapon = weapon;
+      adminNotice = null;
+    }
+    sound('select');
   };
 
   window.addEventListener('mousemove', (event) => {
@@ -215,6 +296,27 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
       // A mouse button can be bound too.
       rebind(rebinding, `Mouse${event.button}`);
       rebinding = null;
+      return;
+    }
+    if (current === 'admin' && event.button === 0) {
+      const hitbox = adminHitboxes(window.innerWidth, window.innerHeight).find((rect) =>
+        event.clientX >= rect.x && event.clientX <= rect.x + rect.w && event.clientY >= rect.y && event.clientY <= rect.y + rect.h);
+      mouse.down = true;
+      mouse.clicked = false;
+      if (hitbox) {
+        adminFocus = adminControls.indexOf(hitbox.id);
+        if (hitbox.id === 'points' || hitbox.id === 'ammo') {
+          editingAmount = hitbox.id;
+          replaceAmount = true;
+          sound('select');
+        } else {
+          editingAmount = null;
+          useAdminControl(hitbox.id);
+        }
+      } else {
+        editingAmount = null;
+        replaceAmount = true;
+      }
       return;
     }
     if (event.button === 0) {
@@ -242,6 +344,81 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         event.stopPropagation();
         if (event.code !== 'Escape') rebind(rebinding, event.code);
         rebinding = null;
+        return;
+      }
+      if (current === 'admin') {
+        if (event.code === 'Escape') {
+          event.preventDefault();
+          back();
+          return;
+        }
+        if (event.code === 'Tab' || event.code === 'ArrowUp' || event.code === 'ArrowDown') {
+          event.preventDefault();
+          const direction = event.code === 'ArrowUp' || (event.code === 'Tab' && event.shiftKey) ? -1 : 1;
+          adminFocus = (adminFocus + direction + adminControls.length) % adminControls.length;
+          keyboardMode = true;
+          editingAmount = null;
+          replaceAmount = true;
+          sound('move');
+          return;
+        }
+        const focused = adminControls[adminFocus];
+        const field = editingAmount ?? (keyboardMode && (focused === 'points' || focused === 'ammo') ? focused : null);
+        if (field && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          const value = field === 'points' ? pointsAmount : ammoAmount;
+          if (/^[0-9]$/.test(event.key)) {
+            event.preventDefault();
+            const next = (replaceAmount ? '' : value) + event.key;
+            if (next.length > 16 || !Number.isSafeInteger(Number(next))) {
+              adminNotice = { ok: false, message: 'That amount is too large.' };
+            } else {
+              if (field === 'points') pointsAmount = next;
+              else ammoAmount = next;
+              editingAmount = field;
+              replaceAmount = false;
+              adminNotice = null;
+            }
+            return;
+          }
+          if (event.code === 'Backspace' || event.code === 'Delete') {
+            event.preventDefault();
+            const next = replaceAmount || event.code === 'Delete' ? '' : value.slice(0, -1);
+            if (field === 'points') pointsAmount = next;
+            else ammoAmount = next;
+            editingAmount = field;
+            replaceAmount = false;
+            adminNotice = null;
+            return;
+          }
+          if (event.code === 'Enter' || event.code === 'Space') {
+            event.preventDefault();
+            editingAmount = null;
+            replaceAmount = true;
+            return;
+          }
+          if (event.key.length === 1) {
+            event.preventDefault();
+            adminNotice = { ok: false, message: 'Enter a positive whole number.' };
+            return;
+          }
+        }
+        if ((event.code === 'Enter' || event.code === 'Space') && !event.repeat) {
+          event.preventDefault();
+          keyboardMode = true;
+          if (focused === 'points' || focused === 'ammo') {
+            editingAmount = focused;
+            replaceAmount = true;
+          } else {
+            editingAmount = null;
+            useAdminControl(focused);
+          }
+        }
+        return;
+      }
+      if (current === 'pause' && event.code === bindings.pause) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) callbacks.resume();
         return;
       }
       if ((current === 'main' || current === 'pause' || current === 'victory') && ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', 'Enter', 'Space'].includes(event.code)) {
@@ -283,16 +460,25 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
     screen: () => current,
     onTitle: () => current !== null && current !== 'victory' && parent === 'main',
     open(screen, runStats) {
-      current = screen;
+      if (screen === 'admin') {
+        if (!config.testing.adminMenu) return;
+        openAdmin();
+      } else current = screen;
       if (runStats) stats = runStats;
       if (screen === 'main' || screen === 'pause') parent = screen;
       focusedItem = 0;
       rebinding = null;
+      error = null;
     },
     close() {
       current = null;
       rebinding = null;
+      editingAmount = null;
+      error = null;
       document.body.style.cursor = 'none';
+    },
+    showError(message) {
+      error = { screen: current, message };
     },
     release() {
       blocked = false;
@@ -304,6 +490,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
       if (current !== shown) {
         shown = current;
         shownAt = time;
+        if (error?.screen !== current) error = null;
       }
       if (startedAt < 0) startedAt = time;
       const since = time - shownAt;
@@ -516,14 +703,18 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           }
           promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);
         } else if (current === 'pause') {
-          list([
+          const entries: Entry[] = [
             { label: 'RESUME', detail: 'Back into the fight.', action: () => callbacks.resume() },
             { label: 'RESTART RUN', detail: 'Start again from the garage with fresh lives.', action: () => callbacks.restart() },
             { label: 'CONTROLS', detail: 'See and rebind every key and mouse button.', action: () => (current = 'controls') },
             { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
             { label: 'QUIT TO TITLE', detail: 'Leave this run. Progress is lost.', action: () => callbacks.toTitle() },
-          ], left, height * 0.42, 0.05);
-          promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);
+          ];
+          if (config.testing.adminMenu) entries.splice(4, 0, { label: 'ADMIN MENU', detail: 'Testing: change points or spawn weapons and ammo.', action: openAdmin });
+          list(entries, left, height * 0.42, 0.05);
+          const prompts: [string, string][] = [['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']];
+          if (!bindings.pause.startsWith('Mouse')) prompts.push([keyLabel(bindings.pause), 'RESUME']);
+          promptBar(prompts);
         } else {
           text(context, 'THE HELICOPTER IS HERE. YOU MADE IT OUT OF THE TOWER', left, 300 * unit, { size: 19 * unit, color: COLOR.dim, spacing: 4 * unit });
           const minutes = Math.floor(stats.seconds / 60);
@@ -548,6 +739,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         }
       } else {
         // The controls and settings screens share a centred panel over the darkened scene.
+        const panelScreen = current;
         context.fillStyle = 'rgba(3,5,8,0.7)';
         context.fillRect(0, 0, width, height);
         drawVignette(context, width, height, 0.7);
@@ -560,12 +752,78 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         context.fillStyle = COLOR.accent;
         context.fillRect(px, py, panelWidth, 3 * unit);
         text(context, (parent === 'main' ? 'MAIN MENU' : 'PAUSED') + '  /', px + 44 * unit, py + 40 * unit, { size: 13 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint, shadow: false });
-        text(context, current === 'controls' ? 'CONTROLS' : current === 'character' ? 'YOUR SURVIVOR' : 'SETTINGS', px + 44 * unit, py + 86 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
+        text(context, current === 'controls' ? 'CONTROLS' : current === 'character' ? 'YOUR SURVIVOR' : current === 'admin' ? 'ADMIN MENU' : 'SETTINGS', px + 44 * unit, py + 86 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
 
         const buttonHeight = 54 * unit;
         const buttonY = py + panelHeight - buttonHeight - 30 * unit;
 
-        if (current === 'character') {
+        if (current === 'admin') {
+          const state = callbacks.gameState();
+          const player = state.players[0];
+          const hitboxes = adminHitboxes(width, height);
+          const hitbox = (id: AdminControl): Rect => {
+            const rect = hitboxes.find((entry) => entry.id === id);
+            if (!rect) throw new Error(`Missing admin control: ${id}`);
+            return rect;
+          };
+          const pointsField = hitbox('points');
+          const ammoField = hitbox('ammo');
+          const x = pointsField.x;
+          const columnWidth = pointsField.w;
+          const rightX = ammoField.x;
+          const focused = (id: AdminControl) => keyboardMode && adminControls[adminFocus] === id;
+          const adminButton = (id: AdminControl, label: string, accent = false): void => {
+            const rect = hitbox(id);
+            button(label, rect.x, rect.y, rect.w, rect.h, accent || focused(id));
+          };
+          const amountField = (id: AdminAmount, value: string) => {
+            const rect = hitbox(id);
+            const hover = inside(rect.x, rect.y, rect.w, rect.h);
+            const selected = editingAmount === id || focused(id);
+            if (hover) hovering = true;
+            roundedRect(context, rect.x, rect.y, rect.w, rect.h, 4 * unit);
+            context.fillStyle = selected || hover ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)';
+            context.fill();
+            context.strokeStyle = selected ? COLOR.accent : COLOR.border;
+            context.lineWidth = 1;
+            context.stroke();
+            text(context, value || 'ENTER AMOUNT', rect.x + 14 * unit, rect.y + 32 * unit, { size: 23 * unit, color: value ? COLOR.text : COLOR.faint, shadow: false });
+          };
+
+          text(context, 'TESTING ONLY  /  CURRENT RUN', x, py + 116 * unit, { size: 13 * unit, color: COLOR.dim, spacing: 2 * unit });
+          text(context, 'POINTS', x, py + 158 * unit, { size: 19 * unit, color: COLOR.accent, spacing: 4 * unit });
+          text(context, 'CURRENT BALANCE', x, py + 204 * unit, { size: 16 * unit, color: COLOR.dim, spacing: 1 * unit });
+          text(context, state.points[player.id].toLocaleString(), x + columnWidth, py + 204 * unit, { size: 26 * unit, align: 'right', color: COLOR.text });
+          text(context, 'AMOUNT  /  CLICK TO TYPE', x, py + 252 * unit, { size: 15 * unit, color: COLOR.dim, spacing: 1 * unit });
+          amountField('points', pointsAmount);
+          adminButton('add', 'ADD POINTS', true);
+          adminButton('remove', 'REMOVE POINTS');
+
+          text(context, 'INVENTORY', x, py + 458 * unit, { size: 19 * unit, color: COLOR.accent, spacing: 4 * unit });
+          const inventory = [
+            { weapon: player.weapon, ammo: player.ammo, reserve: player.reserve, position: 'IN HAND' },
+            ...(player.stowed ? [{ ...player.stowed, position: 'STOWED' }] : []),
+          ];
+          inventory.forEach((item, index) => {
+            const y = py + (500 + index * 45) * unit;
+            text(context, `${weaponStats(item.weapon).name}  /  ${item.position}`, x, y, { size: 16 * unit, color: COLOR.text });
+            text(context, `${item.ammo} LOADED  /  ${item.reserve} SPARE`, x + columnWidth, y + 21 * unit, { size: 13 * unit, color: COLOR.dim, align: 'right' });
+          });
+          if (!player.stowed) text(context, 'SPARE WEAPON SLOT EMPTY', x, py + 545 * unit, { size: 16 * unit, color: COLOR.faint });
+
+          text(context, 'WEAPON LIST', rightX, py + 158 * unit, { size: 19 * unit, color: COLOR.accent, spacing: 4 * unit });
+          WEAPON_IDS.forEach((weapon) => {
+            adminButton(`weapon:${weapon}`, weaponStats(weapon).name, adminWeapon === weapon);
+          });
+          adminButton('spawnWeapon', 'SPAWN WEAPON', true);
+          text(context, 'SPARE AMMO  /  CLICK TO TYPE', rightX, py + 402 * unit, { size: 15 * unit, color: COLOR.dim, spacing: 1 * unit });
+          amountField('ammo', ammoAmount);
+          adminButton('spawnAmmo', 'SPAWN AMMO', true);
+          text(context, `Selected weapon reserve limit: ${weaponStats(adminWeapon).reserveMax}`, rightX, py + 492 * unit, { size: 16 * unit, color: COLOR.dim });
+          text(context, 'Ammo goes directly to that weapon\'s inventory.', rightX, py + 522 * unit, { size: 16 * unit, color: COLOR.dim });
+          if (adminNotice) text(context, adminNotice.message, x, buttonY - 28 * unit, { size: 18 * unit, color: adminNotice.ok ? COLOR.good : COLOR.danger });
+          adminButton('back', 'BACK', true);
+        } else if (current === 'character') {
           text(context, 'CAMOUFLAGE', px + 44 * unit, py + 160 * unit, { size: 24 * unit, color: COLOR.dim });
           text(context, 'GLOVES', px + 44 * unit, py + 310 * unit, { size: 24 * unit, color: COLOR.dim });
           const swatchSize = 64 * unit;
@@ -613,10 +871,8 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           if (button('DEPLOY', px + 44 * unit, buttonY, 370 * unit, buttonHeight, true)) callbacks.play();
         } else if (current === 'controls') {
           const columnWidth = (panelWidth - 132 * unit) / 2;
-          const rowHeight = 50 * unit;
-          const groups = ['Movement', 'Combat', 'Interaction'];
-          // Movement on the left; combat and interaction on the right.
-          const columns: string[][] = [[groups[0]], [groups[1], groups[2]]];
+          const rowHeight = 45 * unit;
+          const columns = [['Movement', 'System'], ['Combat', 'Interaction']];
           columns.forEach((columnGroups, columnIndex) => {
             const x = px + 44 * unit + columnIndex * (columnWidth + 44 * unit);
             let y = py + 150 * unit;
@@ -739,10 +995,12 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           toggle('cameraMotion', 'Camera motion');
           if (button('RESET TO DEFAULTS', x, buttonY, 300 * unit, buttonHeight)) resetSettings();
         }
-        if (button('BACK', px + panelWidth - 44 * unit - 220 * unit, buttonY, 220 * unit, buttonHeight, true)) current = parent;
-        promptBar(current === 'character' ? [['← →', 'CAMOUFLAGE'], ['↑ ↓', 'GLOVES'], ['ENTER', 'DEPLOY'], ['ESC', 'BACK']] : [['ESC', 'BACK']]);
+        if (panelScreen !== 'admin' && button('BACK', px + panelWidth - 44 * unit - 220 * unit, buttonY, 220 * unit, buttonHeight, true)) current = parent;
+        promptBar(panelScreen === 'character' ? [['← →', 'CAMOUFLAGE'], ['↑ ↓', 'GLOVES'], ['ENTER', 'DEPLOY'], ['ESC', 'BACK']]
+          : panelScreen === 'admin' ? [['TAB', 'NAVIGATE'], ['ENTER', 'SELECT'], ['ESC', 'BACK']] : [['ESC', 'BACK']]);
       }
 
+      if (error) text(context, error.message, width / 2, height - 86 * unit, { size: 19 * unit, align: 'center', color: COLOR.danger });
       document.body.style.cursor = current === 'title' ? 'default' : hovering ? 'pointer' : 'default';
       mouse.clicked = false;
       activate = false;

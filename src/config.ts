@@ -189,5 +189,7 @@ export const config = {
   testing: {
     // Floors on the main menu's route can be clicked to start the game there. Off for release.
     floorSelect: true,
+    // The pause menu can change points and spawn inventory for testing. Off for release.
+    adminMenu: true,
   },
 } as const;

@@ -1,7 +1,8 @@
 import { config } from '../config';
 import type { Player } from './state';
 
-export type WeaponId = Player['weapon'];
+export const WEAPON_IDS = ['pistol', 'shotgun'] as const;
+export type WeaponId = (typeof WEAPON_IDS)[number];
 
 export interface WeaponStats {
   name: string;
@@ -10,6 +11,7 @@ export interface WeaponStats {
   spread: number;
   secondsBetweenShots: number;
   magazineSize: number;
+  reserveStart: number;
   reserveMax: number;
   reloadSeconds: number;
   range: number;
@@ -17,8 +19,14 @@ export interface WeaponStats {
 }
 
 export function weaponStats(weapon: WeaponId): WeaponStats {
-  if (weapon === 'shotgun') return { name: 'SAWED-OFF', ...config.shotgun };
-  return { name: 'P9 PISTOL', ...config.pistol, pellets: 1, spread: 0 };
+  switch (weapon) {
+    case 'pistol': return { name: 'P9 PISTOL', ...config.pistol, pellets: 1, spread: 0 };
+    case 'shotgun': return { name: 'SAWED-OFF', ...config.shotgun };
+    default: {
+      const unhandled: never = weapon;
+      throw new Error(`Unknown weapon: ${unhandled}`);
+    }
+  }
 }
 
 // Puts the other weapon in hand, taking its rounds with it.

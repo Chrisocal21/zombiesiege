@@ -18,6 +18,8 @@ export interface LocalInput {
   reset(): void;
   // Calls back when the mouse is released by the browser (Esc), so the menu can open.
   onUnlock(callback: () => void): void;
+  // Opens the pause menu without waiting for the browser to release the mouse.
+  onPause(callback: () => void): void;
 }
 
 // Presses that are remembered until the next message goes out, even if released first.
@@ -33,6 +35,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   let clickQueued = false;
   const queued = new Set<Action>();
   let unlockCallback: () => void = () => {};
+  let pauseCallback: () => void = () => {};
 
   const isLocked = () => document.pointerLockElement === element;
   const held = (action: Action) => down.has(bindings[action]);
@@ -47,6 +50,11 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     // Browser shortcuts like F5 and F11 are left alone, but the keys the game uses are not
     // allowed to scroll or tab away.
     if (!isLocked()) return;
+    if (event.code === bindings.pause) {
+      event.preventDefault();
+      if (!event.repeat) pauseCallback();
+      return;
+    }
     if (event.code === 'Space' || event.code === 'Tab') event.preventDefault();
     if (!event.repeat) press(event.code);
     else down.add(event.code);
@@ -67,7 +75,15 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     pitch -= event.movementY * config.player.lookSensitivity * settings.sensitivity * lookScale;
   });
   window.addEventListener('mousedown', (event) => {
-    if (isLocked()) press(`Mouse${event.button}`);
+    if (!isLocked()) return;
+    const code = `Mouse${event.button}`;
+    if (code === bindings.pause) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pauseCallback();
+      return;
+    }
+    press(code);
   });
   window.addEventListener('mouseup', (event) => down.delete(`Mouse${event.button}`));
   // The scroll wheel swaps weapons. With two guns, either direction goes to the other one, and a
@@ -85,6 +101,9 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     isLocked,
     onUnlock(callback) {
       unlockCallback = callback;
+    },
+    onPause(callback) {
+      pauseCallback = callback;
     },
     async lock() {
       // Raw mouse movement skips the operating system's mouse acceleration.
