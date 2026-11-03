@@ -429,6 +429,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   const CUFF = 0.56;
   const SLEEVE_START = 0.012;
   const SLEEVE_RADIUS = 0.0265;
+  // The sleeve stops this far up the arm, with a hem, instead of running on past the bottom of the screen.
+  const SLEEVE_LENGTH = 0.2;
   const sleeveProfile = Array.from({ length: 36 }, (_, i) => {
     const t = i / 35;
     const radius = SLEEVE_RADIUS - t * 0.005 + Math.sin(t * Math.PI * 13) * 0.0008 * Math.sin(t * Math.PI);
@@ -447,7 +449,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     // The rolled hem at the end of the sleeve.
     const band = new THREE.Mesh(bandGeometry, sleeve);
     band.position.z = SLEEVE_START; rig.add(band);
-    return { rig, cloth };
+    // The hem at the far end.
+    const hem = new THREE.Mesh(bandGeometry, sleeve);
+    rig.add(hem);
+    return { rig, cloth, hem };
   };
   const rightArm = makeArm();
   const leftArm = makeArm();
@@ -462,7 +467,9 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     armDirection.copy(elbow).sub(wrist);
     arm.rig.position.copy(wrist);
     arm.rig.quaternion.setFromUnitVectors(forwardAxis, armDirection.clone().normalize());
-    arm.cloth.scale.y = Math.max(0.15, armDirection.length() - SLEEVE_START);
+    const length = Math.min(SLEEVE_LENGTH, Math.max(0.15, armDirection.length() - SLEEVE_START));
+    arm.cloth.scale.y = length;
+    arm.hem.position.z = SLEEVE_START + length;
   };
 
   // Muzzle flash: a soft glowing burst, shown for a moment after each shot.
