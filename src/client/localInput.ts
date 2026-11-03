@@ -70,6 +70,16 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     if (isLocked()) press(`Mouse${event.button}`);
   });
   window.addEventListener('mouseup', (event) => down.delete(`Mouse${event.button}`));
+  // The scroll wheel swaps weapons. With two guns, either direction goes to the other one, and a
+  // spin of the wheel counts once.
+  let lastWheel = 0;
+  window.addEventListener('wheel', (event) => {
+    if (!isLocked()) return;
+    event.preventDefault();
+    if (event.timeStamp - lastWheel < 250) return;
+    lastWheel = event.timeStamp;
+    queued.add('swap');
+  }, { passive: false });
 
   return {
     isLocked,

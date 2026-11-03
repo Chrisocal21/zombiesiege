@@ -35,11 +35,11 @@ export const ACTIONS: ActionInfo[] = [
   { id: 'fire', label: 'Fire', group: 'Combat' },
   { id: 'aim', label: 'Aim down sights', group: 'Combat' },
   { id: 'reload', label: 'Reload', group: 'Combat' },
-  { id: 'swap', label: 'Swap weapon', group: 'Combat' },
+  { id: 'swap', label: 'Swap weapon (or scroll wheel)', group: 'Combat' },
   { id: 'leanLeft', label: 'Lean left', group: 'Combat' },
   { id: 'leanRight', label: 'Lean right', group: 'Combat' },
   { id: 'cover', label: 'Take cover', group: 'Interaction' },
-  { id: 'use', label: 'Use: gate, boards, doors', group: 'Interaction' },
+  { id: 'use', label: 'Use and pick up', group: 'Interaction' },
   { id: 'map', label: 'Tactical map', group: 'Interaction' },
   { id: 'freeze', label: 'Freeze zombies (testing)', group: 'Interaction' },
 ];
@@ -56,9 +56,9 @@ const DEFAULTS: Record<Action, string> = {
   reload: 'KeyR',
   swap: 'KeyX',
   leanLeft: 'KeyQ',
-  leanRight: 'KeyE',
+  leanRight: 'KeyV',
   cover: 'KeyF',
-  use: 'KeyG',
+  use: 'KeyE',
   freeze: 'KeyP',
   map: 'KeyM',
 };
@@ -74,6 +74,13 @@ export function loadBindings(): void {
     const parsed = JSON.parse(saved) as Partial<Record<Action, string>>;
     for (const action of Object.keys(DEFAULTS) as Action[]) {
       if (typeof parsed[action] === 'string') bindings[action] = parsed[action]!;
+    }
+    // Use moved from G to E, and lean right from E to V. Only bindings still on the old
+    // defaults are moved; anything the player chose is kept.
+    if (parsed.use === 'KeyG' && parsed.leanRight === 'KeyE') {
+      bindings.use = DEFAULTS.use;
+      bindings.leanRight = DEFAULTS.leanRight;
+      saveBindings();
     }
   } catch {
     // Storage can be blocked. The defaults are fine.
