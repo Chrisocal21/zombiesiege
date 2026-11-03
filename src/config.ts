@@ -117,7 +117,7 @@ export const config = {
 
   tower: {
     // The floors the elevator stops at, bottom to top. The building has many more storeys, which
-    // the elevator rides past. Clearing the last one wins the run, until the roof exists.
+    // the elevator rides past. The last one goes up to the roof.
     stops: [
       { number: 0, name: 'Garage', waves: 5 },
       { number: 3, name: 'Admissions', waves: 3 },
@@ -125,6 +125,21 @@ export const config = {
       { number: 9, name: 'Surgery', waves: 4 },
       { number: 12, name: 'Intensive care', waves: 4 },
     ],
+    // The roof, above the last stop: its storey number for the elevator ride, and its waves before
+    // the helipad lights can be switched on.
+    roof: { number: 14, name: 'Helipad', waves: 2 },
+  },
+
+  objectives: {
+    // How close to a breaker, charger, case or drop-off you must be to use it.
+    range: 1.8,
+    // Fraction of normal speed while carrying a case in both hands.
+    carryMoveMultiplier: 0.8,
+    // While holding a room or waiting for the helicopter, a zombie comes through an open door this
+    // often, a little more often on each floor up, but never more than this many at once.
+    holdSpawnSeconds: 2.6,
+    holdSpawnPerFloor: 0.12,
+    holdMaxZombies: 14,
   },
 
   elevator: {

@@ -10,6 +10,7 @@ import type { Player } from '../game/state';
 import { weaponStats } from '../game/weapons';
 import { LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, LEFT_HAND_SUPPORT, RIGHT_HAND_ON_GRIP, loadHand } from './hand';
 import type { CameraPose } from './view';
+import { buildLampCase } from './objectives';
 
 // Everything here is in meters. The gun points down -z, +x is right, +y is up.
 const REST_POSITION = new THREE.Vector3(0.11, -0.18, -0.64);
@@ -496,6 +497,12 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   viewScene.add(droppedMagazine);
   const droppedVelocity = new THREE.Vector3();
 
+  // A lamp case held low in both arms, with the gun put away.
+  const carried = buildLampCase();
+  carried.visible = false;
+  viewScene.add(carried);
+  let carry = 0;
+
   let seenShotTick = -1;
   let wasShotgun = false;
   let swapDip = 0;
@@ -584,10 +591,15 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       const speed = player.onGround ? Math.hypot(player.vx, player.vz) : 0;
       // Both hands are busy climbing, so the gun drops out of the way.
       lowered += ((player.ladder || player.mantle ? 1 : 0) - lowered) * Math.min(1, frameSeconds * 10);
+      carry += ((player.carrying >= 0 && !preview ? 1 : 0) - carry) * Math.min(1, frameSeconds * 8);
       const walking = Math.min(1, speed / config.player.moveSpeed);
       bobPhase += speed * frameSeconds * 1.5;
       const bobX = Math.sin(bobPhase) * 0.006 * walking;
       const bobY = Math.cos(bobPhase * 2) * 0.004 * walking;
+      carried.visible = carry > 0.02;
+      carried.position.set(bobX * 2, -0.9 + 0.3 * carry + bobY * 3, -0.6);
+      carried.rotation.set(0.32, Math.sin(bobPhase) * 0.03 * walking, Math.sin(bobPhase) * 0.02 * walking);
+      root.visible = carry < 0.98;
       const breathing = Math.sin(time * 1.7) * 0.0015;
       const motion = settings.cameraMotion ? 1 : 0;
 
@@ -676,7 +688,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
       root.position.set(
         basePosition.x + bobX * loose * motion - tilt * 0.03,
-        basePosition.y + (bobY + breathing) * loose * motion - landing + tilt * 0.03 + seat * 0.012 - lowered * 0.35 - swapDip * 0.3,
+        basePosition.y + (bobY + breathing) * loose * motion - landing + tilt * 0.03 + seat * 0.012 - lowered * 0.35 - carry * 0.6 - swapDip * 0.3,
         basePosition.z + recoil * 0.25 * (1 - aim * 0.5),
       );
       root.rotation.set(

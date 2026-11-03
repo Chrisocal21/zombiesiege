@@ -16,7 +16,14 @@ import {
 } from './materials';
 import { buildFurniture } from './furniture';
 import { buildLift } from './lift';
-import { buildLocks, buildObjective, buildWardDressing } from './ward';
+import { buildLocks, buildWardDressing } from './ward';
+import { buildObjective } from './objectives';
+import { buildCity } from './city';
+import { circuitLive } from '../game/state';
+import { config } from '../config';
+
+// How far below the roof the street is: fourteen storeys.
+const CITY_DEPTH = 48;
 import { buildStations } from './station';
 import { buildGate, buildStreet } from './street';
 import { asphaltMaterial, hazardMaterial, labelTexture } from './streetTextures';
@@ -165,6 +172,8 @@ interface Lamp {
   base: number;
   flicker: boolean;
   seed: number;
+  circuit?: number;
+  emergency?: boolean;
 }
 
 function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THREE.Group): Lamp {
@@ -172,6 +181,30 @@ function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THRE
   const color = new THREE.Color(lightConfig.color);
   const group = new THREE.Group();
   group.position.set(x, y, z);
+  const lamp = buildFitting(lightConfig, color, glowMap, group);
+  parent.add(group);
+  return { ...lamp, circuit: lightConfig.circuit, emergency: lightConfig.emergency };
+}
+
+function buildFitting(lightConfig: LevelLight, color: THREE.Color, glowMap: THREE.Texture, group: THREE.Group): Lamp {
+  const { x, y, z } = lightConfig.position;
+
+  if (lightConfig.emergency) {
+    // A small battery lamp high on the wall behind a red lens.
+    const housing = new THREE.Mesh(new RoundedBoxGeometry(0.32, 0.12, 0.12, 2, 0.02), DARK_STEEL);
+    group.add(housing);
+    const lens = new THREE.MeshBasicMaterial({ color });
+    const face = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.06, 0.13), lens);
+    face.position.y = -0.02;
+    group.add(face);
+    const light = new THREE.PointLight(color, lightConfig.intensity, 9, 2);
+    light.position.y = -0.2;
+    group.add(light);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.8 }));
+    glow.scale.setScalar(1.1);
+    group.add(glow);
+    return { light, glow, bulb: lens, base: lightConfig.intensity, flicker: false, seed: x * 3.1 + z * 1.7 };
+  }
 
   if (y >= 4 || lightConfig.ceiling) {
     // A fluorescent fitting hanging from the ceiling, or set flush into a low one.
@@ -199,7 +232,6 @@ function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THRE
     halo.scale.set(1.8, 0.42, 1);
     halo.position.y = 0.0;
     group.add(halo);
-    parent.add(group);
     return { light: lamp, glow: halo, bulb: tubes, base: lightConfig.intensity, flicker: lightConfig.flicker === true, seed: x * 3.1 + z * 1.7 };
   }
 
@@ -247,7 +279,6 @@ function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THRE
   glow.position.y = -0.1;
   group.add(glow);
 
-  parent.add(group);
   return {
     light,
     glow,
@@ -387,7 +418,8 @@ function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture)
   };
 }
 
-function buildSky(scene: THREE.Object3D): void {
+// The night sky, the moon and a far ring of buildings standing on the ground at `ground`.
+function buildSky(scene: THREE.Object3D, ground: number): void {
   const dome = new THREE.Mesh(
     new THREE.SphereGeometry(110, 32, 16),
     new THREE.ShaderMaterial({
@@ -466,7 +498,7 @@ function buildSky(scene: THREE.Object3D): void {
     const width = 6 + random() * 10;
     const height = 14 + random() * 34;
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, height, width * (0.6 + random() * 0.5)), buildingMaterial);
-    building.position.set(Math.cos(angle) * distance, height / 2 - 1, Math.sin(angle) * distance);
+    building.position.set(Math.cos(angle) * distance, ground + height / 2 - 1, Math.sin(angle) * distance);
     building.lookAt(0, building.position.y, 0);
     skyline.add(building);
     const depth = building.geometry.parameters.depth;
@@ -559,7 +591,8 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
     new THREE.MeshBasicMaterial({ color: 0x090c10 }),
   );
   outside.rotation.x = -Math.PI / 2;
-  outside.position.y = -0.52;
+  // From the roof, the ground is fourteen storeys down.
+  outside.position.y = level.theme === 'roof' ? -CITY_DEPTH : -0.52;
   scene.add(outside);
 
   const garage = level.theme === 'garage';
@@ -601,8 +634,8 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
     if (garage) scene.add(puddle);
   }
 
+  const syncDressing = garage ? () => {} : buildWardDressing(scene, level);
   if (garage) buildGarageDressing(scene, level);
-  else buildWardDressing(scene, level);
   const detailProps = new THREE.Group(); scene.add(detailProps);
   const animateDressing = buildDressing(detailProps, level);
   bakeStaticMeshes(detailProps);
@@ -613,25 +646,35 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const lamps = level.lights.map((light) => buildLamp(light, glowMap, lampGroup));
 
   if (garage) {
-    buildSky(scene);
+    buildSky(scene, 0);
     buildStreet(scene, level, glowMap);
+  }
+  if (level.theme === 'roof') {
+    buildSky(scene, -CITY_DEPTH);
+    buildCity(scene, -CITY_DEPTH);
   }
   const syncDoors = buildDoors(scene, level, glowMap);
   const syncGate = buildGate(scene, level, glowMap);
   const syncLift = buildLift(scene, level, glowMap);
   const syncStations = buildStations(scene, level, glowMap);
   const syncLocks = buildLocks(scene, level, glowMap);
-  const syncObjective = buildObjective(scene, level, glowMap);
+  const syncObjective = buildObjective(scene, level, glowMap, environment);
+  let lastTime = 0;
 
   return {
     update(time, state) {
+      const dt = Math.max(0, Math.min(0.1, time - lastTime));
+      lastTime = time;
       animateDressing(time);
+      syncDressing(state);
       syncDoors(state, time);
       syncGate(state, time);
       syncLift(state, time);
       syncStations(state, time);
       syncLocks(state, time);
-      syncObjective(state, time);
+      syncObjective(state, time, dt);
+      const breakers = state.level.objective?.kind === 'breakers';
+      const blackout = breakers && !state.objective.done;
       for (const lamp of lamps) {
         let brightness = 1;
         if (lamp.flicker && !settings.reducedFlashing) {
@@ -639,6 +682,15 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
           const burst = Math.sin(time * 1.3 + lamp.seed) > 0.82;
           brightness = burst ? 0.25 + 0.75 * Math.abs(Math.sin(time * 47 + lamp.seed)) : 1;
           if (Math.sin(time * 0.37 + lamp.seed) > 0.97) brightness = 0.08;
+        }
+        if (lamp.emergency) brightness = blackout ? 1 : 0;
+        if (breakers && lamp.circuit !== undefined) {
+          if (!circuitLive(state, lamp.circuit)) brightness = 0;
+          else {
+            // The tubes stutter on when the breaker goes back in.
+            const since = (state.tick - state.objective.thrown[lamp.circuit]) / config.ticksPerSecond;
+            if (since < 1.1) brightness *= settings.reducedFlashing ? Math.min(1, since) : Math.sin(since * 40 + lamp.seed) > 0.2 - since ? 1 : 0.05;
+          }
         }
         lamp.light.intensity = lamp.base * brightness;
         lamp.glow.material.opacity = 0.22 * brightness;

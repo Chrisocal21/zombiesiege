@@ -1243,9 +1243,126 @@ const patientMonitor: Builder = (kit, w, h, d) => {
   tube(g, [[0.15, 0.72, 0.16], [0.28, 0.4, 0.3], [0.32, 0.04, 0.15]], 0.018, hose, 8);
 };
 
+// ---------------------------------------------------------------------------------------------
+// The roof: air-conditioning plant, vents, the water tank and a radio mast.
+
+// A rooftop air-conditioning unit on steel skids: louvred sides, two fans in round shrouds on
+// top, an isolator box on the front and insulated pipes running down to the roof.
+const hvac: Builder = (kit, w, h, d) => {
+  const g = kit.group;
+  const casing = painted(kit.color);
+  const slats = standard('slats', { map: T.ventSlats(), roughness: 0.7 });
+  for (const side of [-1, 1]) box(g, w, 0.12, 0.14, 0, 0.06, side * (d / 2 - 0.1), darkSteel());
+  box(g, w - 0.08, h - 0.26, d - 0.08, 0, 0.12 + (h - 0.26) / 2, 0, casing, 0.03);
+  // Louvres down both long faces and the ends.
+  const panels = Math.max(2, Math.round(w / 1.1));
+  for (let i = 0; i < panels; i++) {
+    const x = -w / 2 + (w / panels) * (i + 0.5);
+    for (const side of [-1, 1]) plane(g, w / panels - 0.16, h * 0.5, x, h * 0.42, side * (d / 2 - 0.035), slats, side < 0 ? Math.PI : 0);
+  }
+  for (const side of [-1, 1]) plane(g, d - 0.4, h * 0.5, side * (w / 2 - 0.035), h * 0.42, 0, slats, side * Math.PI / 2);
+  // Fans in round shrouds on top, with a grille over each.
+  const fans = Math.max(1, Math.round(w / 1.9));
+  const radius = Math.min(d * 0.36, (w / fans) * 0.4);
+  for (let i = 0; i < fans; i++) {
+    const x = -w / 2 + (w / fans) * (i + 0.5);
+    place(g, new THREE.CylinderGeometry(radius, radius, 0.22, 24, 1, true), standard(`shroud:${kit.color}`, { color: kit.color, roughness: 0.55, metalness: 0.25, side: THREE.DoubleSide }), x, h - 0.13, 0, true);
+    cylinder(g, radius - 0.02, 0.02, x, h - 0.2, 0, blackPlastic(), 24);
+    for (let b = 0; b < 5; b++) {
+      const blade = box(g, radius * 0.85, 0.012, 0.16, x, h - 0.17, 0, darkSteel());
+      blade.rotation.set(0.35, (b / 5) * Math.PI * 2 + kit.random(), 0, 'YXZ');
+      blade.position.x = x + Math.cos((b / 5) * Math.PI * 2) * radius * 0.42;
+      blade.position.z = -Math.sin((b / 5) * Math.PI * 2) * radius * 0.42;
+    }
+    cylinder(g, 0.08, 0.06, x, h - 0.15, 0, darkSteel(), 12);
+    for (let k = -2; k <= 2; k++) {
+      bar(g, [x - radius * 0.95, h - 0.02, k * radius * 0.36], [x + radius * 0.95, h - 0.02, k * radius * 0.36], 0.008, darkSteel(), 4);
+      bar(g, [x + k * radius * 0.36, h - 0.02, -radius * 0.95], [x + k * radius * 0.36, h - 0.02, radius * 0.95], 0.008, darkSteel(), 4);
+    }
+  }
+  // The isolator box and its conduit, and the pipes out of the far end.
+  box(g, 0.34, 0.42, 0.14, w / 2 - 0.5, h * 0.62, d / 2 + 0.04, plain('#9c9f3c', 0.6), 0.02);
+  box(g, 0.05, 0.14, 0.04, w / 2 - 0.42, h * 0.62, d / 2 + 0.12, blackPlastic());
+  bar(g, [w / 2 - 0.5, h * 0.62 - 0.21, d / 2 + 0.06], [w / 2 - 0.5, 0.02, d / 2 + 0.06], 0.02, darkSteel(), 6);
+  const lagging = plain('#111315', 0.85);
+  for (const z of [-0.25, 0.15]) {
+    tube(g, [[-w / 2 + 0.05, h * 0.3, z], [-w / 2 - 0.25, h * 0.28, z], [-w / 2 - 0.4, 0.3, z], [-w / 2 - 0.42, 0.06, z + 0.4]], 0.06, lagging, 10);
+  }
+  plane(g, 0.3, 0.3, -w / 2 + 0.6, h * 0.75, d / 2 - 0.03, label(T.biohazard(), 'biohazard'));
+};
+
+// A mushroom vent: a short steel trunk with a louvred head under a wide cap.
+const vent: Builder = (kit, w, h, d) => {
+  const g = kit.group;
+  const body = painted(kit.color);
+  const slats = standard('slats', { map: T.ventSlats(), roughness: 0.7 });
+  box(g, w * 0.7, h * 0.45, d * 0.7, 0, h * 0.225, 0, body, 0.02);
+  box(g, w - 0.1, h * 0.38, d - 0.1, 0, h * 0.45 + h * 0.19, 0, body, 0.02);
+  for (const side of [-1, 1]) {
+    plane(g, w - 0.2, h * 0.28, 0, h * 0.64, side * (d / 2 - 0.045), slats, side < 0 ? Math.PI : 0);
+    plane(g, d - 0.2, h * 0.28, side * (w / 2 - 0.045), h * 0.64, 0, slats, side * Math.PI / 2);
+  }
+  const cap = box(g, w, 0.08, d, 0, h - 0.04, 0, steel(), 0.02);
+  cap.castShadow = true;
+  box(g, w * 0.7 + 0.08, 0.06, d * 0.7 + 0.08, 0, 0.03, 0, darkSteel());
+};
+
+// The water tank: a riveted steel drum on a stand of steel legs, with a hatch, a level gauge and
+// the outlet pipe down to the roof.
+const tank: Builder = (kit, w, h, d) => {
+  const g = kit.group;
+  const legs = 1.1;
+  const radius = Math.min(w, d) / 2 - 0.08;
+  for (const x of [-1, 1]) for (const z of [-1, 1]) {
+    box(g, 0.12, legs, 0.12, x * radius * 0.7, legs / 2, z * radius * 0.7, darkSteel());
+    box(g, 0.3, 0.03, 0.3, x * radius * 0.7, 0.015, z * radius * 0.7, darkSteel());
+  }
+  for (const side of [-1, 1]) {
+    bar(g, [-radius * 0.7, 0.2, side * radius * 0.7], [radius * 0.7, legs - 0.1, side * radius * 0.7], 0.025, darkSteel(), 6);
+    bar(g, [side * radius * 0.7, 0.2, -radius * 0.7], [side * radius * 0.7, legs - 0.1, radius * 0.7], 0.025, darkSteel(), 6);
+  }
+  box(g, radius * 1.6, 0.1, radius * 1.6, 0, legs, 0, darkSteel());
+  const drum = painted(kit.color);
+  const height = h - legs - 0.35;
+  cylinder(g, radius, height, 0, legs + 0.05 + height / 2, 0, drum, 32);
+  for (let k = 0; k < 4; k++) cylinder(g, radius + 0.015, 0.05, 0, legs + 0.2 + (k * (height - 0.3)) / 3, 0, darkSteel(), 32);
+  cylinder(g, 0.06, 0.3, 0, h - 0.15, 0, drum, 32, radius);
+  box(g, 0.5, 0.06, 0.5, radius * 0.3, h - 0.04, 0, darkSteel(), 0.01);
+  // Level gauge up the front, and the outlet.
+  bar(g, [0, legs + 0.2, radius + 0.04], [0, h - 0.5, radius + 0.04], 0.02, clearPlastic('#9fb8c8'), 8);
+  tube(g, [[radius * 0.4, legs + 0.1, radius * 0.3], [radius * 0.4, 0.5, radius * 0.6], [radius * 0.5, 0.08, d / 2 + 0.1]], 0.05, darkSteel(), 8);
+};
+
+// A lattice radio mast with a dish and a red aircraft-warning lamp on top.
+const mast: Builder = (kit, w, h) => {
+  const g = kit.group;
+  const metalPart = steel();
+  const r = w / 2 - 0.08;
+  const corners: [number, number][] = [0, 1, 2].map((k) => [Math.cos((k / 3) * Math.PI * 2) * r, Math.sin((k / 3) * Math.PI * 2) * r]);
+  box(g, w, 0.12, w, 0, 0.06, 0, plain('#6d7275', 0.9));
+  for (const [x, z] of corners) bar(g, [x, 0.1, z], [x * 0.5, h - 0.2, z * 0.5], 0.025, metalPart, 6);
+  const steps = Math.round(h / 0.6);
+  for (let s = 0; s < steps; s++) {
+    const y0 = 0.1 + (s / steps) * (h - 0.3);
+    const y1 = 0.1 + ((s + 1) / steps) * (h - 0.3);
+    const t0 = 1 - 0.5 * (s / steps);
+    const t1 = 1 - 0.5 * ((s + 1) / steps);
+    for (let k = 0; k < 3; k++) {
+      const [ax, az] = corners[k];
+      const [bx, bz] = corners[(k + 1) % 3];
+      bar(g, [ax * t0, y0, az * t0], [bx * t1, y1, bz * t1], 0.008, metalPart, 4);
+    }
+  }
+  const dish = place(g, new THREE.SphereGeometry(0.32, 16, 8, 0, Math.PI * 2, 0, 0.6), standard('dish', { color: '#dfe2df', roughness: 0.42, side: THREE.DoubleSide }), 0, h * 0.62, 0.22, true);
+  dish.rotation.x = Math.PI / 2;
+  box(g, 0.2, 0.2, 0.14, 0, h * 0.75, 0, whitePlastic(), 0.02);
+  bar(g, [0, h - 0.2, 0], [0, h + 0.6, 0], 0.012, metalPart, 6);
+  box(g, 0.12, 0.14, 0.12, 0, h - 0.1, 0, glow('#ff2a1a'), 0.02);
+};
+
 const BUILDERS: Record<Prop, Builder> = {
   desk, counter, seating, cabinet, shelf, lab, fridge, analyser, cart, bed, gurney, operating, instruments, supply, lockers, bench, curtain,
-  monitor: patientMonitor,
+  monitor: patientMonitor, hvac, vent, tank, mast,
 };
 
 // The modelled piece for a furniture box, standing where the box stands.

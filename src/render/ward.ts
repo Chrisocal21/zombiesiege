@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { settings } from '../client/settings';
-import type { GameState } from '../game/state';
+import { circuitLive, type GameState } from '../game/state';
 import type { Level } from '../levels/types';
 import { labelTexture } from './streetTextures';
 
@@ -76,71 +75,36 @@ export function buildLocks(scene: THREE.Object3D, level: Level, glowMap: THREE.T
   };
 }
 
-// The keycard lying on the manager's desk, turning slowly in a pillar of light until it is taken.
-export function buildObjective(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
-  const objective = level.objective;
-  if (!objective) return () => {};
-  const group = new THREE.Group();
-  group.position.set(objective.position.x, objective.position.y, objective.position.z);
-  scene.add(group);
-
-  const card = new THREE.Group();
-  const body = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.012, 0.14, 2, 0.004), new THREE.MeshStandardMaterial({ color: 0xe8eaec, roughness: 0.4 }));
-  card.add(body);
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.0125, 0.03), new THREE.MeshStandardMaterial({ color: 0x38e070, emissive: 0x38e070, emissiveIntensity: 0.9 }));
-  stripe.position.z = -0.03;
-  card.add(stripe);
-  const chip = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.0135, 0.03), new THREE.MeshStandardMaterial({ color: 0xc8943a, metalness: 0.9, roughness: 0.3 }));
-  chip.position.set(-0.06, 0, 0.03);
-  card.add(chip);
-  card.position.y = 0.12;
-  group.add(card);
-
-  const beamGeometry = new THREE.CylinderGeometry(0.05, 0.14, 0.9, 12, 1, true);
-  const beamColors = new Float32Array(beamGeometry.attributes.position.count * 3);
-  for (let i = 0; i < beamGeometry.attributes.position.count; i++) {
-    const brightness = 1 - (beamGeometry.attributes.position.getY(i) + 0.45) / 0.9;
-    beamColors.set([0.2 * brightness, brightness, 0.45 * brightness], i * 3);
-  }
-  beamGeometry.setAttribute('color', new THREE.BufferAttribute(beamColors, 3));
-  const beam = new THREE.Mesh(beamGeometry, new THREE.MeshBasicMaterial({
-    vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0.45,
-  }));
-  beam.position.y = 0.55;
-  group.add(beam);
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color: 0x38e070, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.6 }));
-  halo.scale.setScalar(0.8);
-  halo.position.y = 0.2;
-  group.add(halo);
-  const light = new THREE.PointLight(0x38e070, 2.5, 4, 2);
-  light.position.y = 0.5;
-  group.add(light);
-
-  return (state, time) => {
-    group.visible = !state.objective.done;
-    card.rotation.y = time * 1.2;
-    card.position.y = 0.12 + Math.sin(time * 2) * 0.02;
-    (beam.material as THREE.MeshBasicMaterial).opacity = settings.reducedFlashing ? 0.25 : 0.3 + 0.12 * Math.sin(time * 2.4);
-  };
-}
-
 // Light panels in the ceiling and signs on the walls that make a floor of rooms read as a hospital.
-export function buildWardDressing(scene: THREE.Object3D, level: Level): void {
-  const panel = new THREE.MeshBasicMaterial({ color: 0xf2f6ff });
+// On a floor with the power out, each circuit's panels stay dark until its breaker is thrown.
+export function buildWardDressing(scene: THREE.Object3D, level: Level): (state: GameState) => void {
+  const panels = new Map<number, THREE.MeshBasicMaterial>();
+  const lit = new THREE.Color(0xf2f6ff);
   for (const light of level.lights) {
+    if (!light.ceiling || light.emergency) continue;
+    const circuit = light.circuit ?? -1;
+    let panel = panels.get(circuit);
+    if (!panel) {
+      panel = new THREE.MeshBasicMaterial({ color: lit });
+      panels.set(circuit, panel);
+    }
     const fitting = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 0.5), panel);
     fitting.position.set(light.position.x, 3.38, light.position.z);
     scene.add(fitting);
   }
+  // Signs are lit by the room, with a faint glow of their own so they still read in the dark.
   for (const sign of level.signs) {
+    const map = labelTexture([{ text: sign.text, size: 80, color: '#ffffff' }, { text: sign.sub, size: 38, color: '#bfe8d8' }], sign.background, 768, 256, '#ffffff');
     const face = new THREE.Mesh(
       new THREE.PlaneGeometry(sign.width, sign.height),
-      new THREE.MeshBasicMaterial({
-        map: labelTexture([{ text: sign.text, size: 80, color: '#ffffff' }, { text: sign.sub, size: 38, color: '#bfe8d8' }], sign.background, 768, 256, '#ffffff'),
-      }),
+      new THREE.MeshStandardMaterial({ map, emissive: 0xffffff, emissiveMap: map, emissiveIntensity: 0.3, roughness: 0.5 }),
     );
     face.position.set(sign.position.x, sign.position.y, sign.position.z);
     face.rotation.y = sign.rotation;
     scene.add(face);
   }
+  const dark = new THREE.Color(0x15171a);
+  return (state) => {
+    for (const [circuit, panel] of panels) panel.color.copy(circuitLive(state, circuit < 0 ? undefined : circuit) ? lit : dark);
+  };
 }

@@ -4,8 +4,11 @@ import { config } from '../config';
 // index into this list of stops, with the garage as 0.
 export const stops = config.tower.stops;
 
-export function stopAt(floor: number): (typeof stops)[number] {
-  return stops[Math.min(floor, stops.length - 1)];
+// The roof is the floor index one past the last stop.
+export const ROOF = stops.length;
+
+export function stopAt(floor: number): { number: number; name: string; waves: number } {
+  return floor >= ROOF ? config.tower.roof : stops[floor];
 }
 
 export function wavesOnFloor(floor: number): number {
@@ -26,7 +29,7 @@ export function floorTitle(floor: number): string {
 
 // How many storeys the elevator climbs to reach the next stop.
 export function storeysToNext(floor: number): number {
-  return floor + 1 < stops.length ? stops[floor + 1].number - stops[floor].number : 1;
+  return stopAt(floor + 1).number - stopAt(floor).number;
 }
 
 // Zombies in a wave. A floor with fewer waves still ends on the biggest one in the table.

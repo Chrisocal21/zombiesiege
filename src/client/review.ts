@@ -1,4 +1,4 @@
-import { createGameState, type GameState } from '../game/state';
+import { createGameState, type GameState, type WavePhase } from '../game/state';
 import { boardBox, closeGate } from '../game/doors';
 import { spawnZombie } from '../game/zombies';
 import { enterLevel } from '../game/state';
@@ -10,6 +10,9 @@ import type { Menu } from '../render/menu';
 import type { View } from '../render/view';
 import { settings } from './settings';
 import { config } from '../config';
+import type { InputMessage } from '../game/inputs';
+import { step } from '../game/update';
+import { startOnFloor } from '../game/waves';
 
 interface ReviewContext {
   level: Level; menu: Menu; hud: Hud; view: View;
@@ -64,6 +67,8 @@ export function installReview(context: ReviewContext): void {
       x: number; y?: number; z: number; yaw: number; pitch?: number; aim?: boolean;
       gate?: boolean; boarded?: number[]; phase?: 'entry' | 'prep' | 'active'; wave?: number; timer?: number;
       zombies?: [number, number, number?][]; health?: number; ammo?: number; fire?: boolean; lunge?: boolean; floor?: number; shotgun?: boolean; points?: number; banner?: boolean; reload?: number; menu?: 'character' | 'settings' | 'controls' | 'main';
+      // Objective dressing: breakers thrown, charge filled (seconds), a case in hand, cases delivered, the light.
+      thrown?: number; charge?: number; carrying?: number; delivered?: number; flashlight?: boolean; stage?: WavePhase;
     }) {
       const state = createGameState(context.level); state.tick = 2400;
       if (options.floor) { state.floor = options.floor; enterLevel(state, levelForFloor(options.floor)); }
@@ -98,9 +103,33 @@ export function installReview(context: ReviewContext): void {
         const target = state.zombies[0];
         if (target) player.lastShotEnd = { x: target.x, y: 1.4, z: target.z };
       }
+      for (let i = 0; i < (options.thrown ?? 0); i++) state.objective.thrown[i] = 100;
+      if (options.stage) state.waves.phase = options.stage;
+      if (options.charge !== undefined) { state.objective.charge = options.charge; state.objective.startedTick = 100; }
+      if (options.carrying !== undefined) player.carrying = options.carrying;
+      for (let i = 0; i < (options.delivered ?? 0); i++) Object.assign(state.objective.items[i], { delivered: true, deliveredTick: 100 + i });
+      if (options.flashlight !== undefined) player.flashlight = options.flashlight;
       context.menu.close();
       if (options.menu) context.menu.open(options.menu);
       context.replace(state);
+    },
+    // Rules testing: a fresh game straight onto a floor, the live state to read and poke, and
+    // ticks run with one held input.
+    start(floor: number) {
+      const state = createGameState(context.level);
+      if (floor > 0) startOnFloor(state, floor);
+      context.menu.close();
+      context.replace(state);
+    },
+    raw: () => context.state(),
+    run(ticks: number, input: Partial<InputMessage> = {}) {
+      const state = context.state();
+      for (let i = 0; i < ticks; i++) {
+        step(state, [{ playerId: 0, moveForward: 0, moveRight: 0, lookYaw: 0, lookPitch: 0, fire: false, reload: false, aim: false, lean: 0, crouch: false, jump: false, toggleCover: false, use: false, swap: false, toggleFreeze: false, ...input }], 1 / config.ticksPerSecond);
+        // A press is one tick long.
+        input = { ...input, use: false, swap: false, toggleLight: false };
+      }
+      return { phase: state.waves.phase, wave: state.waves.number, floor: state.floor, done: state.objective.done, charge: state.objective.charge, zombies: state.zombies.filter((zombie) => !zombie.dead).length };
     },
     inspect() {
       return { scenario, calls: context.view.renderer.info.render.calls, triangles: context.view.renderer.info.render.triangles,

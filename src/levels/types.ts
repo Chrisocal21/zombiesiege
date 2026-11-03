@@ -50,7 +50,11 @@ export type Prop =
   | 'lockers'
   | 'bench'
   | 'curtain'
-  | 'monitor';
+  | 'monitor'
+  | 'hvac'
+  | 'vent'
+  | 'tank'
+  | 'mast';
 
 export interface LevelBox {
   // Center of the box, not a corner.
@@ -126,12 +130,35 @@ export interface Lock extends Door {
   label: string;
 }
 
-// Something to find on the floor before the elevator will work.
-export interface Objective {
-  kind: 'keycard';
-  label: string;
+// A part of the floor's objective fixed to a wall, used from the side the normal points to.
+export interface WallFitting {
   position: Vec3;
+  normal: { x: number; z: number };
 }
+
+// An area on the floor plan.
+export interface Area {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
+// What has to be done on a floor before the elevator will work. Each one wins a part the roof's
+// helipad lights need, named by `part`.
+// 'keycard': pick one thing up.
+// 'breakers': the power is out; throw every breaker. Each brings back the lights on its circuit.
+// 'charge': once the waves are cleared, start a charger and stay in the room until it is full,
+//   while zombies keep coming.
+// 'carry': bring each case to the drop-off. A case takes both hands, so no shooting while carrying.
+// 'signal': the roof. Once the waves are cleared, switch on the helipad lights, hold out until the
+//   helicopter lands, then everyone gets aboard.
+export type Objective =
+  | { kind: 'keycard'; label: string; part: string; position: Vec3 }
+  | { kind: 'breakers'; label: string; part: string; panels: WallFitting[] }
+  | { kind: 'charge'; label: string; part: string; device: WallFitting; room: Area; roomName: string; seconds: number }
+  | { kind: 'carry'; label: string; part: string; items: Vec3[]; dropoff: Vec3 }
+  | { kind: 'signal'; label: string; part: string; device: WallFitting; pad: Vec3; padRadius: number; seconds: number };
 
 // A buying point on a wall. Walk up, press use, and pay points.
 export interface Station {
@@ -150,6 +177,18 @@ export interface LevelLight {
   flicker?: boolean;
   // Set into a low ceiling, as in an office, rather than hung from a high one.
   ceiling?: boolean;
+  // On a floor whose power is out, the breaker this lamp waits for.
+  circuit?: number;
+  // A battery-backed emergency lamp: a small red fitting on the wall, lit only while the power is out.
+  emergency?: boolean;
+}
+
+// How the air looks on a floor: the fog colour and range, and how strong the ambient sky light is.
+export interface Atmosphere {
+  fog: string;
+  fogNear: number;
+  fogFar: number;
+  ambient: number;
 }
 
 // A sign hung on a wall: a heading, a line under it, and the colour of the board.
@@ -167,7 +206,9 @@ export interface LevelSign {
 export interface Level {
   name: string;
   // The garage has the street, ramp and gate. A ward is a closed floor of rooms inside the tower.
-  theme: 'garage' | 'ward';
+  // The roof is open to the sky, with the helipad.
+  theme: 'garage' | 'ward' | 'roof';
+  atmosphere?: Atmosphere;
   boxes: LevelBox[];
   ladders: Ladder[];
   lights: LevelLight[];

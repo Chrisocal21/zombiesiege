@@ -4,6 +4,7 @@ import { useAction } from './doors';
 import { raycastBoxes } from './hitscan';
 import type { InputMessage } from './inputs';
 import { moveBody } from './movement';
+import { dropCase } from './objectives';
 import { eyeY, type GameState, type Player, type Zombie } from './state';
 import { swapWeapon, weaponStats } from './weapons';
 import { updateWaves } from './waves';
@@ -19,10 +20,12 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     if (!player || player.health <= 0) continue;
 
     if (input.toggleFreeze) state.frozen = !state.frozen;
+    if (input.toggleLight) player.flashlight = !player.flashlight;
     if (input.use) useAction(state, player);
     look(player, input);
-    // You can't look down the sights mid-reload, or while hanging off a ladder or a ledge.
-    player.aiming = input.aim && player.reloadLeft === 0 && !player.ladder && !player.mantle;
+    // You can't look down the sights mid-reload, while hanging off a ladder or a ledge, or with
+    // both hands round a case.
+    player.aiming = input.aim && player.reloadLeft === 0 && !player.ladder && !player.mantle && player.carrying < 0;
     moveBody(player, input, dt, level);
     player.cameraStyle = input.cameraStyle === 'bodycam' ? 'bodycam' : 'standard';
     const targetDrop = player.cameraStyle === 'bodycam' && !player.aiming && !player.ladder && !player.mantle
@@ -33,6 +36,8 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     weapon(state, player, input, dt, level);
   }
 
+  // Whoever goes down lets go of what they were carrying.
+  for (const player of state.players) if (player.health <= 0) dropCase(state, player);
   if (!state.frozen) {
     updateZombies(state, dt, level);
     updateWaves(state, dt, level);
@@ -82,9 +87,18 @@ function weapon(
   dt: number,
   level: Level,
 ): void {
+  player.cooldown = Math.max(0, player.cooldown - dt);
+  // Carrying a case, the gun is down. Pulling the trigger sets the case down and brings it up.
+  if (player.carrying >= 0) {
+    if (input.fire) {
+      dropCase(state, player);
+      player.cooldown = 0.35;
+      player.lastSwapTick = state.tick;
+    }
+    return;
+  }
   if (input.swap && player.stowed && !player.ladder && !player.mantle) swapWeapon(player, state.tick);
   const pistol = weaponStats(player.weapon);
-  player.cooldown = Math.max(0, player.cooldown - dt);
 
   if (player.reloadLeft > 0) {
     player.reloadLeft -= dt;

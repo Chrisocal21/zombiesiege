@@ -1,5 +1,6 @@
 import { config } from '../config';
 import type { Door, LevelBox } from '../levels/types';
+import { objectiveTarget, useObjective, type ObjectiveTarget } from './objectives';
 import type { GameState, Player } from './state';
 import { giveShotgun, owns, reserveOf, setReserve, weaponStats } from './weapons';
 
@@ -9,7 +10,7 @@ export type Interaction =
   | { kind: 'gate' }
   | { kind: 'station'; index: number }
   | { kind: 'lock'; index: number }
-  | { kind: 'objective' }
+  | ObjectiveTarget
   | null;
 
 // The spot a player stands at to board a door up, a little way inside the room.
@@ -27,7 +28,10 @@ export function interactionTarget(state: GameState, player: Player): Interaction
     const near = Math.hypot(panel.x - player.x, panel.z - player.z) <= config.doors.gateRange;
     return near && player.y < 1 ? { kind: 'gate' } : null;
   }
-  if (state.waves.phase === 'prep' || state.waves.phase === 'break' || state.waves.phase === 'active' || state.waves.phase === 'search') {
+  const phase = state.waves.phase;
+  if (phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'search' || phase === 'hold' || phase === 'evac') {
+    // Hands full: only somewhere to put the case down.
+    if (player.carrying >= 0) return objectiveTarget(state, player);
     const locks = state.level.locks;
     for (let index = 0; index < locks.length; index++) {
       if (state.locks[index].open) continue;
@@ -35,11 +39,8 @@ export function interactionTarget(state: GameState, player: Player): Interaction
       const near = Math.hypot(lock.position.x - player.x, lock.position.z - player.z) <= config.stations.range;
       if (near && player.y < 1) return { kind: 'lock', index };
     }
-    const objective = state.level.objective;
-    if (objective && !state.objective.done) {
-      const near = Math.hypot(objective.position.x - player.x, objective.position.z - player.z) <= config.stations.range;
-      if (near && player.y < 1) return { kind: 'objective' };
-    }
+    const objective = objectiveTarget(state, player);
+    if (objective) return objective;
     const stations = state.level.stations;
     for (let index = 0; index < stations.length; index++) {
       const station = stations[index];
@@ -105,8 +106,8 @@ export function useAction(state: GameState, player: Player): void {
     return;
   }
 
-  if (target.kind === 'objective') {
-    state.objective = { done: true, doneTick: state.tick };
+  if (target.kind === 'objective' || target.kind === 'breaker' || target.kind === 'device' || target.kind === 'case' || target.kind === 'deliver') {
+    useObjective(state, player, target);
     return;
   }
 

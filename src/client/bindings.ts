@@ -16,6 +16,7 @@ export type Action =
   | 'leanRight'
   | 'cover'
   | 'use'
+  | 'light'
   | 'freeze'
   | 'map';
 
@@ -40,6 +41,7 @@ export const ACTIONS: ActionInfo[] = [
   { id: 'leanRight', label: 'Lean right', group: 'Combat' },
   { id: 'cover', label: 'Take cover', group: 'Interaction' },
   { id: 'use', label: 'Use and pick up', group: 'Interaction' },
+  { id: 'light', label: 'Flashlight', group: 'Interaction' },
   { id: 'map', label: 'Tactical map', group: 'Interaction' },
   { id: 'freeze', label: 'Freeze zombies (testing)', group: 'Interaction' },
 ];
@@ -59,6 +61,7 @@ const DEFAULTS: Record<Action, string> = {
   leanRight: 'KeyV',
   cover: 'KeyF',
   use: 'KeyE',
+  light: 'KeyT',
   freeze: 'KeyP',
   map: 'KeyM',
 };

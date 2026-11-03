@@ -72,7 +72,8 @@ export const floor9: Level = {
     // Corridor.
     furniture(0.8, -3, 0.9, 0.7, 2.1, '#8a9ba3', 'gurney', 'south'),
     furniture(-1.2, 5.5, 0.9, 0.7, 2.1, '#8a9ba3', 'gurney', 'north'),
-    // Recovery bay.
+    // Recovery bay, with the charger against its west wall.
+    { position: { x: 3.45, y: 0.8, z: 10.4 }, size: { x: 0.6, y: 1.6, z: 1.3 }, color: '#3a4a44', surface: 'step' },
     furniture(4.9, 4.6, 2.1, 0.6, 1, BED, 'bed', 'east'),
     furniture(10.6, 4.6, 2.1, 0.6, 1, BED, 'bed', 'west'),
     furniture(10.6, 10.4, 2.1, 0.6, 1, BED, 'bed', 'west'),
@@ -90,9 +91,19 @@ export const floor9: Level = {
     { text: 'SCRUB', sub: 'WASH BEFORE ENTRY', background: '#1d3f73', position: { x: -2.84, y: 2.9, z: 10.6 }, rotation: Math.PI / 2, width: 1.8, height: 0.6 },
     { text: 'RECOVERY', sub: 'QUIET PLEASE', background: '#1d3f73', position: { x: 2.84, y: 2.9, z: 10.6 }, rotation: -Math.PI / 2, width: 1.8, height: 0.6 },
     { text: 'SURGERY', sub: 'FLOOR 9', background: '#1b5b4d', position: { x: 0, y: 3.0, z: -11.96 }, rotation: 0, width: 2.6, height: 0.8 },
-    { text: 'ELEVATOR', sub: 'OUT OF SERVICE  /  KEYCARD OVERRIDE', background: '#5b1b1b', position: { x: -4.6, y: 3.0, z: 11.96 }, rotation: Math.PI, width: 2.4, height: 0.5 },
+    { text: 'ELEVATOR', sub: 'ON BATTERY  /  CHARGE IN RECOVERY', background: '#5b1b1b', position: { x: -4.6, y: 3.0, z: 11.96 }, rotation: Math.PI, width: 2.4, height: 0.5 },
   ],
-  objective: { kind: 'keycard', label: 'Theatre keycard', position: { x: 9.5, y: 0.95, z: -10.5 } },
+  // Once the waves are done, start the charger in recovery and keep someone in the room until the
+  // battery is full. The recovery bay has two outside doors of its own, so it is a hard room to hold.
+  objective: {
+    kind: 'charge',
+    label: 'Helipad battery',
+    part: 'Helipad battery',
+    device: { position: { x: 3.15, y: 0, z: 10.4 }, normal: { x: 1, z: 0 } },
+    room: { minX: 3.15, maxX: 12, minZ: 3.15, maxZ: 12 },
+    roomName: 'Recovery',
+    seconds: 60,
+  },
   navBounds: { minX: -17, maxX: 17, minZ: -17, maxZ: 17 },
   ramp: null,
   barricadeBars: [

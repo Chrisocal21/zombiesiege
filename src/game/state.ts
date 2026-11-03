@@ -82,6 +82,10 @@ export interface Player {
   lastShotHead: boolean;
   // Bundles of boards being carried.
   bars: number;
+  // The objective's case held in both hands, by index, or -1. The gun is down while carrying.
+  carrying: number;
+  // The light on the shoulder, for floors with the power out.
+  flashlight: boolean;
 }
 
 export interface Zombie {
@@ -108,8 +112,11 @@ export interface Zombie {
 // 'won' is the end of the run, after the top floor. 'lift' is the elevator standing open once the floor is cleared, and 'ride' is the trip up.
 // 'entry' is the run from the street into the garage, ending when the gate is closed. 'prep' is
 // the countdown to board up doors, 'break' the rest between waves.
-// 'search' is a cleared floor whose objective is still to be found: nothing attacks until it is.
-export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'lift' | 'ride' | 'won';
+// 'search' is a cleared floor whose objective is still to be done: nothing attacks until it is,
+// unless the objective itself brings them.
+// 'hold' is a charger filling, or the helicopter on its way, with zombies coming all the while.
+// 'evac' is the helicopter down on the roof, waiting for everyone to get aboard.
+export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'hold' | 'evac' | 'lift' | 'ride' | 'won';
 
 export interface Waves {
   // The wave being fought, or the one coming up during a break. Starts at 1.
@@ -155,9 +162,35 @@ export interface LockState {
 }
 
 export interface ObjectiveState {
-  // True once the floor's objective has been found, or at once if it has none.
+  // True once the floor's objective has been done, or at once if it has none.
   done: boolean;
   doneTick: number;
+  // Breakers: the tick each one was thrown, or -1 while it is still off.
+  thrown: number[];
+  // Charge and signal: seconds filled so far, and the tick it was started, or -1.
+  charge: number;
+  startedTick: number;
+  // Carry: where each case lies when nobody holds it, and whether it has been brought in.
+  items: { x: number; y: number; z: number; delivered: boolean; deliveredTick: number }[];
+}
+
+// The objective as it stands when a floor begins.
+export function freshObjective(level: Level): ObjectiveState {
+  const objective = level.objective;
+  return {
+    done: objective === null,
+    doneTick: -1,
+    thrown: objective?.kind === 'breakers' ? objective.panels.map(() => -1) : [],
+    charge: 0,
+    startedTick: -1,
+    items: objective?.kind === 'carry' ? objective.items.map((item) => ({ ...item, delivered: false, deliveredTick: -1 })) : [],
+  };
+}
+
+// A floor with breakers to throw is dark until they all are, circuit by circuit.
+export function circuitLive(state: GameState, circuit: number | undefined): boolean {
+  if (circuit === undefined || state.level.objective?.kind !== 'breakers') return true;
+  return (state.objective.thrown[circuit] ?? 0) >= 0;
 }
 
 export interface BarPickup {
@@ -220,9 +253,14 @@ export function enterLevel(state: GameState, level: Level): void {
   state.lift = { open: false, changedTick: -1 };
   state.doors = level.doors.map(() => ({ boarded: false, boardedTick: -1 }));
   state.locks = level.locks.map(() => ({ open: false, openedTick: -1 }));
-  state.objective = { done: level.objective === null, doneTick: -1 };
+  state.objective = freshObjective(level);
   state.pickups = level.barricadeBars.map((bar) => ({ x: bar.x, z: bar.z, taken: false }));
-  for (const player of state.players) player.bars = 0;
+  for (const player of state.players) {
+    player.bars = 0;
+    player.carrying = -1;
+    // Out of the elevator into the dark, the light comes on by itself.
+    player.flashlight = level.objective?.kind === 'breakers';
+  }
 }
 
 export function createPlayer(id: number, spawn: Vec3): Player {
@@ -268,6 +306,8 @@ export function createPlayer(id: number, spawn: Vec3): Player {
     lastDryTick: -1,
     lastBuyTick: -1,
     bars: 0,
+    carrying: -1,
+    flashlight: false,
   };
 }
 
@@ -285,7 +325,7 @@ export function createGameState(level: Level): GameState {
     points: players.map(() => 0),
     doors: [],
     locks: [],
-    objective: { done: true, doneTick: -1 },
+    objective: { done: true, doneTick: -1, thrown: [], charge: 0, startedTick: -1, items: [] },
     pickups: [],
     players,
     zombies: [],

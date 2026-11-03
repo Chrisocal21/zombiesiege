@@ -34,19 +34,25 @@ const stations: Station[] = [
   { kind: 'shotgun', position: { x: -5.5, y: 1.25, z: -8.95 }, normal: { x: 0, z: 1 } },
 ];
 
+// The power is out. Each breaker brings back one circuit: 0 is the lobby and lab 2, 1 the west
+// corridor, pharmacy and lab 1, 2 the east corridor, cold store and dispensary. Until then only the
+// red emergency lamps and the players' flashlights see anything.
 const lights: LevelLight[] = [
-  { position: { x: -13, y: 3.15, z: 4 }, color: '#dff0ff', intensity: 22, ceiling: true },
-  { position: { x: -13, y: 3.15, z: -5 }, color: '#dff0ff', intensity: 22, flicker: true, ceiling: true },
-  { position: { x: -5, y: 3.15, z: 0 }, color: '#e8f4ff', intensity: 26, ceiling: true },
-  { position: { x: 2, y: 3.15, z: 0 }, color: '#e8f4ff', intensity: 28, flicker: true, ceiling: true },
-  { position: { x: 9, y: 3.15, z: 0 }, color: '#e8f4ff', intensity: 26, ceiling: true },
-  { position: { x: 14, y: 3.15, z: 0 }, color: '#e8f4ff', intensity: 24, ceiling: true },
-  { position: { x: -5.5, y: 3.15, z: -6 }, color: '#c8ffe0', intensity: 24, ceiling: true },
-  { position: { x: 2, y: 3.15, z: -6 }, color: '#e0f0ff', intensity: 24, ceiling: true },
-  { position: { x: 11.5, y: 3.15, z: -6 }, color: '#a8d4ff', intensity: 22, flicker: true, ceiling: true },
-  { position: { x: -4, y: 3.15, z: 6 }, color: '#e0f0ff', intensity: 24, ceiling: true },
-  { position: { x: 6, y: 3.15, z: 6 }, color: '#e0f0ff', intensity: 24, ceiling: true },
-  { position: { x: 12, y: 3.15, z: 6 }, color: '#e0f0ff', intensity: 22, ceiling: true },
+  { position: { x: -13, y: 3.15, z: 4 }, color: '#dff0ff', intensity: 22, ceiling: true, circuit: 0 },
+  { position: { x: -13, y: 3.15, z: -5 }, color: '#dff0ff', intensity: 22, flicker: true, ceiling: true, circuit: 0 },
+  { position: { x: -5, y: 3.15, z: 0 }, color: '#e8f4ff', intensity: 26, ceiling: true, circuit: 1 },
+  { position: { x: 2, y: 3.15, z: 0 }, color: '#e8f4ff', intensity: 28, flicker: true, ceiling: true, circuit: 1 },
+  { position: { x: 9, y: 3.15, z: 0 }, color: '#e8f4ff', intensity: 26, ceiling: true, circuit: 2 },
+  { position: { x: 14, y: 3.15, z: 0 }, color: '#e8f4ff', intensity: 24, ceiling: true, circuit: 2 },
+  { position: { x: -5.5, y: 3.15, z: -6 }, color: '#c8ffe0', intensity: 24, ceiling: true, circuit: 1 },
+  { position: { x: 2, y: 3.15, z: -6 }, color: '#e0f0ff', intensity: 24, ceiling: true, circuit: 1 },
+  { position: { x: 11.5, y: 3.15, z: -6 }, color: '#a8d4ff', intensity: 22, flicker: true, ceiling: true, circuit: 2 },
+  { position: { x: -4, y: 3.15, z: 6 }, color: '#e0f0ff', intensity: 24, ceiling: true, circuit: 0 },
+  { position: { x: 6, y: 3.15, z: 6 }, color: '#e0f0ff', intensity: 24, ceiling: true, circuit: 2 },
+  { position: { x: 12, y: 3.15, z: 6 }, color: '#e0f0ff', intensity: 22, ceiling: true, circuit: 2 },
+  ...([
+    [-15.8, 3], [-6, 2.28], [6, -2.28], [4.5, -8.9], [-9.78, 6], [15.8, 8], [7.22, -5], [-1.22, -5],
+  ] as const).map(([x, z]): LevelLight => ({ position: { x, y: 2.75, z }, color: '#ff2a1a', intensity: 3.5, emergency: true })),
 ];
 
 export const floor6: Level = {
@@ -83,7 +89,7 @@ export const floor6: Level = {
     // Cold storage and the keycard on its table.
     furniture(15.4, -5.5, 1.2, 2, 4, FRIDGE, 'fridge', 'west'),
     furniture(9, -7.5, 1.4, 1.2, 1.4, '#7b8a96', 'analyser', 'south'),
-    furniture(13, -6.5, 2, 0.8, 1, DESK, 'desk', 'south'),
+    furniture(13.5, -5.5, 2, 0.8, 1, DESK, 'desk', 'south'),
     // Corridor.
     furniture(5, 1.3, 1.8, 0.7, 0.8, '#8a9ba3', 'cart', 'north'),
     // Lab 2 and the dispensary.
@@ -105,9 +111,21 @@ export const floor6: Level = {
     { text: 'LAB 2', sub: 'PATHOLOGY', background: '#6b4a12', position: { x: -2.5, y: 2.9, z: 2.34 }, rotation: Math.PI, width: 1.6, height: 0.5 },
     { text: 'DISPENSARY', sub: 'COLLECT HERE', background: '#1b5b4d', position: { x: 13, y: 2.9, z: 2.34 }, rotation: Math.PI, width: 2.0, height: 0.6 },
     { text: 'FLOOR 6', sub: 'PHARMACY AND LABORATORIES', background: '#1d3f73', position: { x: -10.16, y: 2.8, z: -5 }, rotation: -Math.PI / 2, width: 3.0, height: 0.9 },
-    { text: 'ELEVATOR', sub: 'OUT OF SERVICE  /  KEYCARD OVERRIDE', background: '#5b1b1b', position: { x: -15.96, y: 3.0, z: -3.5 }, rotation: Math.PI / 2, width: 2.4, height: 0.5 },
+    { text: 'ELEVATOR', sub: 'NO POWER  /  RESET THE BREAKERS', background: '#5b1b1b', position: { x: -15.96, y: 3.0, z: -3.5 }, rotation: Math.PI / 2, width: 2.4, height: 0.5 },
   ],
-  objective: { kind: 'keycard', label: 'Lab keycard', position: { x: 13, y: 0.95, z: -6.5 } },
+  // One breaker in each wing: lab 2 in the south-west, lab 1 in the middle, and the cold store
+  // behind its paid door.
+  objective: {
+    kind: 'breakers',
+    label: 'Breakers',
+    part: 'Power to the roof',
+    panels: [
+      { position: { x: 0.5, y: 1.45, z: 8.95 }, normal: { x: 0, z: -1 } },
+      { position: { x: -0.8, y: 1.45, z: -7 }, normal: { x: 1, z: 0 } },
+      { position: { x: 11.5, y: 1.45, z: -8.95 }, normal: { x: 0, z: 1 } },
+    ],
+  },
+  atmosphere: { fog: '#05070a', fogNear: 6, fogFar: 40, ambient: 1 },
   navBounds: { minX: -21, maxX: 21, minZ: -14, maxZ: 14 },
   ramp: null,
   barricadeBars: [

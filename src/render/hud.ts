@@ -7,8 +7,9 @@ import { weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
 import { floorTitle, stopAt, stops, wavesOnFloor } from '../game/tower';
-import { isTopFloor, zombiesInWave } from '../game/waves';
-
+import { zombiesInWave } from '../game/waves';
+import { objectiveMarkers } from '../game/objectives';
+import { clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
 import { aliveZombies } from '../game/zombies';
 import type { Menu } from './menu';
 import { COLOR, clamp, keycap, measure, roundedRect, text } from './ui';
@@ -144,9 +145,8 @@ export function createHud(menu: Menu): Hud {
     } else if (phase === 'lift') {
       const lift = level.elevator;
       points.push({ x: lift.position.x, z: lift.position.z, color: COLOR.good, label: 'ELEVATOR' });
-    } else if (phase === 'search') {
-      const item = level.objective;
-      if (item) points.push({ x: item.position.x, z: item.position.z, color: COLOR.good, label: 'KEYCARD' });
+    } else if (phase === 'search' || phase === 'hold' || phase === 'evac' || phase === 'break' || phase === 'active') {
+      for (const marker of objectiveMarkers(state, player)) points.push({ x: marker.at.x, z: marker.at.z, color: COLOR.good, label: marker.label });
     } else if (phase === 'prep') {
       if (player.bars < config.doors.carryLimit) {
         state.pickups.forEach((pickup) => {
@@ -389,19 +389,26 @@ export function createHud(menu: Menu): Hud {
         timer = waves.timer;
         total = Math.max(config.waves.breakSeconds, waves.timer);
         break;
-      case 'active':
+      case 'active': {
         title = `Survive wave ${waves.number}`;
-        detail = `${waves.toSpawn + aliveZombies(state)} zombies left`;
+        const progress = objectiveProgress(state);
+        detail = `${waves.toSpawn + aliveZombies(state)} zombies left${progress ? `   ·   ${progress}` : ''}`;
         break;
+      }
       case 'cleared':
         title = `${floorName(state.floor)} cleared`;
         detail = `All ${wavesOnFloor(state.floor)} waves survived`;
         break;
-      case 'search': {
-        const item = state.level.objective;
-        title = `Find the ${item ? item.label.toLowerCase() : 'way on'}`;
-        const shut = state.locks.filter((lock) => !lock.open).length;
-        detail = shut > 0 ? 'Locked doors open for points' : 'Check the offices';
+      case 'search':
+      case 'hold':
+      case 'evac': {
+        const brief = objectiveBrief(state, player);
+        title = brief?.title ?? 'Find the way on';
+        detail = brief?.detail ?? '';
+        if (brief?.timer !== undefined) {
+          timer = brief.timer;
+          total = brief.total ?? 1;
+        }
         break;
       }
       case 'won':
@@ -814,7 +821,7 @@ export function createHud(menu: Menu): Hud {
 
     // Reminders of the less obvious keys, faint along the bottom.
     const hintY = height - margin + 26 * unit;
-    const hints = [[bindings.map, 'MAP'], [bindings.reload, 'RELOAD'], [bindings.cover, 'COVER']];
+    const hints = [[bindings.map, 'MAP'], [bindings.reload, 'RELOAD'], [bindings.cover, 'COVER'], [bindings.light, 'LIGHT']];
     const hintSize = 20 * unit;
     const widths = hints.map(([key, label]) => Math.max(hintSize, measure(context, keyLabel(key), hintSize * 0.62, 700, 0.5) + hintSize * 0.7) + 6 * unit + measure(context, label, 11 * unit, 700, 2 * unit));
     const spacing = 26 * unit;
@@ -848,7 +855,8 @@ export function createHud(menu: Menu): Hud {
       prompt = offer.status === 'ok'
         ? { keys: [bindings.use], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost }
         : { keys: [], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost, short: true };
-    } else if (interaction?.kind === 'objective') prompt = { keys: [bindings.use], label: `Take the ${state.level.objective?.label.toLowerCase() ?? 'item'}` };
+    } else if (interaction && objectivePrompt(state, interaction.kind)) prompt = { keys: [bindings.use], label: objectivePrompt(state, interaction.kind)! };
+    else if (player.carrying >= 0) prompt = { keys: [bindings.fire], label: 'Put the case down' };
     else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
     else if (interaction?.kind === 'pickup') prompt = { keys: [bindings.use], label: 'Pick up the boards' };
     else if (interaction?.kind === 'door') prompt = { keys: [bindings.use], label: 'Board up this door' };
@@ -909,10 +917,22 @@ export function createHud(menu: Menu): Hud {
     let color: string = COLOR.text;
     let age = 0;
 
-    if (waves.phase === 'cleared' || waves.phase === 'search') {
+    const part = partBanner(state);
+    if (state.objective.doneTick >= 0 && seconds(state.objective.doneTick) < BANNER_SECONDS && part) {
+      ({ eyebrow, title, detail } = part);
+      color = COLOR.good;
+      age = seconds(state.objective.doneTick);
+    } else if (waves.phase === 'hold' && seconds(state.objective.startedTick) < BANNER_SECONDS) {
+      const roof = state.level.objective?.kind === 'signal';
+      eyebrow = roof ? 'THE ROOF' : 'HOLD THE ROOM';
+      title = roof ? 'LIGHTS ON' : 'CHARGING';
+      detail = roof ? 'The helicopter is coming. Hold out until it lands' : 'Keep someone in the room until it is full';
+      color = COLOR.accent;
+      age = seconds(state.objective.startedTick);
+    } else if (waves.phase === 'cleared' || waves.phase === 'search') {
       eyebrow = floorName(state.floor).toUpperCase();
       title = 'CLEARED';
-      detail = isTopFloor(state) ? 'Extraction is on the way' : state.objective.done ? 'The elevator is opening' : 'Find the keycard to wake the elevator';
+      detail = clearedDetail(state);
       color = COLOR.accent;
       age = 0.5;
     } else if (waves.phase === 'lift') {
@@ -930,7 +950,7 @@ export function createHud(menu: Menu): Hud {
     } else if (waves.arrivedTick >= 0 && seconds(waves.arrivedTick) < BANNER_SECONDS) {
       eyebrow = floorName(state.floor).toUpperCase();
       title = stopAt(state.floor).name.toUpperCase();
-      detail = 'Board up the doors before they come';
+      detail = state.level.objective?.kind === 'breakers' ? 'The power is out. Board up the doors before they come' : 'Board up the doors before they come';
       color = COLOR.accent;
       age = seconds(waves.arrivedTick);
     } else if (waves.diedTick >= 0 && seconds(waves.diedTick) < BANNER_SECONDS) {

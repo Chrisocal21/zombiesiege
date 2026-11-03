@@ -22,6 +22,8 @@ export interface View {
   renderOutfitPreview(): void;
   // Call once per frame with the running time in seconds and the game state.
   animate(time: number, state: GameState): void;
+  // The light on the player's shoulder.
+  setFlashlight(on: boolean): void;
 }
 
 // The finished frame is drawn through this as a final step, bending it like a slight fisheye lens.
@@ -105,7 +107,8 @@ export function createView(level: Level): View {
   // Moonlight is the only thing that casts shadows over the whole street, and the slab over the
   // garage stops it reaching inside. The lamps add pools of colour, and the hemisphere keeps the
   // shadows from going pitch black.
-  scene.add(new THREE.HemisphereLight(0x6f86b8, 0x242a33, 0.65));
+  const sky = new THREE.HemisphereLight(0x6f86b8, 0x242a33, 0.65);
+  scene.add(sky);
   const moon = new THREE.DirectionalLight(0xaec4ff, 1.8);
   const moonTarget = new THREE.Vector3(0, 0, 20);
   moon.target.position.copy(moonTarget);
@@ -142,6 +145,23 @@ export function createView(level: Level): View {
   const camera = new THREE.PerspectiveCamera(config.view.fieldOfView, aspect, 0.1, 130);
   const spawn = level.streetSpawns[0];
   camera.position.set(spawn.x, spawn.y + config.player.eyeHeight, spawn.z);
+  scene.add(camera);
+
+  // The flashlight rides on the right shoulder, a little below the eyes, and casts shadows. It
+  // stays in the scene with its brightness at nothing when off, so switching it does not make the
+  // renderer rebuild every material, and its shadow is only drawn while it is on.
+  const flashlight = new THREE.SpotLight(0xfff1dc, 0, 30, 0.42, 0.55, 1.5);
+  flashlight.position.set(0.18, -0.22, 0.05);
+  flashlight.target.position.set(0.05, -0.35, -6);
+  flashlight.castShadow = true;
+  flashlight.shadow.mapSize.set(1024, 1024);
+  flashlight.shadow.camera.near = 0.3;
+  flashlight.shadow.bias = -0.0006;
+  flashlight.shadow.autoUpdate = false;
+  camera.add(flashlight, flashlight.target);
+  const night = new THREE.Color(NIGHT);
+  const floorAir = new THREE.Color();
+  const fog = scene.fog as THREE.Fog;
 
   // The view camera never moves. The weapon is placed relative to it, which is the same as
   // being attached to the player's camera, but it has its own close near plane.
@@ -224,7 +244,26 @@ export function createView(level: Level): View {
         next.root.visible = true;
         current = next;
       }
-      current.world.update(time, state); lensMaterial.uniforms.time.value = time; },
+      current.world.update(time, state);
+      lensMaterial.uniforms.time.value = time;
+      // Each floor's air. A floor with its power out is murky and dark, clearing a circuit at a time.
+      const air = state.level.atmosphere;
+      let power = 1;
+      if (state.level.objective?.kind === 'breakers') {
+        const thrown = state.objective.thrown;
+        power = thrown.length ? thrown.filter((tick) => tick >= 0).length / thrown.length : 1;
+      }
+      const dark = air && state.level.objective?.kind === 'breakers' ? 1 - power : air ? 1 : 0;
+      fog.color.copy(night).lerp(floorAir.set(air?.fog ?? NIGHT), dark);
+      fog.near = 18 + ((air?.fogNear ?? 18) - 18) * dark;
+      fog.far = 85 + ((air?.fogFar ?? 85) - 85) * dark;
+      (scene.background as THREE.Color).copy(fog.color);
+      sky.intensity = 0.65 * (air?.ambient ?? 1) * (0.08 + 0.92 * power);
+    },
+    setFlashlight(on) {
+      flashlight.intensity = on ? 38 : 0;
+      flashlight.shadow.autoUpdate = on;
+    },
     setAim(amount) {
       // The aimed view keeps the same proportion to the chosen field of view.
       const fieldOfView = settings.fieldOfView;

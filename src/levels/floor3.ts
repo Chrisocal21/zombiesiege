@@ -132,7 +132,8 @@ export const floor3: Level = {
     { text: 'MEDICAL RECORDS', sub: 'STAFF ONLY', background: '#1d3f73', position: { x: -3.84, y: 2.9, z: -3.3 }, rotation: Math.PI / 2, width: 2.0, height: 0.6 },
     { text: 'ADMINISTRATOR', sub: 'PRIVATE', background: '#1d3f73', position: { x: 7.84, y: 2.9, z: -11.2 }, rotation: -Math.PI / 2, width: 2.0, height: 0.6 },
   ],
-  objective: { kind: 'keycard', label: 'Manager keycard', position: { x: 12, y: 0.95, z: -9.5 } },
+  // The manager's keycard overrides the elevator, and opens the helipad's control box on the roof.
+  objective: { kind: 'keycard', label: 'Manager keycard', part: 'Helipad control key', position: { x: 12, y: 0.95, z: -9.5 } },
   navBounds: { minX: -19, maxX: 19, minZ: -17, maxZ: 17 },
   ramp: null,
   // Two bundles of boards: one in the lobby, one out in the office.

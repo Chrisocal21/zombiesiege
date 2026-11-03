@@ -200,6 +200,7 @@ view.renderer.setAnimationLoop((now) => {
   const outfitPreview = menu.screen() === 'character';
   if (!onTitle || outfitPreview) viewmodel.update(player, pose, paused ? 0 : frameSeconds, outfitPreview);
   view.setAim(onTitle ? 0 : viewmodel.aimAmount());
+  view.setFlashlight(!onTitle && player.flashlight && player.health > 0);
   view.animate(now / 1000, state);
   input.setLookScale(view.camera.fov / settings.fieldOfView);
   effects.update(player, paused ? 0 : frameSeconds, state.level);

@@ -24,4 +24,6 @@ export interface InputMessage {
   swap: boolean;
   // True when the freeze key was pressed since the last message. A testing aid.
   toggleFreeze: boolean;
+  // True when the flashlight key was pressed since the last message.
+  toggleLight?: boolean;
 }

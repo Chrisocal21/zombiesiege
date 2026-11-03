@@ -68,6 +68,7 @@ function walk(player: Player, input: InputMessage, dt: number, level: Level): vo
     if (player.aiming) speed *= aimMoveMultiplier;
     speed *= 1 - player.crouch * (1 - crouchMoveMultiplier);
     if (player.cover) speed *= coverMoveMultiplier;
+    if (player.carrying >= 0) speed *= config.objectives.carryMoveMultiplier;
     targetX = (-sin * forward + cos * right) * speed;
     targetZ = (-cos * forward + -sin * right) * speed;
   }

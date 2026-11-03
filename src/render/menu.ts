@@ -838,8 +838,7 @@ function drawOperationCard(context: CanvasRenderingContext2D, right: number, top
     const roof = floor >= stops.length;
     const y = routeTop + i * rowH;
     const middle = y + rowH / 2;
-    // The roof has no floor of its own yet, so it cannot be picked.
-    const hover = !roof && appear > 0.9 && pointer !== null && pointer.inside(x + pad - 8 * unit, y + 2 * unit, w - pad * 2 + 16 * unit, rowH - 4 * unit);
+    const hover = appear > 0.9 && pointer !== null && pointer.inside(x + pad - 8 * unit, y + 2 * unit, w - pad * 2 + 16 * unit, rowH - 4 * unit);
     if (hover) {
       hovering = true;
       if (pointer!.clicked) picked = floor;
@@ -863,7 +862,7 @@ function drawOperationCard(context: CanvasRenderingContext2D, right: number, top
     context.fill();
     text(context, label, boxX + 26 * unit, middle + 6 * unit, { size: 15 * unit, weight: 800, spacing: 1 * unit, align: 'center', color: roof ? COLOR.accent : COLOR.text, shadow: false });
     text(context, roof ? 'Helipad' : stops[floor].name, boxX + 68 * unit, middle + 7 * unit, { size: 19 * unit, weight: 600, color: roof ? COLOR.accent : COLOR.text, shadow: false });
-    const tag = roof ? 'EXTRACT' : hover ? 'START HERE  ▶' : `${stops[floor].waves} WAVES`;
+    const tag = hover ? 'START HERE  ▶' : roof ? 'EXTRACT' : `${stops[floor].waves} WAVES`;
     text(context, tag, x + w - pad, middle + 5 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: roof || hover ? COLOR.accent : COLOR.faint, align: 'right', shadow: false });
   }
 
@@ -871,7 +870,7 @@ function drawOperationCard(context: CanvasRenderingContext2D, right: number, top
   const footY = routeTop + rows * rowH + 18 * unit;
   context.fillStyle = 'rgba(255,255,255,0.1)';
   context.fillRect(x + pad, footY, w - pad * 2, 1);
-  const totalWaves = stops.reduce((sum, stop) => sum + stop.waves, 0);
+  const totalWaves = stops.reduce((sum, stop) => sum + stop.waves, 0) + config.tower.roof.waves;
   const facts: [string, string][] = [[String(totalWaves), 'WAVES'], [String(stops.length), 'STOPS'], ['1', 'WAY OUT']];
   const column = (w - pad * 2) / facts.length;
   facts.forEach(([value, label], i) => {

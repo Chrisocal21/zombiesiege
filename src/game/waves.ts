@@ -3,13 +3,35 @@ import type { Level } from '../levels/types';
 import { closeLift, everyoneInCab, openLift } from './elevator';
 import { closeGate, doorwaySpawn, openDoors } from './doors';
 import { levelForFloor } from '../levels';
+import { charging, dropCase, everyoneAboard } from './objectives';
 import { createPlayer, enterLevel, type GameState, type Player } from './state';
-import { stops, storeysToNext, waveSize, wavesOnFloor } from './tower';
+import { ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower';
 import { guaranteeAmmo } from './weapons';
 import { aliveZombies, spawnZombie } from './zombies';
 
 export function isTopFloor(state: GameState): boolean {
-  return state.floor >= stops.length - 1;
+  return state.floor >= ROOF;
+}
+
+// One zombie in through the next open door, if any door is open.
+function spawnAtDoor(state: GameState, level: Level): void {
+  const waves = state.waves;
+  const open = openDoors(state);
+  if (open.length > 0) {
+    const door = level.doors[open[waves.spawnIndex % open.length]];
+    const spawn = doorwaySpawn(door, (waves.spawnIndex * 0.381966) % 1);
+    spawnZombie(state, spawn.x, spawn.z, spawn.entry);
+  }
+  waves.spawnIndex++;
+}
+
+// While holding out, they keep coming, a few at a time.
+function trickle(state: GameState, dt: number, level: Level): void {
+  const waves = state.waves;
+  waves.spawnTimer -= dt;
+  if (waves.spawnTimer > 0) return;
+  waves.spawnTimer = config.objectives.holdSpawnSeconds / (1 + config.objectives.holdSpawnPerFloor * state.floor);
+  if (aliveZombies(state) < config.objectives.holdMaxZombies) spawnAtDoor(state, level);
 }
 
 // Every floor up brings more zombies to each wave.
@@ -43,9 +65,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.phase === 'cleared') {
     waves.timer -= dt;
     if (waves.timer <= 0) {
-      if (isTopFloor(state)) {
-        waves.phase = 'won';
-      } else if (!state.objective.done) {
+      if (!state.objective.done) {
         waves.phase = 'search';
       } else {
         // The floor is clear: the elevator opens and waits for everyone to step in.
@@ -56,12 +76,45 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     return;
   }
 
-  // Cleared, but the floor's objective is still out there. Nothing attacks until it is found.
+  // Cleared, but the floor's objective is still to be done. Nothing attacks until it is, unless
+  // the objective is one that brings them (see 'hold').
   if (waves.phase === 'search') {
     if (state.objective.done) {
       openLift(state);
       waves.phase = 'lift';
     }
+    return;
+  }
+
+  // The charger filling, or the helicopter on its way. They keep coming all the while.
+  if (waves.phase === 'hold') {
+    const objective = level.objective;
+    if (objective?.kind !== 'charge' && objective?.kind !== 'signal') return;
+    if (charging(state)) state.objective.charge = Math.min(objective.seconds, state.objective.charge + dt);
+    if (state.objective.charge < objective.seconds) {
+      trickle(state, dt, level);
+      return;
+    }
+    state.objective.done = true;
+    state.objective.doneTick = state.tick;
+    if (objective.kind === 'signal') {
+      // The helicopter is down. Everyone onto the pad.
+      waves.phase = 'evac';
+    } else {
+      // Finish off whoever is left, and the floor is clear again.
+      waves.phase = 'active';
+      waves.number = wavesOnFloor(state.floor);
+      waves.toSpawn = 0;
+    }
+    return;
+  }
+
+  if (waves.phase === 'evac') {
+    if (everyoneAboard(state)) {
+      waves.phase = 'won';
+      return;
+    }
+    trickle(state, dt, level);
     return;
   }
 
@@ -84,13 +137,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     waves.spawnTimer -= dt;
     if (waves.spawnTimer <= 0) {
       // Zombies only come through the doors that are still open.
-      const open = openDoors(state);
-      if (open.length > 0) {
-        const door = level.doors[open[waves.spawnIndex % open.length]];
-        const spawn = doorwaySpawn(door, (waves.spawnIndex * 0.381966) % 1);
-        spawnZombie(state, spawn.x, spawn.z, spawn.entry);
-      }
-      waves.spawnIndex++;
+      spawnAtDoor(state, level);
       waves.toSpawn--;
       waves.spawnTimer = config.waves.secondsBetweenSpawns;
     }
@@ -122,6 +169,7 @@ function arriveOnNextFloor(state: GameState): void {
 function respawn(old: Player, level: Level, keepGuns: boolean): Player {
   const player = createPlayer(old.id, level.playerSpawns[old.id]);
   player.yaw = level.spawnYaw ?? 0;
+  player.flashlight = old.flashlight;
   if (!keepGuns) return player;
   player.weapon = old.weapon;
   player.stowed = old.stowed;
@@ -170,6 +218,8 @@ function startWave(state: GameState): void {
 
 // Everyone is down. That costs a life: with one left, the same wave begins again after a short
 // pause. With none left the floor starts over from wave 1 and the lives are refilled.
+// Going down while holding a room loses the charge and goes back to the charger; going down
+// waiting for the helicopter keeps it waiting.
 function restartWave(state: GameState, level: Level): void {
   const waves = state.waves;
   waves.diedTick = state.tick;
@@ -184,8 +234,16 @@ function restartWave(state: GameState, level: Level): void {
   }
   waves.lostRun = false;
   state.zombies = [];
+  for (const player of state.players) dropCase(state, player);
   // Going down costs a life but not the guns: weapons and spare rounds come back with the player.
   state.players = state.players.map((old) => respawn(old, level, true));
+  if (waves.phase === 'hold') {
+    state.objective.charge = 0;
+    state.objective.startedTick = -1;
+    waves.phase = 'search';
+    return;
+  }
+  if (waves.phase === 'evac') return;
   waves.phase = 'break';
   waves.timer = config.waves.startDelaySeconds;
   waves.toSpawn = 0;

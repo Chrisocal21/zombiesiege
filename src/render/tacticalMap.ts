@@ -1,5 +1,6 @@
 import { bindings, keyLabel } from '../client/bindings';
 import type { GameState, Player } from '../game/state';
+import { objectiveMarkers } from '../game/objectives';
 import { COLOR, panel, text } from './ui';
 
 // Uses the actual collision geometry, so the map stays correct when props are rearranged.
@@ -8,12 +9,12 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
   const w = 1000 * u, h = 710 * u, x = (width - w) / 2, y = (height - h) / 2;
   ctx.fillStyle = 'rgba(2,8,12,0.72)'; ctx.fillRect(0, 0, width, height);
   panel(ctx, x, y, w, h, COLOR.panelSolid, 12 * u);
-  text(ctx, `OPERATIONS / ${state.level.theme === 'ward' ? state.level.name.toUpperCase() : 'B1'}`, x + 32 * u, y + 46 * u, { size: 25 * u, weight: 800, spacing: 3 * u });
+  text(ctx, `OPERATIONS / ${state.level.theme !== 'garage' ? state.level.name.toUpperCase() : 'B1'}`, x + 32 * u, y + 46 * u, { size: 25 * u, weight: 800, spacing: 3 * u });
   text(ctx, 'TACTICAL MAP', x + 32 * u, y + 74 * u, { size: 13 * u, color: COLOR.accent, spacing: 4 * u });
   text(ctx, `${keyLabel(bindings.map)} / CLOSE`, x + w - 32 * u, y + 48 * u, { size: 14 * u, align: 'right', color: COLOR.dim });
   const mapX = x + 30 * u, mapY = y + 100 * u, mapW = 660 * u, mapH = 570 * u;
   const street = player.y > 3;
-  const ward = state.level.theme === 'ward';
+  const ward = state.level.theme !== 'garage';
   const bounds = street ? { x: -27, z: 10, w: 54, d: 39 } : ward && state.level.navBounds ? { x: state.level.navBounds.minX, z: state.level.navBounds.minZ, w: state.level.navBounds.maxX - state.level.navBounds.minX, d: state.level.navBounds.maxZ - state.level.navBounds.minZ } : { x: -14, z: -14, w: 28, d: 28 };
   const scale = Math.min(mapW / bounds.w, mapH / bounds.d);
   const ox = mapX + (mapW - bounds.w * scale) / 2, oy = mapY + (mapH - bounds.d * scale) / 2;
@@ -44,7 +45,7 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
   marker(state.level.elevator.position.x, state.level.elevator.position.z, state.waves.phase === 'lift' ? COLOR.good : COLOR.dim, 'ELEVATOR');
   for (const station of state.level.stations) marker(station.position.x, station.position.z, COLOR.accent, station.kind === 'shotgun' ? 'WEAPONS' : 'AMMO');
   state.level.locks.forEach((lock, i) => marker(lock.position.x, lock.position.z, state.locks[i].open ? COLOR.good : COLOR.danger, state.locks[i].open ? 'OPEN' : `${lock.cost} PTS`));
-  if (state.level.objective && !state.objective.done) marker(state.level.objective.position.x, state.level.objective.position.z, COLOR.good, 'KEYCARD');
+  for (const goal of objectiveMarkers(state, player)) marker(goal.at.x, goal.at.z, COLOR.good, goal.label);
   if (state.level.gate) marker(state.level.gate.panel.x, state.level.gate.panel.z, COLOR.good, 'GATE');
   const [px, py] = point(player.x, player.z);
   ctx.save(); ctx.translate(px, py); ctx.rotate(-player.yaw);
@@ -53,10 +54,18 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
   const sx = x + 725 * u;
   text(ctx, street ? 'STREET LEVEL' : ward ? state.level.name.toUpperCase() : 'THE GARAGE', sx, y + 146 * u, { size: 20 * u, color: COLOR.accent, weight: 800 });
   text(ctx, 'SURVIVE THE NIGHT', sx, y + 179 * u, { size: 12 * u, color: COLOR.dim, spacing: 2 * u });
-  const steps = ward
-    ? ['01 / Board up two doors', '02 / Survive the waves', '03 / Open doors with points', '04 / Find the keycard', '05 / Take the elevator up']
-    : ['01 / Enter the garage', '02 / Seal the shutter', '03 / Barricade two doors', '04 / Survive five waves', '05 / Take the elevator up'];
-  const done = ward ? (state.objective.done ? 4 : 0) : state.gate.closed ? 2 : 0;
+  const goal: Record<string, string> = {
+    keycard: '04 / Find the keycard',
+    breakers: '04 / Throw the three breakers',
+    charge: '04 / Charge the battery, hold the room',
+    carry: '04 / Carry three lamp cases',
+    signal: '04 / Switch on the helipad lights',
+  };
+  const kind = state.level.objective?.kind ?? 'keycard';
+  const steps = state.level.theme === 'garage'
+    ? ['01 / Enter the garage', '02 / Seal the shutter', '03 / Barricade two doors', '04 / Survive five waves', '05 / Take the elevator up']
+    : ['01 / Board up two doors', '02 / Survive the waves', '03 / Open doors with points', goal[kind], kind === 'signal' ? '05 / Get aboard the helicopter' : '05 / Take the elevator up'];
+  const done = state.level.theme === 'garage' ? (state.gate.closed ? 2 : 0) : state.objective.done ? 4 : 0;
   steps.forEach((line, i) => text(ctx, line, sx, y + (245 + i * 44) * u, { size: 15 * u, color: i < done ? COLOR.good : COLOR.text }));
   text(ctx, 'LEGEND', sx, y + 490 * u, { size: 12 * u, color: COLOR.dim, spacing: 3 * u });
   [['YOU', '#ffffff'], ['SUPPLIES', COLOR.accent], ['HOSTILES', COLOR.danger], ['SEALED / GATE', COLOR.good]].forEach(([label, color], i) => {

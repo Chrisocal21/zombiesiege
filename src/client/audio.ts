@@ -1,5 +1,7 @@
 import { config } from '../config';
 import type { GameState, Player } from '../game/state';
+import { charging } from '../game/objectives';
+import { helicopterPose } from '../render/helicopterPath';
 import { settings } from './settings';
 
 // Every sound is made here from noise and oscillators, so there are no audio files to license.
@@ -364,6 +366,95 @@ export function createAudio(): Audio {
     notes.forEach((note, index) => tone(out, t + index * 0.12, 1.6, 'sawtooth', note, note, 0.12, 0.08));
   }
 
+  // A heavy breaker going in: a clunk, and the hum of the circuit coming back.
+  function breakerThrow(): void {
+    const t = context!.currentTime;
+    const out = output(0, 0.9);
+    tone(out, t, 0.18, 'square', 90, 45, 0.35, 0.002);
+    burst(out, t, 0.12, 'bandpass', 2600, 900, 0.6, 4);
+    burst(out, t + 0.02, 0.4, 'lowpass', 600, 80, 0.4);
+    tone(out, t + 0.15, 1.6, 'sawtooth', 50, 50, 0.08, 0.4);
+    tone(out, t + 0.15, 1.6, 'sine', 100, 100, 0.12, 0.4);
+  }
+
+  // A big switch thrown and a machine spinning up.
+  function powerUp(): void {
+    const t = context!.currentTime;
+    const out = output(0, 0.8);
+    burst(out, t, 0.1, 'bandpass', 2000, 800, 0.5, 3);
+    tone(out, t + 0.05, 1.8, 'sawtooth', 60, 240, 0.08, 0.3);
+    tone(out, t + 0.05, 1.8, 'sine', 120, 480, 0.12, 0.3);
+  }
+
+  function setDown(): void {
+    const t = context!.currentTime;
+    const out = output(0, 0.7);
+    tone(out, t, 0.14, 'sine', 120, 60, 0.6);
+    burst(out, t, 0.12, 'lowpass', 1400, 200, 0.4);
+  }
+
+  // Sounds that run on their own and are only turned up and down: the charger's hum, the wind on
+  // the roof, and the helicopter. Made the first time they are needed.
+  interface Loops { hum: OscillatorNode; humGain: GainNode; wind: GainNode; rotor: GainNode; rotorPan: StereoPannerNode; chop: OscillatorNode; whine: OscillatorNode }
+  let loops: Loops | null = null;
+  function startLoops(): Loops {
+    const ctx = context!;
+    const noiseLoop = (): AudioBufferSourceNode => {
+      const source = ctx.createBufferSource();
+      source.buffer = noise;
+      source.loop = true;
+      source.start();
+      return source;
+    };
+    const hum = ctx.createOscillator();
+    hum.type = 'sawtooth';
+    hum.frequency.value = 55;
+    const humFilter = ctx.createBiquadFilter();
+    humFilter.type = 'lowpass';
+    humFilter.frequency.value = 500;
+    const humGain = ctx.createGain();
+    humGain.gain.value = 0;
+    hum.connect(humFilter).connect(humGain).connect(master);
+    hum.start();
+
+    const windFilter = ctx.createBiquadFilter();
+    windFilter.type = 'lowpass';
+    windFilter.frequency.value = 380;
+    const wind = ctx.createGain();
+    wind.gain.value = 0;
+    noiseLoop().connect(windFilter).connect(wind).connect(master);
+
+    // The rotor: low noise whose loudness throbs with each blade going past, and the turbine's whine.
+    const rotorFilter = ctx.createBiquadFilter();
+    rotorFilter.type = 'lowpass';
+    rotorFilter.frequency.value = 520;
+    const throb = ctx.createGain();
+    throb.gain.value = 0.55;
+    const chop = ctx.createOscillator();
+    chop.frequency.value = 17;
+    const depth = ctx.createGain();
+    depth.gain.value = 0.45;
+    chop.connect(depth).connect(throb.gain);
+    chop.start();
+    const rotor = ctx.createGain();
+    rotor.gain.value = 0;
+    const rotorPan = ctx.createStereoPanner();
+    noiseLoop().connect(rotorFilter).connect(throb).connect(rotor);
+    const whine = ctx.createOscillator();
+    whine.type = 'sawtooth';
+    whine.frequency.value = 880;
+    const whineFilter = ctx.createBiquadFilter();
+    whineFilter.type = 'bandpass';
+    whineFilter.frequency.value = 1800;
+    whineFilter.Q.value = 3;
+    const whineGain = ctx.createGain();
+    whineGain.gain.value = 0.03;
+    whine.connect(whineFilter).connect(whineGain).connect(rotor);
+    whine.start();
+    rotor.connect(rotorPan).connect(master);
+    return { hum, humGain, wind, rotor, rotorPan, chop, whine };
+  }
+
   function death(): void {
     const t = context!.currentTime;
     const out = output(0, 0.9);
@@ -388,6 +479,10 @@ export function createAudio(): Audio {
   let boardedCount = 0;
   let takenCount = 0;
   let objectiveDone = true;
+  let thrownCount = 0;
+  let deliveredCount = 0;
+  let carrying = -1;
+  let startedTick = -1;
   let gateClosed = false;
   const zombies = new Map<number, ZombieMemory>();
 
@@ -439,6 +534,8 @@ export function createAudio(): Audio {
       const alive = player.health > 0;
       const boarded = state.doors.filter((door) => door.boarded).length;
       const taken = state.pickups.filter((pickup) => pickup.taken).length;
+      const thrown = state.objective.thrown.filter((tick) => tick >= 0).length;
+      const delivered = state.objective.items.filter((item) => item.delivered).length;
       if (watching) {
         if (player.lastShotTick !== shotTick && player.lastShotTick >= 0) {
           if (player.weapon === 'shotgun') shotgun(); else shot();
@@ -458,8 +555,40 @@ export function createAudio(): Audio {
         if (state.gate.closed && !gateClosed && state.gate.closedTick >= 0) gateClank();
         if (boarded > boardedCount) nailing();
         if (taken > takenCount) pickup();
-        if (state.objective.done && !objectiveDone && state.objective.doneTick >= 0) pickup();
+        if (state.objective.done && !objectiveDone && state.objective.doneTick >= 0) {
+          if (state.level.objective?.kind === 'keycard') pickup();
+          else sting(false);
+        }
+        if (thrown > thrownCount) breakerThrow();
+        if (state.objective.startedTick !== startedTick && state.objective.startedTick >= 0) powerUp();
+        if (player.carrying >= 0 && carrying < 0) pickup();
+        if (player.carrying < 0 && carrying >= 0 && delivered === deliveredCount) setDown();
+        if (delivered > deliveredCount) nailing();
         if (state.lives < lives && state.lives < config.player.lives) sting(true);
+      }
+      thrownCount = thrown;
+      deliveredCount = delivered;
+      carrying = player.carrying;
+      startedTick = state.objective.startedTick;
+
+      // The charger hums, rising as it fills; the roof has wind; the helicopter is heard before it is seen.
+      const objective = state.level.objective;
+      const humming = objective?.kind === 'charge' && state.waves.phase === 'hold' && charging(state);
+      const roof = state.level.theme === 'roof';
+      const heli = helicopterPose(state);
+      if (humming || roof || loops) {
+        loops ??= startLoops();
+        const t = context.currentTime;
+        const progress = objective?.kind === 'charge' ? state.objective.charge / objective.seconds : 0;
+        loops.hum.frequency.setTargetAtTime(55 + 55 * progress, t, 0.3);
+        loops.humGain.gain.setTargetAtTime(humming && !paused ? 0.05 : 0, t, 0.2);
+        loops.wind.gain.setTargetAtTime(roof && !paused ? 0.07 + 0.03 * Math.sin(t * 0.3) : 0, t, 0.5);
+        const near = heli.visible ? heli.near : 0;
+        loops.rotor.gain.setTargetAtTime(paused ? 0 : 0.9 * near * near, t, 0.3);
+        if (heli.visible) {
+          const where = place(player, heli.x, heli.z);
+          loops.rotorPan.pan.setTargetAtTime(Math.max(-1, Math.min(1, where.pan)) * 0.7, t, 0.2);
+        }
       }
       shotTick = player.lastShotTick;
       reloading = player.reloadLeft > 0;

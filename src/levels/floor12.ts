@@ -89,9 +89,21 @@ export const floor12: Level = {
     { text: 'ISOLATION A', sub: 'INFECTION CONTROL', background: '#6b1b1b', position: { x: -9.9, y: 2.9, z: 0.84 }, rotation: Math.PI, width: 1.4, height: 0.5 },
     { text: 'ISOLATION B', sub: 'INFECTION CONTROL', background: '#6b1b1b', position: { x: 9.9, y: 2.9, z: 0.84 }, rotation: Math.PI, width: 1.4, height: 0.5 },
     { text: 'BAYS 1 TO 5', sub: 'ONE VISITOR AT A TIME', background: '#1d3f73', position: { x: 6, y: 3.0, z: -10.96 }, rotation: 0, width: 2.2, height: 0.6 },
-    { text: 'ELEVATOR', sub: 'OUT OF SERVICE  /  KEYCARD OVERRIDE', background: '#5b1b1b', position: { x: -5.5, y: 3.0, z: -10.96 }, rotation: 0, width: 2.4, height: 0.5 },
+    { text: 'ELEVATOR', sub: 'HELIPAD SPARES  /  LOAD HERE', background: '#5b1b1b', position: { x: -5.5, y: 3.0, z: -10.96 }, rotation: 0, width: 2.4, height: 0.5 },
   ],
-  objective: { kind: 'keycard', label: 'Roof access key', position: { x: 11, y: 0.95, z: 8.5 } },
+  // Spare landing lamps for the helipad were stored up here. Three cases to carry to the elevator:
+  // one out in the ward, one in the nurses' station, one in isolation B behind its paid door.
+  objective: {
+    kind: 'carry',
+    label: 'Lamp case',
+    part: 'Landing lamps',
+    items: [
+      { x: 8, y: 0, z: -6.6 },
+      { x: 1.5, y: 0, z: 4.25 },
+      { x: 11.2, y: 0, z: 5 },
+    ],
+    dropoff: { x: -6.4, y: 0, z: -9.4 },
+  },
   navBounds: { minX: -20, maxX: 20, minZ: -16, maxZ: 16 },
   ramp: null,
   barricadeBars: [
