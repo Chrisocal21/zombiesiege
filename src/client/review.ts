@@ -1,6 +1,8 @@
 import { createGameState, type GameState } from '../game/state';
 import { boardBox, closeGate } from '../game/doors';
 import { spawnZombie } from '../game/zombies';
+import { enterLevel } from '../game/state';
+import { levelForFloor } from '../levels';
 import type { Level } from '../levels/types';
 import type { Hud } from '../render/hud';
 import type { Menu } from '../render/menu';
@@ -60,9 +62,10 @@ export function installReview(context: ReviewContext): void {
     place(options: {
       x: number; y?: number; z: number; yaw: number; pitch?: number; aim?: boolean;
       gate?: boolean; boarded?: number[]; phase?: 'entry' | 'prep' | 'active'; wave?: number; timer?: number;
-      zombies?: [number, number, number?][]; health?: number; ammo?: number; fire?: boolean; lunge?: boolean; menu?: 'character' | 'settings' | 'controls' | 'main';
+      zombies?: [number, number, number?][]; health?: number; ammo?: number; fire?: boolean; lunge?: boolean; floor?: number; menu?: 'character' | 'settings' | 'controls' | 'main';
     }) {
       const state = createGameState(context.level); state.tick = 2400;
+      if (options.floor) { state.floor = options.floor; enterLevel(state, levelForFloor(options.floor)); }
       const player = state.players[0];
       settings.cameraStyle = 'standard'; player.cameraStyle = 'standard'; player.cameraDrop = 0;
       player.x = options.x; player.z = options.z; player.y = options.y ?? 0;
