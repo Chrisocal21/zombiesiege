@@ -136,6 +136,110 @@ const paintFloor: Painter = (context, size, random) => {
   }
 };
 
+// Hospital floor: square tiles in a grid of grout, each a shade apart, scuffed by feet and trolleys.
+const paintTile: Painter = (context, size, random) => {
+  context.fillStyle = '#d9dcd9';
+  context.fillRect(0, 0, size, size);
+  const cell = size / 4;
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      const shade = 200 + Math.floor(random() * 40);
+      context.fillStyle = `rgb(${shade},${shade + 2},${shade})`;
+      context.fillRect(col * cell, row * cell, cell, cell);
+    }
+  }
+  blobs(context, size, random, 14, size * 0.05, size * 0.2, '60,66,70', 0.07);
+  // Scuffs from shoes and wheels.
+  context.lineCap = 'round';
+  for (let i = 0; i < 26; i++) {
+    const x = random() * size;
+    const y = random() * size;
+    context.strokeStyle = `rgba(70,74,78,${0.08 + random() * 0.12})`;
+    context.lineWidth = 1 + random() * 3;
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x + (random() - 0.5) * 120, y + (random() - 0.5) * 40);
+    context.stroke();
+  }
+  // Grout.
+  context.fillStyle = 'rgba(70,76,80,0.75)';
+  for (let i = 0; i < 4; i++) {
+    context.fillRect(i * cell - 2, 0, 4, size);
+    context.fillRect(0, i * cell - 2, size, 4);
+  }
+  context.fillRect(size - 2, 0, 2, size);
+  context.fillRect(0, size - 2, size, 2);
+  specks(context, size, random, size * 2, 2, 0.1, 0.12);
+};
+
+// Painted plaster, one wall's height tall: a dark skirting, a darker band to chair height with a
+// rail on top, then plain wall. The paint colour comes from the box.
+const paintPlaster: Painter = (context, size, random) => {
+  const metre = size / 3.4;
+  context.fillStyle = '#ecece6';
+  context.fillRect(0, 0, size, size);
+  blobs(context, size, random, 22, size * 0.06, size * 0.22, '110,100,80', 0.06);
+  const dado = size - 1.05 * metre;
+  context.fillStyle = 'rgba(70,80,84,0.22)';
+  context.fillRect(0, dado, size, size - dado);
+  // The rail, lit on top and shadowed below.
+  context.fillStyle = 'rgba(255,255,255,0.7)';
+  context.fillRect(0, dado - 4, size, 5);
+  context.fillStyle = 'rgba(20,24,28,0.4)';
+  context.fillRect(0, dado + 1, size, 5);
+  // Skirting.
+  context.fillStyle = '#4f5659';
+  context.fillRect(0, size - 0.12 * metre, size, 0.12 * metre);
+  context.fillStyle = 'rgba(255,255,255,0.22)';
+  context.fillRect(0, size - 0.12 * metre, size, 3);
+  // Scrapes where trolleys and beds have hit the wall at bed height.
+  context.lineCap = 'round';
+  for (let i = 0; i < 18; i++) {
+    const x = random() * size;
+    const y = size - (0.5 + random() * 0.5) * metre;
+    context.strokeStyle = `rgba(60,64,66,${0.1 + random() * 0.14})`;
+    context.lineWidth = 1 + random() * 3;
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x + (random() - 0.5) * 160, y + (random() - 0.5) * 10);
+    context.stroke();
+  }
+  // Water stains run down from the ceiling.
+  for (let i = 0; i < 3; i++) {
+    const x = random() * size;
+    const streak = context.createLinearGradient(0, 0, 0, size * 0.5);
+    streak.addColorStop(0, 'rgba(120,96,50,0.22)');
+    streak.addColorStop(1, 'rgba(120,96,50,0)');
+    context.fillStyle = streak;
+    context.fillRect(x, 0, 14 + random() * 30, size * 0.5);
+  }
+  specks(context, size, random, size * 2, 2, 0.1, 0.1);
+};
+
+// Suspended ceiling: pale panels in a metal grid, with a few stained.
+const paintCeiling: Painter = (context, size, random) => {
+  context.fillStyle = '#e4e6e4';
+  context.fillRect(0, 0, size, size);
+  const cell = size / 4;
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      if (random() < 0.15) {
+        context.fillStyle = `rgba(120,100,60,${0.08 + random() * 0.12})`;
+        context.fillRect(col * cell, row * cell, cell, cell);
+      }
+    }
+  }
+  for (let i = 0; i < size * 1.5; i++) {
+    context.fillStyle = `rgba(60,62,64,${0.1 + random() * 0.2})`;
+    context.fillRect(random() * size, random() * size, 2, 2);
+  }
+  context.fillStyle = 'rgba(70,76,80,0.9)';
+  for (let i = 0; i < 4; i++) {
+    context.fillRect(i * cell - 3, 0, 6, size);
+    context.fillRect(0, i * cell - 3, size, 6);
+  }
+};
+
 const paintWall: Painter = (context, size, random) => {
   concreteBase(context, size, random, '#8c8f93');
   cracks(context, size, random, 2);
@@ -457,6 +561,9 @@ const TILE_METERS: Record<Surface, number> = {
   car: 1,
   van: 1,
   slab: 4,
+  tile: 2,
+  plaster: 3.4,
+  ceiling: 2,
   building: 12,
   gate: 1,
   lift: 1,
@@ -485,6 +592,21 @@ export function surfaceMaterial(surface: Surface, color: string): THREE.MeshStan
     case 'wall': {
       const map = paintTexture(1024, 12, paintWall);
       material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.0132, roughness: 0.95, color });
+      break;
+    }
+    case 'tile': {
+      const map = paintTexture(1024, 21, paintTile);
+      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.006, roughness: 0.38, metalness: 0.04, color });
+      break;
+    }
+    case 'plaster': {
+      const map = paintTexture(1024, 22, paintPlaster);
+      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.006, roughness: 0.9, color });
+      break;
+    }
+    case 'ceiling': {
+      const map = paintTexture(512, 23, paintCeiling);
+      material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.01, roughness: 0.95, color });
       break;
     }
     case 'crate': {

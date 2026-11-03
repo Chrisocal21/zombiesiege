@@ -132,18 +132,15 @@ export function buildWardDressing(scene: THREE.Object3D, level: Level): void {
     fitting.position.set(light.position.x, 3.38, light.position.z);
     scene.add(fitting);
   }
-  const sign = (text: string, sub: string, background: string, x: number, y: number, z: number, rotation: number, w: number, h: number) => {
+  for (const sign of level.signs) {
     const face = new THREE.Mesh(
-      new THREE.PlaneGeometry(w, h),
-      new THREE.MeshBasicMaterial({ map: labelTexture([{ text, size: 80, color: '#ffffff' }, { text: sub, size: 38, color: '#bfe8d8' }], background, 768, 256, '#ffffff') }),
+      new THREE.PlaneGeometry(sign.width, sign.height),
+      new THREE.MeshBasicMaterial({
+        map: labelTexture([{ text: sign.text, size: 80, color: '#ffffff' }, { text: sign.sub, size: 38, color: '#bfe8d8' }], sign.background, 768, 256, '#ffffff'),
+      }),
     );
-    face.position.set(x, y, z);
-    face.rotation.y = rotation;
+    face.position.set(sign.position.x, sign.position.y, sign.position.z);
+    face.rotation.y = sign.rotation;
     scene.add(face);
-  };
-  // Hung on the inner faces of the walls.
-  sign('ADMISSIONS', 'FLOOR 3  /  RECEPTION', '#1b5b4d', -9, 2.75, 11.95, Math.PI, 2.6, 0.87);
-  sign('ELEVATOR', 'OUT OF SERVICE  /  KEYCARD OVERRIDE', '#5b1b1b', -13.96, 3.0, 5.6, Math.PI / 2, 2.4, 0.5);
-  sign('MEDICAL RECORDS', 'STAFF ONLY', '#1d3f73', -3.84, 2.9, -3.3, Math.PI / 2, 2.0, 0.6);
-  sign('ADMINISTRATOR', 'PRIVATE', '#1d3f73', 7.84, 2.9, -11.2, -Math.PI / 2, 2.0, 0.6);
+  }
 }

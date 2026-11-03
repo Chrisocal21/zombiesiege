@@ -16,8 +16,8 @@ import type { Door, Elevator, Level, LevelBox, Lock, Station, Surface } from './
 const CEILING = 3.4;
 const OUTER = 0.5;
 const INNER = 0.3;
-const WALL = '#a7a39a';
-const FLOOR = '#8c9095';
+const WALL = '#cfd8d0';
+const FLOOR = '#9fb3ac';
 const DOOR_WIDTH = 2.4;
 const DOOR_HEIGHT = 2.5;
 const DESK = '#7d5a3c';
@@ -72,19 +72,19 @@ const stationBoxes: LevelBox[] = stations.map((station) => {
 });
 
 const alcove = (door: Pick<Door, 'position' | 'normal'>): LevelBox[] =>
-  alcoveBoxes(door, { ceiling: CEILING, depth: 3, width: 3, thickness: OUTER, wallColor: WALL, floorColor: FLOOR });
+  alcoveBoxes(door, { ceiling: CEILING, depth: 3, width: 3, thickness: OUTER, wallColor: WALL, floorColor: FLOOR, wallSurface: 'plaster', floorSurface: 'tile' });
 
 const outerWall = (axis: 'x' | 'z', fixed: number, from: number, to: number): LevelBox[] =>
-  wallLine(axis, fixed, from, to, gapsOn(axis, fixed, [...doors, elevator]), CEILING, OUTER, WALL);
+  wallLine(axis, fixed, from, to, gapsOn(axis, fixed, [...doors, elevator]), CEILING, OUTER, WALL, 'plaster');
 
 export const floor3: Level = {
   name: 'Floor 3',
   theme: 'ward',
   boxes: [
     ...stationBoxes,
-    { position: { x: 0, y: -0.25, z: 0 }, size: { x: 29, y: 0.5, z: 25 }, color: FLOOR, surface: 'floor' },
+    { position: { x: 0, y: -0.25, z: 0 }, size: { x: 29, y: 0.5, z: 25 }, color: FLOOR, surface: 'tile' },
     // One ceiling over the whole floor and the spaces behind its doors.
-    { position: { x: 0, y: CEILING + 0.2, z: 0 }, size: { x: 42, y: 0.4, z: 38 }, color: '#7a7d82', surface: 'slab' },
+    { position: { x: 0, y: CEILING + 0.2, z: 0 }, size: { x: 42, y: 0.4, z: 38 }, color: '#f2f2ee', surface: 'ceiling' },
 
     ...outerWall('x', -12.25, -14.5, 14.5),
     ...outerWall('x', 12.25, -14.5, 14.5),
@@ -94,12 +94,12 @@ export const floor3: Level = {
     ...alcove(elevator),
 
     // Lobby to office: an open doorway, and the records room's door.
-    ...wallLine('z', -4, -12, 12, [{ centre: -6, width: locks[0].width, height: DOOR_HEIGHT }, lobbyDoorway], CEILING, INNER, WALL),
+    ...wallLine('z', -4, -12, 12, [{ centre: -6, width: locks[0].width, height: DOOR_HEIGHT }, lobbyDoorway], CEILING, INNER, WALL, 'plaster'),
     // Lobby to records room.
-    ...wallLine('x', 0, -14, -4, [], CEILING, INNER, WALL),
+    ...wallLine('x', 0, -14, -4, [], CEILING, INNER, WALL, 'plaster'),
     // The manager's office in the north-east corner.
-    ...wallLine('z', 8, -12, -5, [{ centre: -8.5, width: locks[1].width, height: DOOR_HEIGHT }], CEILING, INNER, WALL),
-    ...wallLine('x', -5, 8, 14, [], CEILING, INNER, WALL),
+    ...wallLine('z', 8, -12, -5, [{ centre: -8.5, width: locks[1].width, height: DOOR_HEIGHT }], CEILING, INNER, WALL, 'plaster'),
+    ...wallLine('x', -5, 8, 14, [], CEILING, INNER, WALL, 'plaster'),
 
     // Lobby: a reception counter and waiting seats.
     furniture(-8, 7, 4.6, 1.05, 0.9, COUNTER),
@@ -130,6 +130,12 @@ export const floor3: Level = {
   elevator,
   stations,
   locks,
+  signs: [
+    { text: 'ADMISSIONS', sub: 'FLOOR 3  /  RECEPTION', background: '#1b5b4d', position: { x: -9, y: 2.75, z: 11.95 }, rotation: Math.PI, width: 2.6, height: 0.87 },
+    { text: 'ELEVATOR', sub: 'OUT OF SERVICE  /  KEYCARD OVERRIDE', background: '#5b1b1b', position: { x: -13.96, y: 3.0, z: 5.6 }, rotation: Math.PI / 2, width: 2.4, height: 0.5 },
+    { text: 'MEDICAL RECORDS', sub: 'STAFF ONLY', background: '#1d3f73', position: { x: -3.84, y: 2.9, z: -3.3 }, rotation: Math.PI / 2, width: 2.0, height: 0.6 },
+    { text: 'ADMINISTRATOR', sub: 'PRIVATE', background: '#1d3f73', position: { x: 7.84, y: 2.9, z: -11.2 }, rotation: -Math.PI / 2, width: 2.0, height: 0.6 },
+  ],
   objective: { kind: 'keycard', label: 'Manager keycard', position: { x: 12, y: 0.95, z: -9.5 } },
   navBounds: { minX: -19, maxX: 19, minZ: -17, maxZ: 17 },
   ramp: null,

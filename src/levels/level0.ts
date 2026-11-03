@@ -215,6 +215,7 @@ export const level0: Level = {
   elevator,
   stations,
   locks: [],
+  signs: [],
   objective: null,
   navBounds: null,
   ramp,

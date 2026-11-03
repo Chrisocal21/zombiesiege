@@ -20,6 +20,9 @@ export type Surface =
   | 'car'
   | 'van'
   | 'slab'
+  | 'tile'
+  | 'plaster'
+  | 'ceiling'
   | 'building'
   | 'board'
   | 'gate'
@@ -124,6 +127,18 @@ export interface LevelLight {
   ceiling?: boolean;
 }
 
+// A sign hung on a wall: a heading, a line under it, and the colour of the board.
+export interface LevelSign {
+  text: string;
+  sub: string;
+  background: string;
+  position: Vec3;
+  // Rotation about y: 0 faces +z, and the sign is read from the side it faces.
+  rotation: number;
+  width: number;
+  height: number;
+}
+
 export interface Level {
   name: string;
   // The garage has the street, ramp and gate. A ward is a closed floor of rooms inside the tower.
@@ -137,6 +152,7 @@ export interface Level {
   stations: Station[];
   // Doors that open for points, and the thing to find before leaving, if the floor has them.
   locks: Lock[];
+  signs: LevelSign[];
   objective: Objective | null;
   ramp: Ramp | null;
   // The area zombies find their way around walls in, for floors with rooms.

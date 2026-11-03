@@ -455,11 +455,11 @@ export function createHud(menu: Menu): Hud {
     context.translate(-player.x, -player.z);
     for (const box of state.level.boxes) {
       const surface = box.surface;
-      if (surface === 'floor' || surface === 'slab' || surface === 'step') continue;
+      if (surface === 'floor' || surface === 'tile' || surface === 'ceiling' || surface === 'slab' || surface === 'step') continue;
       const bottom = box.position.y - box.size.y / 2;
       const top = box.position.y + box.size.y / 2;
       if (bottom > player.y + 1.3 || top < player.y + 0.35) continue;
-      const solid = surface === 'wall' || surface === 'building' || surface === 'pillar';
+      const solid = surface === 'wall' || surface === 'plaster' || surface === 'building' || surface === 'pillar';
       const blocked = surface === 'board' || surface === 'gate';
       context.fillStyle = blocked ? 'rgba(245,165,36,0.85)' : solid ? 'rgba(190,198,212,0.42)' : 'rgba(150,160,176,0.3)';
       context.fillRect(box.position.x - box.size.x / 2, box.position.z - box.size.z / 2, box.size.x, box.size.z);

@@ -14,7 +14,7 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
   const mapX = x + 30 * u, mapY = y + 100 * u, mapW = 660 * u, mapH = 570 * u;
   const street = player.y > 3;
   const ward = state.level.theme === 'ward';
-  const bounds = street ? { x: -27, z: 10, w: 54, d: 39 } : ward ? { x: -19, z: -15, w: 38, d: 30 } : { x: -14, z: -14, w: 28, d: 28 };
+  const bounds = street ? { x: -27, z: 10, w: 54, d: 39 } : ward && state.level.navBounds ? { x: state.level.navBounds.minX, z: state.level.navBounds.minZ, w: state.level.navBounds.maxX - state.level.navBounds.minX, d: state.level.navBounds.maxZ - state.level.navBounds.minZ } : { x: -14, z: -14, w: 28, d: 28 };
   const scale = Math.min(mapW / bounds.w, mapH / bounds.d);
   const ox = mapX + (mapW - bounds.w * scale) / 2, oy = mapY + (mapH - bounds.d * scale) / 2;
   const point = (px: number, pz: number) => [ox + (px - bounds.x) * scale, oy + (pz - bounds.z) * scale];
@@ -25,9 +25,9 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
   for (let i = 0; i < bounds.d; i += 2) { const pz = oy + i * scale; ctx.beginPath(); ctx.moveTo(mapX, pz); ctx.lineTo(mapX + mapW, pz); ctx.stroke(); }
   for (const box of state.level.boxes) {
     const bottom = box.position.y - box.size.y / 2, top = box.position.y + box.size.y / 2;
-    if (bottom > player.y + 1.4 || top < player.y + 0.3 || ['floor', 'slab', 'step'].includes(box.surface ?? '')) continue;
+    if (bottom > player.y + 1.4 || top < player.y + 0.3 || ['floor', 'tile', 'ceiling', 'slab', 'step'].includes(box.surface ?? '')) continue;
     const [px, py] = point(box.position.x - box.size.x / 2, box.position.z - box.size.z / 2);
-    ctx.fillStyle = box.surface === 'gate' || box.surface === 'board' ? '#c9a660' : box.surface === 'wall' || box.surface === 'building' ? '#577179' : '#344c58';
+    ctx.fillStyle = box.surface === 'gate' || box.surface === 'board' ? '#c9a660' : box.surface === 'wall' || box.surface === 'plaster' || box.surface === 'building' ? '#577179' : '#344c58';
     ctx.fillRect(px, py, box.size.x * scale, box.size.z * scale);
     ctx.strokeStyle = 'rgba(162,195,204,0.28)'; ctx.strokeRect(px, py, box.size.x * scale, box.size.z * scale);
   }

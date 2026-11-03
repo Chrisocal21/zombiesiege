@@ -37,7 +37,7 @@ function boxMapUVs(geometry: THREE.BufferGeometry, box: LevelBox, tile: number):
   const uv = geometry.attributes.uv;
   // Boxes with the same texture get different spots on it, except where the picture has to line
   // up with the box's own edges.
-  const aligned = box.surface === 'crate';
+  const aligned = box.surface === 'crate' || box.surface === 'plaster' || box.surface === 'tile' || box.surface === 'ceiling';
   const shiftU = aligned ? 0 : Math.abs(Math.sin(box.position.x * 12.9898 + box.position.z * 78.233)) * 4;
   const shiftV = aligned ? 0 : Math.abs(Math.sin(box.position.z * 39.346 + box.position.y * 11.135)) * 4;
   for (let i = 0; i < position.count; i++) {
@@ -116,7 +116,7 @@ function buildBoxObject(box: LevelBox, index: number): THREE.Object3D | null {
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(box.position.x, box.position.y, box.position.z);
-  mesh.castShadow = surface !== 'floor';
+  mesh.castShadow = surface !== 'floor' && surface !== 'tile';
   mesh.receiveShadow = true;
   return mesh;
 }

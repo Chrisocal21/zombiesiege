@@ -25,6 +25,7 @@ export function wallLine(
   ceiling: number,
   thickness: number,
   color: string,
+  surface: Surface = 'wall',
 ): LevelBox[] {
   const boxes: LevelBox[] = [];
   const along = (start: number, end: number, bottom: number, top: number): LevelBox => {
@@ -33,8 +34,8 @@ export function wallLine(
     const y = (bottom + top) / 2;
     const height = top - bottom;
     return axis === 'x'
-      ? { position: { x: middle, y, z: fixed }, size: { x: length, y: height, z: thickness }, color, surface: 'wall' }
-      : { position: { x: fixed, y, z: middle }, size: { x: thickness, y: height, z: length }, color, surface: 'wall' };
+      ? { position: { x: middle, y, z: fixed }, size: { x: length, y: height, z: thickness }, color, surface }
+      : { position: { x: fixed, y, z: middle }, size: { x: thickness, y: height, z: length }, color, surface };
   };
 
   let cursor = from;
@@ -55,11 +56,13 @@ export interface AlcoveStyle {
   thickness: number;
   wallColor: string;
   floorColor: string;
+  wallSurface?: Surface;
+  floorSurface?: Surface;
 }
 
 // A closed space behind a door, with a floor so a player can step into it.
 export function alcoveBoxes(door: Pick<Door, 'position' | 'normal'>, style: AlcoveStyle): LevelBox[] {
-  const { ceiling, depth, width, thickness, wallColor, floorColor } = style;
+  const { ceiling, depth, width, thickness, wallColor, floorColor, wallSurface = 'wall', floorSurface = 'floor' } = style;
   const out = { x: -door.normal.x, z: -door.normal.z };
   const outerFace = thickness / 2;
   const sideOffset = width / 2 + thickness / 2;
@@ -79,10 +82,10 @@ export function alcoveBoxes(door: Pick<Door, 'position' | 'normal'>, style: Alco
 
   const middle = outerFace + depth / 2;
   for (const side of [-1, 1]) {
-    place(middle, side * sideOffset, ceiling / 2, depth, thickness, ceiling, wallColor, 'wall');
+    place(middle, side * sideOffset, ceiling / 2, depth, thickness, ceiling, wallColor, wallSurface);
   }
   const capOffset = outerFace + depth + thickness / 2;
-  place(capOffset, 0, ceiling / 2, thickness, width + thickness * 2, ceiling, wallColor, 'wall');
-  place(middle, 0, -0.25, depth, width, 0.5, floorColor, 'floor');
+  place(capOffset, 0, ceiling / 2, thickness, width + thickness * 2, ceiling, wallColor, wallSurface);
+  place(middle, 0, -0.25, depth, width, 0.5, floorColor, floorSurface);
   return boxes;
 }
