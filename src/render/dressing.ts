@@ -27,11 +27,11 @@ export function buildDressing(scene: THREE.Object3D, level: Level): (time: numbe
     const contact = new THREE.Mesh(new THREE.PlaneGeometry(prop.size.x * 1.35, prop.size.z * 1.4), shadow);
     contact.rotation.x = -Math.PI / 2;
     contact.position.set(prop.position.x, base + 0.012, prop.position.z); scene.add(contact);
-    if (prop.surface === 'car' || prop.surface === 'van') {
+    if ((prop.surface === 'car' || prop.surface === 'van') && base < 1) {
       // Stops sit within the parked vehicle's existing envelope.
       const alongX = prop.size.x > prop.size.z;
       const stop = box(scene, alongX ? [0.18, 0.1, prop.size.z * 0.8] : [prop.size.x * 0.8, 0.1, 0.18],
-        [prop.position.x + (alongX ? prop.size.x * 0.34 : 0), base + 0.05, prop.position.z + (alongX ? 0 : prop.size.z * 0.34)], yellow);
+        [prop.position.x + (alongX ? prop.size.x * 0.34 : 0), base + 0.05, prop.position.z + (alongX ? 0 : (prop.position.x < 0 ? 1 : -1) * prop.size.z * 0.34)], yellow);
       stop.receiveShadow = true;
     }
     if (prop.surface !== 'container') continue;

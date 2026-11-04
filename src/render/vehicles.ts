@@ -66,11 +66,27 @@ function shellGeometry(width: number, length: number, radius: number, axle: numb
   shape.absarc(-axle, radius, arch, 0, Math.PI, false);
   shape.lineTo(-axle - arch, 0.27); shape.lineTo(front, 0.27); shape.closePath();
   const geometry = new THREE.ExtrudeGeometry(shape, { depth: width - 0.1, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.025, bevelSegments: 3, curveSegments: 18, steps: 1 });
-  geometry.translate(0, 0, -(width - 0.1) / 2); geometry.rotateY(-Math.PI / 2); return geometry;
+  geometry.translate(0, 0, -(width - 0.1) / 2); geometry.rotateY(-Math.PI / 2);
+  // Tuck in the nose, tail and lower sills instead of extruding a rectangular slab.
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const end = Math.max(0, (Math.abs(pos.getZ(i)) / length - 0.28) / 0.22);
+    const sill = Math.max(0, (0.5 - pos.getY(i)) / 0.5);
+    pos.setX(i, pos.getX(i) * (1 - 0.095 * end * end - 0.035 * sill));
+  }
+  geometry.computeVertexNormals();
+  return geometry;
 }
 function wheel(radius: number, width: number): THREE.Group {
   const group = new THREE.Group();
-  const tire = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, width, 32), TYRE); tire.rotation.z = Math.PI / 2; tire.castShadow = true; group.add(tire);
+  const profile = [[0.65, -0.5], [0.87, -0.5], [0.97, -0.36], [1, -0.22], [1, 0.22],
+    [0.97, 0.36], [0.87, 0.5], [0.65, 0.5], [0.65, -0.5]];
+  const tire = new THREE.Mesh(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r * radius, y * width)), 32), TYRE);
+  tire.rotation.z = Math.PI / 2; tire.castShadow = true; group.add(tire);
+  for (const x of [-width * 0.18, width * 0.18]) {
+    const groove = new THREE.Mesh(new THREE.TorusGeometry(radius - 0.002, 0.004, 4, 32), TRIM);
+    groove.rotation.y = Math.PI / 2; groove.position.x = x; group.add(groove);
+  }
   for (const side of [-1, 1]) {
     const x = side * (width / 2 + 0.008);
     const brake = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.65, radius * 0.65, 0.015, 24), BRAKE);
@@ -95,6 +111,7 @@ function wheel(radius: number, width: number): THREE.Group {
 
 export function buildVehicle(box: LevelBox): THREE.Group {
   const van = box.surface === 'van';
+  const estate = !van && box.size.y > 1.6;
   const alongX = box.size.x > box.size.z;
   const length = alongX ? box.size.x : box.size.z;
   const width = alongX ? box.size.z : box.size.x;
@@ -147,8 +164,8 @@ export function buildVehicle(box: LevelBox): THREE.Group {
     part(body, [width * 0.58, 0.035, length * 0.14], [0, 0.86, -length * 0.42], finish, 0.014);
   } else {
     const waist = height * 0.57;
-    const cabinFront = -length * 0.215, cabinRear = length * 0.285;
-    const roofFront = -length * 0.11, roofRear = length * 0.18;
+    const cabinFront = -length * 0.215, cabinRear = length * (estate ? 0.42 : 0.285);
+    const roofFront = -length * 0.11, roofRear = length * (estate ? 0.31 : 0.18);
     const roofY = height - 0.045;
     const upper = [[front, 0.55], [front + 0.13, height * 0.46], [cabinFront, waist], [cabinRear, waist], [rear - 0.15, height * 0.5], [rear, 0.62]];
     add(body, new THREE.Mesh(shellGeometry(width, length, radius, axle, upper), finish), 0, 0, 0);
@@ -174,6 +191,15 @@ export function buildVehicle(box: LevelBox): THREE.Group {
     }
     part(body, [width * 0.75, 0.06, roofRear - roofFront + 0.08], [0, roofY, (roofFront + roofRear) / 2], finish, 0.035);
     part(body, [width * 0.77, 0.1, 0.27], [0, waist - 0.04, cabinFront + 0.13], INTERIOR, 0.035);
+    const steering = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.018, 8, 20), TRIM);
+    steering.position.set(-width * 0.22, waist + 0.14, cabinFront + 0.29);
+    steering.rotation.x = -0.35; body.add(steering);
+    for (const side of [-1, 1]) {
+      // Sun visors and a shallow roof crown give the cabin thickness and believable shading.
+      part(body, [0.28, 0.025, 0.15], [side * width * 0.22, roofY - 0.08, roofFront + 0.12], INTERIOR, 0.012);
+      if (estate) strut(body, [side * width * 0.3, roofY + 0.06, roofFront + 0.1],
+        [side * width * 0.3, roofY + 0.06, roofRear - 0.08], 0.025, TRIM);
+    }
     // Hood shut lines and a fuel flap are inset into the painted body.
     for (const side of [-1, 1]) strut(body, [side * width * 0.35, height * 0.473, front + 0.14], [side * width * 0.365, waist + 0.002, cabinFront], 0.004, TRIM);
     part(body, [0.008, 0.15, 0.18], [width * 0.489, waist - 0.14, length * 0.34], finish, 0.02);
@@ -200,10 +226,27 @@ export function buildVehicle(box: LevelBox): THREE.Group {
     const face = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.115), plate);
     face.position.set(0, van && end > 0 ? 0.72 : 0.39, end * (length / 2 + 0.018)); if (end < 0) face.rotation.y = Math.PI; body.add(face);
   }
-  const group = new THREE.Group(); group.name = van ? 'Cargo van' : 'Sedan'; group.add(body);
+  if (box.vehicleRole === 'ambulance') {
+    const stripe = new THREE.MeshStandardMaterial({ color: '#287b79', roughness: 0.55, metalness: 0.15 });
+    const map = labelTexture([{ text: 'AMBULANCE', size: 82, color: '#edf2df' },
+      { text: 'NORTHLINE GENERAL HOSPITAL', size: 28, color: '#dce5d5' }], '#245f61', 1024, 256);
+    const lettering = new THREE.MeshStandardMaterial({ map, roughness: 0.65 });
+    for (const side of [-1, 1]) {
+      part(body, [0.025, 0.25, length * 0.8], [side * (width / 2 - 0.005), 0.85, 0], stripe, 0.005);
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(length * 0.49, 0.7), lettering);
+      panel.position.set(side * (width / 2 + 0.012), height * 0.66, length * 0.13);
+      panel.rotation.y = side * Math.PI / 2; body.add(panel);
+    }
+    const lens = new THREE.MeshPhysicalMaterial({ color: '#367ca6', roughness: 0.2, metalness: 0.1, clearcoat: 1 });
+    part(body, [width * 0.7, 0.08, 0.28], [0, height - 0.01, -length * 0.12], TRIM, 0.02);
+    for (const side of [-1, 1]) part(body, [width * 0.28, 0.12, 0.24], [side * width * 0.18, height + 0.06, -length * 0.12], lens, 0.04);
+  }
+  const group = new THREE.Group(); group.name = box.vehicleRole === 'ambulance' ? 'Hospital ambulance' : van ? 'Cargo van' : estate ? 'Estate car' : 'Sedan'; group.add(body);
   group.position.set(box.position.x, box.position.y - height / 2, box.position.z);
   // Lanes face opposite directions. Parking bays face the drive aisle; nothing floats above its datum.
-  group.rotation.y = alongX ? (box.position.z > 41 ? Math.PI / 2 : -Math.PI / 2) : (box.position.x < 0 ? Math.PI : 0);
+  const surfaceBay = group.position.y > 4 && box.position.z < 35;
+  group.rotation.y = alongX ? (surfaceBay ? (box.position.x < 0 ? -Math.PI / 2 : Math.PI / 2)
+    : box.position.z > 41 ? Math.PI / 2 : -Math.PI / 2) : (box.position.x < 0 ? Math.PI : 0);
   return group;
 }
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SURFACE_PARKING_BAYS } from '../levels/parking';
 import { blobs, concreteBase, cracks, paintTexture, specks, type Painter } from './materials';
 
 // Painted textures for the street, the tower, cargo and signs. Like the rest, they are drawn on a
@@ -273,11 +274,40 @@ export function streetDecalTexture(
   paving(10.5, 35.5);
   paving(46.5, 48);
 
+  // Separate asphalt parking courts from the hospital's paved pedestrian forecourt.
+  for (const x of [-24, 11]) context.clearRect(px(x), pz(16), 13 * scale, 19.5 * scale);
+
   // Surface parking bays and a drive aisle connected to the street at x = 14.
   context.strokeStyle = 'rgba(225,222,207,0.65)'; context.lineWidth = 0.1 * scale;
-  for (const side of [-1, 1]) for (let z = 17; z < 32; z += 3) {
-    const x = side < 0 ? -23 : 17;
+  for (const bay of SURFACE_PARKING_BAYS) {
+    const x = bay.x - 2.5, z = bay.z - 1.35;
+    context.strokeStyle = bay.kind === 'RESERVED' || bay.kind === 'AMBULANCE' ? '#c5aa61' : '#dddcd0';
     context.strokeRect(px(x), pz(z), 5 * scale, 2.7 * scale);
+    if (bay.kind === 'ACCESSIBLE') {
+      context.fillStyle = '#315b76';
+      context.fillRect(px(x + 0.1), pz(z + 0.1), 4.8 * scale, 2.5 * scale);
+      context.save(); context.translate(px(bay.x), pz(bay.z));
+      context.strokeStyle = '#eeeeDF'; context.lineWidth = 0.12 * scale;
+      context.beginPath(); context.arc(0, 0.18 * scale, 0.5 * scale, 0, Math.PI * 1.7); context.stroke();
+      context.beginPath(); context.moveTo(0, -0.45 * scale); context.lineTo(0, 0.05 * scale);
+      context.lineTo(0.6 * scale, 0.05 * scale); context.lineTo(0.85 * scale, 0.55 * scale); context.stroke();
+      context.beginPath(); context.arc(0, -0.65 * scale, 0.14 * scale, 0, Math.PI * 2); context.fillStyle = '#eeeeDF'; context.fill();
+      context.restore();
+    } else if (bay.kind === 'KEEP CLEAR') {
+      context.save(); context.beginPath(); context.rect(px(x), pz(z), 5 * scale, 2.7 * scale); context.clip();
+      context.strokeStyle = '#c5aa61';
+      for (let i = -3; i < 10; i++) {
+        context.beginPath(); context.moveTo(px(x + i * 0.7), pz(z));
+        context.lineTo(px(x + i * 0.7 + 2.7), pz(z + 2.7)); context.stroke();
+      }
+      context.restore();
+    }
+    context.save(); context.translate(px(bay.x < 0 ? -18.65 : 17.65), pz(bay.z));
+    context.rotate(bay.x < 0 ? -Math.PI / 2 : Math.PI / 2);
+    context.fillStyle = '#e4e3d6'; context.textAlign = 'center'; context.font = `bold ${0.4 * scale}px Arial`;
+    context.fillText(bay.id, 0, 0, 2.3 * scale);
+    context.font = `bold ${0.27 * scale}px Arial`; context.fillText(bay.kind, 0, 0.42 * scale, 2.3 * scale);
+    context.restore();
   }
   context.fillStyle = 'rgba(220,216,200,0.65)';
   for (const x of [-14, 14]) {

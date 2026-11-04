@@ -68,6 +68,9 @@ export interface LevelBox {
   // Solid but not drawn, because something else is drawn in its place: the real buildings that
   // stand along the street.
   hidden?: boolean;
+  // Ramp backing for shots/solids; feet follow Level.ramp's continuous surface instead.
+  rampStep?: boolean;
+  vehicleRole?: 'ambulance';
 }
 
 // A ladder runs up the face of a box. The player climbs it from the side the normal points to.
@@ -105,8 +108,7 @@ export interface Gate {
   panel: Vec3;
 }
 
-// A smooth ramp down from the street into the building. The rules walk it as many small steps,
-// and the renderer draws it as one sloped surface.
+// A smooth ramp shared by ground sampling and rendering. Backing boxes remain for shots.
 export interface Ramp {
   // Center line and width across the ramp.
   x: number;

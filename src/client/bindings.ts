@@ -88,9 +88,9 @@ const DEFAULTS: Record<Action, string> = {
   water: 'Digit7',
   leanLeft: 'KeyQ',
   leanRight: 'KeyV',
-  cover: 'KeyF',
+  cover: 'KeyT',
   use: 'KeyE',
-  light: 'KeyT',
+  light: 'KeyF',
   freeze: 'KeyO',
   map: 'KeyM',
   pause: 'KeyP',
@@ -123,6 +123,13 @@ export function loadBindings(): void {
     if (parsed.use === 'KeyG' && parsed.leanRight === 'KeyE') {
       bindings.use = DEFAULTS.use;
       bindings.leanRight = DEFAULTS.leanRight;
+      saveBindings();
+    }
+    // Flashlight moved from T to F, taking over from cover, which went the other way. Only a save still
+    // on the old pair is swapped.
+    if (bindings.light === 'KeyT' && bindings.cover === 'KeyF') {
+      bindings.light = 'KeyF';
+      bindings.cover = 'KeyT';
       saveBindings();
     }
     // Older saves used P for freezing, or may have reassigned it to another action.

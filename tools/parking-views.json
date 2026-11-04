@@ -1,0 +1,8 @@
+{
+  "parking-visitors": { "x": -10, "y": 4.9, "z": 32, "yaw": 0.9, "pitch": -0.12 },
+  "parking-reserved": { "x": 11, "y": 4.9, "z": 32.5, "yaw": -1.2, "pitch": -0.12 },
+  "parking-ambulance": { "x": 13, "y": 4.9, "z": 17.8, "yaw": -1.98, "pitch": -0.06 },
+  "parking-car": { "x": -15.8, "y": 4.9, "z": 26, "yaw": 1.2, "pitch": -0.14 },
+  "parking-garage": { "x": 3, "y": 0, "z": 8, "yaw": 0.62, "pitch": -0.06 },
+  "parking-ramp": { "x": 3, "y": 3.57, "z": 28, "yaw": 0, "pitch": -0.12 }
+}

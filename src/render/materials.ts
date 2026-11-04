@@ -476,6 +476,18 @@ export function floorDecalTexture(): THREE.CanvasTexture {
     line(7.4, -3.7, 7.4, 1.8);
     for (const x of [-5.8, -0.6]) line(x, 7.3, x, 10);
     line(-5.8, 7.3, -0.6, 7.3);
+    // Numbered staff spaces and a pedestrian route to the hospital lifts.
+    context.save();
+    context.fillStyle = 'rgba(65,116,108,0.7)';
+    context.fillRect(meters(-7.1), meters(-8.8), 0.6 * scale, 16.6 * scale);
+    context.fillStyle = '#e0dfcf'; context.textAlign = 'center';
+    context.font = `bold ${0.55 * scale}px Arial`;
+    for (const [text, x, z] of [['B01', -8.7, -2.15], ['B02', -8.7, 7.9], ['B03', 8.7, 1.5], ['B04', -3.2, 9.7]] as const) {
+      context.fillText(text, meters(x), meters(z));
+    }
+    context.font = `bold ${0.65 * scale}px Arial`;
+    context.fillText('SLOW', meters(3), meters(5.6));
+    context.restore();
     // A stop line at the foot of the ramp, and arrows pointing up the ramp.
     context.fillStyle = 'rgba(226,226,220,0.8)';
     context.fillRect(meters(0.9), meters(8.9), 4.2 * scale, 0.25 * scale);

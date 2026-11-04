@@ -2,7 +2,7 @@ import { config } from '../config';
 import type { Level } from '../levels/types';
 import { closeLift, everyoneInCab, openLift } from './elevator';
 import { dropCache } from './items';
-import { beginPrep, closeGate, doorwaySpawn, openDoors } from './doors';
+import { beginPrep, closeGate, doorwaySpawn } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, dropCase, everyoneAboard } from './objectives';
 import { createPlayer, enterLevel, spawnPoint, type GameState, type Player } from './state';
@@ -17,9 +17,9 @@ export function isTopFloor(state: GameState): boolean {
 // One zombie in through the next open door, if any door is open.
 function spawnAtDoor(state: GameState, level: Level): void {
   const waves = state.waves;
-  const open = openDoors(state);
-  if (open.length > 0) {
-    const door = level.doors[open[waves.spawnIndex % open.length]];
+  // Caged doors still get their share: the zombies come down the passage and are held at the cage.
+  if (level.doors.length > 0) {
+    const door = level.doors[waves.spawnIndex % level.doors.length];
     const spawn = doorwaySpawn(door, (waves.spawnIndex * 0.381966) % 1);
     spawnZombie(state, spawn.x, spawn.z, spawn.entry);
   }
@@ -43,7 +43,7 @@ export const zombiesInWave = waveSize;
 export function updateWaves(state: GameState, dt: number, level: Level): void {
   const waves = state.waves;
 
-  const safe = waves.phase === 'cleared' || waves.phase === 'search' || waves.phase === 'lift' || waves.phase === 'ride' || waves.phase === 'won';
+  const safe = waves.phase === 'cleared' || waves.phase === 'search' || waves.phase === 'lift' || waves.phase === 'ride' || waves.phase === 'arrive' || waves.phase === 'won';
   if (!safe && state.players.length > 0 && state.players.every((player) => player.health <= 0)) {
     restartWave(state, level);
     return;
@@ -134,6 +134,17 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     return;
   }
 
+  // Arrived: still in the cab, the doors slide open, and then the floor's countdown begins.
+  if (waves.phase === 'arrive') {
+    waves.timer -= dt;
+    if (waves.timer <= 0) {
+      openLift(state);
+      waves.arrivedTick = state.tick;
+      beginFloor(state, level);
+    }
+    return;
+  }
+
   if (waves.toSpawn > 0) {
     waves.spawnTimer -= dt;
     if (waves.spawnTimer <= 0) {
@@ -165,15 +176,28 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
 // full health outside the elevator, and a fresh countdown to board up doors before wave 1.
 function arriveOnNextFloor(state: GameState): void {
   state.floor++;
-  startFloor(state, true);
-  openLift(state);
-  state.waves.arrivedTick = state.tick;
+  // Everyone stays in the cab, and the doors open a moment later to let them out.
+  startFloor(state, true, true);
+  state.waves.phase = 'arrive';
+  state.waves.timer = config.elevator.arriveSeconds;
+}
+
+// Where a player stands in the cab: its middle, spread across its width, facing the doors.
+function cabSpot(level: Level, index: number, count: number): { x: number; z: number; yaw: number } {
+  const { position, normal, cabDepth } = level.elevator;
+  const inside = 0.25 + cabDepth / 2;
+  const across = (index - (count - 1) / 2) * 0.8;
+  return {
+    x: position.x - normal.x * inside + normal.z * across,
+    z: position.z - normal.z * inside - normal.x * across,
+    yaw: Math.atan2(-normal.x, -normal.z),
+  };
 }
 
 // A player back at full health at the spawn, with or without the weapons and rounds they had.
-function respawn(old: Player, level: Level, keepGuns: boolean): Player {
-  const player = createPlayer(old.id, spawnPoint(level.playerSpawns, old.id, level.spawnYaw));
-  player.yaw = level.spawnYaw ?? 0;
+function respawn(old: Player, level: Level, keepGuns: boolean, cab: { x: number; z: number; yaw: number } | null = null): Player {
+  const player = createPlayer(old.id, cab ? { x: cab.x, y: 0, z: cab.z } : spawnPoint(level.playerSpawns, old.id, level.spawnYaw));
+  player.yaw = cab ? cab.yaw : level.spawnYaw ?? 0;
   player.flashlight = old.flashlight;
   if (!keepGuns) return player;
   player.weapon = old.weapon;
@@ -196,16 +220,20 @@ export function startOnFloor(state: GameState, floor: number): void {
   state.waves.arrivedTick = state.tick;
 }
 
-function startFloor(state: GameState, keepGuns: boolean): void {
+function startFloor(state: GameState, keepGuns: boolean, inCab = false): void {
   const level = levelForFloor(state.floor);
   enterLevel(state, level);
   state.zombies = [];
-  state.players = state.players.map((old) => respawn(old, level, keepGuns));
+  state.players = state.players.map((old, i) => respawn(old, level, keepGuns, inCab ? cabSpot(level, i, state.players.length) : null));
   const waves = state.waves;
   waves.number = 1;
   waves.toSpawn = 0;
-  // Only the garage has a street gate, and it stays shut, so it goes straight down with no
-  // animation. Either way, the prep countdown starts now, with zombies rushing every door.
+  if (!inCab) beginFloor(state, level);
+}
+
+// Only the garage has a street gate, and it stays shut, so it goes straight down with no
+// animation. Either way, the prep countdown starts now, with zombies rushing every door.
+function beginFloor(state: GameState, level: Level): void {
   if (level.gate) {
     closeGate(state);
     state.gate.closedTick = -1_000_000;

@@ -79,7 +79,7 @@ export function buildStations(scene: THREE.Object3D, level: Level, glowMap: THRE
   }
 
   return (state, time) => {
-    const idle = state.waves.phase === 'entry' || state.waves.phase === 'lift' || state.waves.phase === 'ride' || state.waves.phase === 'won';
+    const idle = state.waves.phase === 'entry' || state.waves.phase === 'lift' || state.waves.phase === 'ride' || state.waves.phase === 'arrive' || state.waves.phase === 'won';
     const pulse = settings.reducedFlashing ? 1 : 0.75 + 0.25 * Math.sin(time * 2.5);
     for (const { glow, light } of pulses) {
       glow.material.opacity = (idle ? 0.12 : 0.4) * pulse;

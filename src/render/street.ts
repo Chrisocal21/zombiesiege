@@ -48,7 +48,7 @@ export function buildStreet(scene: THREE.Object3D, level: Level, glowMap: THREE.
   decal.receiveShadow = true;
   scene.add(decal);
 
-  // The ramp itself, one smooth slope. The rules walk it as small steps, so this sits right on them.
+  // The ramp uses the same continuous slope as the ground-height sampler.
   const slope = new THREE.BufferGeometry();
   const left = ramp.x - ramp.width / 2;
   const right = ramp.x + ramp.width / 2;

@@ -498,6 +498,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       const glockHeld = player.weapon === 'pistol' && glock.ready();
       // The Glock pack's arms hold the other weapons too, once they have loaded.
       const packArms = !glockHeld && glock.ready();
+      // With the Glock pack's arms in, the drawn hands are never seen. Posing them anyway solved every
+      // finger of a new grip on the frame it was first used, which was the hitch on a first reload.
+      const drawnHands = !glock.ready();
+      const blendSupport: typeof supportHand.blendPose = (from, to, amount) => { if (drawnHands) supportHand.blendPose(from, to, amount); };
       if (player.weapon !== heldWeapon || glockHeld !== glockShown) {
         if (player.weapon !== heldWeapon) {
           swapDip = 1;
@@ -618,13 +622,13 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       if (toolHeld) {
         magazine.visible = false;
         leftHand.visible = player.weapon === 'bat';
-        supportHand.blendPose(holds.batSupport, holds.batSupport, 0);
+        blendSupport(holds.batSupport, holds.batSupport, 0);
       } else if (shotgunHeld) {
         magazine.visible = false;
         const loading = longGun.update(player.ammo, progress, reloading, triggerPull, sinceShot);
         supportMatrix.copy(rootInverse).multiply(longGun.root.matrixWorld).multiply(longGun.supportTransform).multiply(grip.matrix);
         supportMatrix.decompose(leftHand.position, leftHand.quaternion, leftHand.scale);
-        supportHand.blendPose(holds[player.weapon === 'ak' ? 'akForend' : 'forend'], LEFT_HAND_LOADING_SHOTGUN, loading);
+        blendSupport(holds[player.weapon === 'ak' ? 'akForend' : 'forend'], LEFT_HAND_LOADING_SHOTGUN, loading);
       } else if (reloading) {
         // Keep both hands joined as the pistol rolls inward, then bring a fresh
         // magazine up from the belt, insert it, work the slide and rebuild the grip.
@@ -634,21 +638,21 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
           .multiplyScalar(1 - stage(0.49, 0.66));
         if (progress < 0.22) {
           offsetSupport(handOffset.copy(MAGAZINE_AWAY).multiplyScalar(stage(0.06, 0.22)));
-          supportHand.blendPose(holds.pistolSupport, LEFT_HAND_ON_MAGAZINE, stage(0.04, 0.18));
+          blendSupport(holds.pistolSupport, LEFT_HAND_ON_MAGAZINE, stage(0.04, 0.18));
         } else if (progress < 0.66) {
           offsetSupport(magazine.position);
-          supportHand.blendPose(LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_MAGAZINE, 0);
+          blendSupport(LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_MAGAZINE, 0);
         } else if (reloadWasEmpty && progress < 0.86) {
           offsetSupport(handOffset.set(0, 0, SLIDE_TRAVEL * stage(0.76, 0.82) * (1 - stage(0.82, 0.86))));
-          supportHand.blendPose(LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, stage(0.66, 0.76));
+          blendSupport(LEFT_HAND_ON_MAGAZINE, LEFT_HAND_ON_SLIDE, stage(0.66, 0.76));
         } else {
-          supportHand.blendPose(reloadWasEmpty ? LEFT_HAND_ON_SLIDE : LEFT_HAND_ON_MAGAZINE, holds.pistolSupport,
+          blendSupport(reloadWasEmpty ? LEFT_HAND_ON_SLIDE : LEFT_HAND_ON_MAGAZINE, holds.pistolSupport,
             stage(reloadWasEmpty ? 0.86 : 0.66, 0.98));
         }
       } else {
         magazine.visible = true;
         magazine.position.set(0, 0, 0);
-        supportHand.blendPose(holds.pistolSupport, holds.pistolSupport, 0);
+        blendSupport(holds.pistolSupport, holds.pistolSupport, 0);
       }
       rightHand.pullIndex(toolHeld ? 0 : triggerPull);
       // Track the hand-model wrists, including reload pose changes, instead of

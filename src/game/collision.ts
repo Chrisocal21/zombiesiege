@@ -46,9 +46,19 @@ export function resolveCircle(
 // above the current height. The floor counts, so this is never below 0.
 export function groundHeight(level: Level, x: number, z: number, radius: number, y: number): number {
   let ground = -Infinity;
+  const ramp = level.ramp;
+  const onRamp = ramp && Math.abs(x - ramp.x) <= ramp.width / 2 && z >= ramp.zBottom && z <= ramp.zTop;
+  const rampY = onRamp ? ramp.rise * (z - ramp.zBottom) / (ramp.zTop - ramp.zBottom) : -Infinity;
+  if (rampY <= y + config.player.stepHeight) ground = rampY;
   for (const box of level.boxes) {
+    if (box.rampStep) continue;
     const boxTop = top(box);
+    // Foot radius must not grab the street slab early at the lip or beside the trench.
+    if (onRamp && box.surface === 'slab' && boxTop > rampY + 0.001) continue;
     if (boxTop > y + config.player.stepHeight || boxTop <= ground) continue;
+    // Something that starts above the feet is overhead, however thin: it is never stepped onto.
+    // Without this a crate near a ceiling slab put the slab's top within a step and lifted the player through it.
+    if (bottom(box) > y + 0.05) continue;
     const { dx, dz } = footprintDistance(box, x, z);
     if (Math.hypot(dx, dz) < radius * FOOT_RADIUS_SCALE) ground = boxTop;
   }

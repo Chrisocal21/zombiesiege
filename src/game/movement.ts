@@ -141,7 +141,7 @@ function fall(player: Player, input: InputMessage, dt: number, level: Level): vo
   let nextY = player.y + player.vy * dt;
   if (player.vy > 0) {
     // Anything above the step height that overlaps the body counts, not just what is above the head.
-    const ceiling = ceilingHeight(level, player.x, player.z, radius, player.y + height, player.y + config.player.stepHeight);
+    const ceiling = ceilingHeight(level, player.x, player.z, radius, player.y + height, player.y + 0.05);
     if (nextY + height > ceiling) {
       // Never up into it: a head already in a slab stays where it is.
       nextY = Math.min(nextY, Math.max(player.y, ceiling - height));
@@ -176,6 +176,8 @@ function grabLedge(player: Player, level: Level): boolean {
   const toZ = player.z + forwardZ * (reach + LEDGE_STAND_DEPTH);
   // There has to be level ground on top, with room to stand.
   if (Math.abs(groundHeight(level, toX, toZ, radius, topY) - topY) > 0.05) return false;
+  // Nothing over the climb itself, where the body goes up the face of the ledge.
+  if (ceilingHeight(level, player.x, player.z, radius, player.y + height, player.y + 0.05) < topY + height) return false;
   const fitted = resolveCircle(level, toX, toZ, radius, topY, height);
   if (Math.hypot(fitted.x - toX, fitted.z - toZ) > 1e-6) return false;
   if (ceilingHeight(level, toX, toZ, radius, topY + 0.01) < topY + height) return false;
@@ -261,7 +263,10 @@ function climbLadder(player: Player, input: InputMessage, dt: number, level: Lev
     return;
   }
 
-  player.y += input.moveForward * ladderSpeed * dt;
+  const climbed = player.y + input.moveForward * ladderSpeed * dt;
+  // The head stops under a slab rather than passing through it.
+  const lid = ceilingHeight(level, player.x, player.z, radius, player.y + config.player.height, player.y + 0.05);
+  player.y = input.moveForward > 0 ? Math.min(climbed, Math.max(player.y, lid - config.player.height)) : climbed;
 
   if (player.y >= ladder.top) {
     // Over the top and onto whatever the ladder leads to.

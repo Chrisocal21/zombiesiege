@@ -172,6 +172,8 @@ export const config = {
     rideSecondsPerStorey: 1,
     // After arriving, how long the doors stay open before they close again behind the players.
     arrivalOpenSeconds: 4,
+    // On arriving, the beat in the shut cab before the doors slide open.
+    arriveSeconds: 1.6,
     // Each floor up adds this fraction to every wave's zombie count and to their speed.
     extraZombiesPerFloor: 0.4,
     speedPerFloor: 0.08,

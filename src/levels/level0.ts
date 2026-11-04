@@ -61,7 +61,7 @@ function alcove(door: Door): LevelBox[] {
   return alcoveBoxes(door, { ceiling: CEILING, depth: ALCOVE_DEPTH, width: ALCOVE_WIDTH, thickness: WALL_THICKNESS, wallColor: WALL, floorColor: FLOOR });
 }
 
-// The ramp as many small steps, each lower than a step height, so it walks like a slope.
+// Solid backing for the ramp. Walking height is sampled continuously from level.ramp.
 function rampSteps(): LevelBox[] {
   const boxes: LevelBox[] = [];
   const run = ramp.zTop - ramp.zBottom;
@@ -76,6 +76,7 @@ function rampSteps(): LevelBox[] {
       size: { x: ramp.width, y: top + 0.5, z: length },
       color: FLOOR,
       surface: 'step',
+      rampStep: true,
     });
   }
   return boxes;
@@ -165,7 +166,11 @@ export const level0: Level = {
     onStreet(-3, 40, 3.2, 1.2, 0.6, BARRIER, 'plain'),
     // Surface-lot vehicles sit fully within the painted 5 m bays, noses toward the aisle.
     onStreet(-20.5, 27.35, 4.55, 1.48, 1.86, '#354e67', 'car'),
-    onStreet(19.5, 21.35, 4.9, 2.35, 1.98, '#873d3b', 'van'),
+    onStreet(-20.5, 24.35, 4.65, 1.65, 1.9, '#737b78', 'car'),
+    { ...onStreet(19.5, 21.35, 4.9, 2.35, 1.98, '#d6ddd7', 'van'), vehicleRole: 'ambulance' },
+    onStreet(19.5, 24.35, 4.6, 1.48, 1.86, '#7f8588', 'car'),
+    onStreet(19.5, 27.35, 4.65, 1.65, 1.9, '#374e49', 'car'),
+    // East bay E05 (x=19.5, z=30.35) stays empty for the user's later special vehicle.
 
     // Shipping container against the north wall. The roof is at 2.6 m.
     inGarage(0, -8.78, 6.1, 2.6, 2.44, CONTAINER, 'container'),

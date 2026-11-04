@@ -145,7 +145,7 @@ export function installReview(context: ReviewContext): void {
     inspect() {
       return { scenario, streetBuildingsReady: context.view.scene.getObjectByName('Street buildings')?.userData.ready === true,
         calls: context.view.renderer.info.render.calls, triangles: context.view.renderer.info.render.triangles,
-        geometries: context.view.renderer.info.memory.geometries, textures: context.view.renderer.info.memory.textures,
+        geometries: context.view.renderer.info.memory.geometries, programs: context.view.renderer.info.programs?.length, textures: context.view.renderer.info.memory.textures,
         menu: context.menu.screen(), cameraStyle: settings.cameraStyle, cameraFov: context.view.camera.fov, cameraDrop: context.state().players[0].cameraDrop,
         weapon: context.state().players[0].weapon, melee: context.state().players[0].meleeLeft,
         ammo: context.state().players[0].ammo, reload: context.state().players[0].reloadLeft, x: context.state().players[0].x, z: context.state().players[0].z, locked: !!document.pointerLockElement,

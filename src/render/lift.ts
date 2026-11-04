@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { config } from '../config';
 import { settings } from '../client/settings';
 import type { GameState } from '../game/state';
-import { storeyLabel } from '../game/tower';
+import { stopAt, storeyLabel, storeysToNext } from '../game/tower';
 import type { Level } from '../levels/types';
 
 const FRAME = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.35, metalness: 0.85 });
@@ -70,6 +70,11 @@ export function buildLift(scene: THREE.Object3D, level: Level, glowMap: THREE.Te
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.53), new THREE.MeshBasicMaterial({ map: display.texture }));
   sign.position.set(0, lift.height + 0.55, 0.22);
   group.add(sign);
+  // The same sign inside the cab, over the doors, so the floors can be watched going by.
+  const inside = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.53), new THREE.MeshBasicMaterial({ map: display.texture }));
+  inside.position.set(0, lift.height + 0.3, -0.3);
+  inside.rotation.y = Math.PI;
+  group.add(inside);
 
   // The cab behind the wall is lit from the ceiling.
   const cab = new THREE.Group();
@@ -81,7 +86,7 @@ export function buildLift(scene: THREE.Object3D, level: Level, glowMap: THREE.Te
   cab.add(glow);
   scene.add(cab);
 
-  let shownFloor = -1;
+  let shownLabel = '';
   let shownOpen: boolean | null = null;
   const travel = leafWidth + 0.05;
 
@@ -92,12 +97,22 @@ export function buildLift(scene: THREE.Object3D, level: Level, glowMap: THREE.Te
     const eased = progress * progress * (3 - 2 * progress);
     for (const { leaf, side } of leaves) leaf.position.x = side * (leafWidth / 2 + travel * eased);
 
-    if (state.floor !== shownFloor || state.lift.open !== shownOpen) {
-      shownFloor = state.floor;
-      shownOpen = state.lift.open;
-      display.draw(storeyLabel(state.floor + 1), state.lift.open);
-    }
     const riding = state.waves.phase === 'ride';
+    // Riding up, the number climbs storey by storey. Arriving, it shows the storey reached. Otherwise
+    // it names the next stop.
+    let label = storeyLabel(state.floor + 1);
+    if (riding) {
+      const from = stopAt(state.floor).number, to = stopAt(state.floor + 1).number;
+      const total = config.elevator.rideSeconds + config.elevator.rideSecondsPerStorey * storeysToNext(state.floor);
+      const done = Math.min(1, Math.max(0, 1 - state.waves.timer / total));
+      const storey = Math.min(to, from + Math.floor(done * (to - from + 1)));
+      label = storey >= to ? storeyLabel(state.floor + 1) : storey <= 0 ? 'G' : String(storey);
+    } else if (state.waves.phase === 'arrive') label = storeyLabel(state.floor);
+    if (label !== shownLabel || state.lift.open !== shownOpen) {
+      shownLabel = label;
+      shownOpen = state.lift.open;
+      display.draw(label, state.lift.open);
+    }
     const pulse = settings.reducedFlashing ? 1 : 0.7 + 0.3 * Math.sin(time * 6);
     light.intensity = (riding ? 10 * pulse : 14) * (0.5 + 0.5 * Math.max(eased, riding ? 1 : 0.4));
   };
