@@ -156,7 +156,9 @@ export function createHud(menu: Menu): Hud {
       points.push({ x: lift.position.x, z: lift.position.z, color: COLOR.good, label: 'ELEVATOR' });
     } else if (phase === 'search' || phase === 'hold' || phase === 'evac' || phase === 'break' || phase === 'active') {
       for (const marker of objectiveMarkers(state, player)) points.push({ x: marker.at.x, z: marker.at.z, color: COLOR.good, label: marker.label });
-    } else if (phase === 'prep') {
+    }
+    // Boards can be picked up and nailed up any time on a floor.
+    if (phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'cleared' || phase === 'search' || phase === 'hold' || phase === 'evac') {
       if (player.bars < config.doors.carryLimit) {
         state.pickups.forEach((pickup) => {
           if (!pickup.taken) points.push({ x: pickup.x, z: pickup.z, color: COLOR.accent, label: 'BOARDS' });

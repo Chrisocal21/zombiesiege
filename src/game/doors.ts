@@ -20,7 +20,7 @@ function doorSide(door: Door): { x: number; z: number } {
 }
 
 // What pressing the use key would do right now: pick up a bundle of boards, or board up a door.
-// Only possible in the opening prep time, so the choice of doors is made before the first wave.
+// Boards can be picked up and nailed up at any time on a floor, mid-wave included.
 export function interactionTarget(state: GameState, player: Player): Interaction {
   if (state.waves.phase === 'entry') {
     const gate = state.level.gate;
@@ -49,7 +49,7 @@ export function interactionTarget(state: GameState, player: Player): Interaction
       if (near && player.y < 1) return { kind: 'station', index };
     }
   }
-  if (state.waves.phase !== 'prep') return null;
+  if (!BOARDING_PHASES.has(state.waves.phase)) return null;
 
   if (player.bars < config.doors.carryLimit) {
     let nearest = -1;
@@ -69,7 +69,7 @@ export function interactionTarget(state: GameState, player: Player): Interaction
     let nearest = -1;
     let nearestDistance: number = config.doors.boardRange;
     state.level.doors.forEach((door, index) => {
-      if (state.doors[index].boarded) return;
+      if (state.doors[index].boarded || blocked(state, door)) return;
       const side = doorSide(door);
       const distance = Math.hypot(side.x - player.x, side.z - player.z);
       if (distance <= nearestDistance) {
@@ -80,6 +80,17 @@ export function interactionTarget(state: GameState, player: Player): Interaction
     if (nearest >= 0) return { kind: 'door', index: nearest };
   }
   return null;
+}
+
+// Every phase spent on a floor, as opposed to the street run, the lift and the end.
+const BOARDING_PHASES = new Set<GameState['waves']['phase']>(['prep', 'break', 'active', 'cleared', 'search', 'hold', 'evac']);
+
+// A living zombie standing in the doorway, which the boards would seal inside the wall.
+function blocked(state: GameState, door: Door): boolean {
+  const box = boardBox(door);
+  return state.zombies.some((zombie) => zombie.health > 0
+    && Math.abs(zombie.x - box.position.x) < box.size.x / 2 + 0.4
+    && Math.abs(zombie.z - box.position.z) < box.size.z / 2 + 0.4);
 }
 
 // A solid box that fills a doorway, so nothing can walk or shoot through boards.
