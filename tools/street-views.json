@@ -1,0 +1,9 @@
+{
+  "street-east": { "x": 4, "y": 4.9, "z": 40.5, "yaw": -1.5708, "pitch": 0.06 },
+  "street-west": { "x": 4, "y": 4.9, "z": 40.5, "yaw": 1.5708, "pitch": 0.06 },
+  "street-opposite": { "x": 3, "y": 4.9, "z": 35.8, "yaw": 3.14159, "pitch": 0.24 },
+  "street-east-corner": { "x": 17, "y": 4.9, "z": 41, "yaw": -1.8, "pitch": 0.22 },
+  "street-west-corner": { "x": -18, "y": 4.9, "z": 41, "yaw": 1.8, "pitch": 0.22 },
+  "street-lot": { "x": 3, "y": 4.9, "z": 32, "yaw": -1.18, "pitch": 0.12 },
+  "street-entry": { "x": -2, "y": 4.9, "z": 46.5, "yaw": 0.2, "pitch": 0.05 }
+}

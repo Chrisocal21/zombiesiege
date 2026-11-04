@@ -56,7 +56,7 @@ async function main() {
     for (let i = 0; i < 120; i++) {
       const ready = await evaluate(`(() => {
         document.getElementById('launch-continue')?.click();
-        return Boolean(window.__siegeReview || window.__grips?.ready);
+        return Boolean(window.__siegeReview || window.__grips?.ready || window.__models?.ready);
       })()`);
       if (ready) break;
       await delay(500);
@@ -66,6 +66,16 @@ async function main() {
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
     }
     await delay(1500);
+    const viewsFile = process.argv.find(arg => arg.startsWith('--views='))?.slice(8);
+    if (viewsFile) {
+      const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
+      for (const [name, pose] of Object.entries(views)) {
+        await evaluate(`window.__siegeReview.place(${JSON.stringify(pose)})`);
+        await delay(2500);
+        await capture(name);
+        console.log(`Capture: ${name}`);
+      }
+    }
     if (process.argv.includes('--hands-check')) {
       const result = await evaluate("import('/tools/check-hand-viewmodel.js').then(module => module.checkHandViewmodel())");
       console.log('PASS: hand rig, weapon attachment, equip stability and reloads ' + JSON.stringify(result));

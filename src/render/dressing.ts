@@ -71,15 +71,7 @@ export function buildDressing(scene: THREE.Object3D, level: Level): (time: numbe
     const drain = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), grate);
     drain.rotation.x = -Math.PI / 2; drain.position.set(x, streetY + 0.02, 36.15); scene.add(drain);
   }
-  // Visible destinations and district identity make the street feel connected.
-  for (const side of [-1, 1]) {
-    const tunnel = sign(side < 0 ? 'OLD TOWN' : 'RIVERSIDE', 'ROAD CLOSED / EVACUATION IN EFFECT', 5.8, 0.85, '#17353c');
-    tunnel.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
-    tunnel.position.set(side * 25.96, streetY + 6.7, 41); scene.add(tunnel);
-    const storefront = sign(side < 0 ? 'NORTHLINE' : '24 / SEVEN', side < 0 ? 'PHARMACY  +  MEDICAL' : 'MARKET & COFFEE', 6, 0.85, '#17343a');
-    storefront.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
-    storefront.position.set(side * 25.85, streetY + 3.3, 29); scene.add(storefront);
-  }
+  // Store and destination signs attach to their architecture in streetBuildings.
   // Wall-mounted fire and electrical equipment lives against existing solid walls.
   for (const [x, z, rotation] of [[-9.92, -0.9, Math.PI / 2], [9.92, 1.8, -Math.PI / 2]]) {
     const group = new THREE.Group(); group.position.set(x, 0, z); group.rotation.y = rotation; scene.add(group);

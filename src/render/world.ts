@@ -650,7 +650,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   if (garage) {
     buildSky(scene, 0);
     buildStreet(scene, level, glowMap);
-    buildStreetBuildings(scene, level);
+    void buildStreetBuildings(scene, level);
   }
   if (level.theme === 'roof') {
     buildSky(scene, -CITY_DEPTH);
