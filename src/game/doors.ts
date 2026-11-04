@@ -32,7 +32,7 @@ export function interactionTarget(state: GameState, player: Player): Interaction
     return near && player.y < 1 ? { kind: 'gate' } : null;
   }
   const phase = state.waves.phase;
-  if (phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'search' || phase === 'hold' || phase === 'evac') {
+  if (phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'cleared' || phase === 'search' || phase === 'hold' || phase === 'evac' || phase === 'lift') {
     // Hands full: only somewhere to put the case down.
     if (player.carrying >= 0) return objectiveTarget(state, player);
     const supply = nearestSupply(state, player);

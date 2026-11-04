@@ -1,6 +1,7 @@
 import { config } from '../config';
 import type { Level } from '../levels/types';
 import { closeLift, everyoneInCab, openLift } from './elevator';
+import { dropCache } from './items';
 import { beginPrep, closeGate, doorwaySpawn, openDoors } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, dropCase, everyoneAboard } from './objectives';
@@ -148,7 +149,11 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     if (waves.number >= wavesOnFloor(state.floor)) {
       waves.phase = 'cleared';
       waves.timer = config.waves.levelClearedSeconds;
+      // The floor is done: stock up before the lift.
+      dropCache(state, ['bandage', 'bandage', 'medkit', 'water', 'water']);
     } else {
+      // A wave is done: a little something before the next.
+      dropCache(state, ['bandage', 'water']);
       waves.number++;
       waves.phase = 'break';
       waves.timer = config.waves.breakSeconds;

@@ -97,6 +97,21 @@ export function dropSupply(state: GameState, x: number, z: number): void {
   }
 }
 
+// A restock set out by the elevator once a wave or a floor is done, so everyone can patch up and
+// drink before the next one. One set per player, spread out in a row; it ignores the drop cap.
+export function dropCache(state: GameState, items: ItemId[]): void {
+  const lift = state.level.elevator;
+  const players = Math.max(1, state.players.length);
+  const all: ItemId[] = [];
+  for (let i = 0; i < players; i++) all.push(...items);
+  all.forEach((item, index) => {
+    const along = (index - (all.length - 1) / 2) * 0.7;
+    const sideX = Math.abs(lift.normal.z) * along;
+    const sideZ = Math.abs(lift.normal.x) * along;
+    state.supplies.push({ id: state.nextSupplyId++, item, x: lift.position.x + lift.normal.x * 2.4 + sideX, z: lift.position.z + lift.normal.z * 2.4 + sideZ });
+  });
+}
+
 export function nearestSupply(state: GameState, player: Player): number {
   let nearest = -1;
   let best = SUPPLY_RANGE;
