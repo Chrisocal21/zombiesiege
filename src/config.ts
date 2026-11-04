@@ -109,6 +109,18 @@ export const config = {
     bulletSpeed: 140,
   },
 
+  // The AK, bought at a wall station on the upper floors. Automatic: hold fire.
+  ak: {
+    damage: 24,
+    secondsBetweenShots: 0.105,
+    magazineSize: 30,
+    reserveStart: 90,
+    reserveMax: 180,
+    reloadSeconds: 2.5,
+    range: 60,
+    bulletSpeed: 160,
+  },
+
   stations: {
     // How close to a wall station you must be to use it.
     range: 1.8,
@@ -117,6 +129,9 @@ export const config = {
     // Points for the sawed-off shotgun, and for filling its shells once owned.
     shotgunCost: 500,
     shellCost: 200,
+    // The AK, and filling its magazines once owned.
+    akCost: 1200,
+    akAmmoCost: 250,
   },
 
   tower: {

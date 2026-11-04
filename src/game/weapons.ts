@@ -1,11 +1,13 @@
 import { config } from '../config';
 import type { Player } from './state';
 
-const ALL_WEAPONS = ['pistol', 'shotgun', 'machete', 'bat'] as const;
+const ALL_WEAPONS = ['pistol', 'shotgun', 'ak', 'machete', 'bat'] as const;
 export type WeaponId = (typeof ALL_WEAPONS)[number];
 // The machete and spiked bat are switched off until they look right: nobody can pick, cycle to or
 // be sent one. Their rules and models stay, so turning them back on is adding them here.
-export const WEAPON_IDS: readonly WeaponId[] = ['pistol', 'shotgun'];
+export const WEAPON_IDS: readonly WeaponId[] = ['pistol', 'shotgun', 'ak'];
+// The guns bought at a wall: a player carries one of them, beside the pistol.
+export const WALL_GUNS: readonly WeaponId[] = ['shotgun', 'ak'];
 
 export interface WeaponLoadout { weapon: WeaponId; ammo: number; reserve: number }
 export interface MeleeStats {
@@ -32,7 +34,8 @@ export interface WeaponStats {
 export function weaponStats(weapon: WeaponId): WeaponStats {
   switch (weapon) {
     case 'pistol': return { kind: 'firearm', melee: { damage: 30, range: 1.2, arc: .5, seconds: .5, windup: .14, targets: 1, push: .12 }, name: 'P9 PISTOL', ...config.pistol, pellets: 1, spread: 0 };
-    case 'shotgun': return { kind: 'firearm', melee: { damage: 40, range: 1.35, arc: .55, seconds: .6, windup: .18, targets: 1, push: .22 }, name: 'SAWED-OFF', ...config.shotgun };
+    case 'shotgun': return { kind: 'firearm', melee: { damage: 40, range: 1.35, arc: .55, seconds: .6, windup: .18, targets: 1, push: .22 }, name: 'PUMP SHOTGUN', ...config.shotgun };
+    case 'ak': return { kind: 'firearm', melee: { damage: 45, range: 1.3, arc: .5, seconds: .6, windup: .18, targets: 1, push: .2 }, name: 'AK', ...config.ak, pellets: 1, spread: 0.012 };
     case 'machete':
     case 'bat': {
       const machete = weapon === 'machete';
@@ -95,23 +98,28 @@ export function setReserve(player: Player, weapon: WeaponId, rounds: number): vo
   else if (player.holsteredGun?.weapon === weapon) player.holsteredGun.reserve = rounds;
 }
 
-// Takes the shotgun in hand and puts the pistol away.
-export function giveShotgun(player: Player, tick: number): void {
+// Takes a wall gun in hand with a full magazine and its starting spare rounds. A player carries one
+// wall gun beside the pistol, so a new one replaces the other, and the pistol goes away.
+export function giveWeapon(player: Player, weapon: WeaponId, tick: number): void {
   player.meleeLeft = 0;
   player.meleeHitPending = false;
-  const stats = weaponStats('shotgun');
-  if (owns(player, 'shotgun')) equipWeapon(player, 'shotgun', tick);
+  const stats = weaponStats(weapon);
+  if (owns(player, weapon)) equipWeapon(player, weapon, tick);
   else if (isMelee(player.weapon)) equipWeapon(player, player.holsteredGun?.weapon ?? 'pistol', tick);
-  if (player.weapon !== 'shotgun') {
-    player.stowed = { weapon: player.weapon, ammo: player.ammo, reserve: player.reserve };
-    player.weapon = 'shotgun';
+  if (player.weapon !== weapon) {
+    // A wall gun in hand is swapped for the new one. Otherwise the pistol goes away, in place of any
+    // wall gun that was put away.
+    if (!WALL_GUNS.includes(player.weapon)) player.stowed = { weapon: player.weapon, ammo: player.ammo, reserve: player.reserve };
+    player.weapon = weapon;
   }
   player.ammo = stats.magazineSize;
-  player.reserve = config.shotgun.reserveStart;
+  player.reserve = stats.reserveStart;
   player.reloadLeft = 0;
   player.cooldown = 0.4;
   player.lastSwapTick = tick;
 }
+
+export const giveShotgun = (player: Player, tick: number): void => giveWeapon(player, 'shotgun', tick);
 
 // Nobody starts a wave with nothing to shoot, so running dry can never lock a run.
 export function guaranteeAmmo(player: Player): void {

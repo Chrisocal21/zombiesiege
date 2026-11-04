@@ -75,7 +75,7 @@ export function drawItemUse(context: CanvasRenderingContext2D, width: number, he
   context.fill();
 }
 
-const WEAPON_LABEL: Record<WeaponId, string> = { pistol: 'PISTOL', shotgun: 'SHOTGUN', machete: 'MACHETE', bat: 'SPIKED BAT' };
+const WEAPON_LABEL: Record<WeaponId, string> = { pistol: 'PISTOL', shotgun: 'SHOTGUN', ak: 'AK', machete: 'MACHETE', bat: 'SPIKED BAT' };
 
 // The wheel, held open: weapons and items in a ring, the segment under the mouse lit.
 export function drawWheel(context: CanvasRenderingContext2D, width: number, height: number, unit: number, player: Player, wheel: WheelState): void {

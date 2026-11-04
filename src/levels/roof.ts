@@ -31,7 +31,7 @@ const elevator: Elevator = { position: { x: 0, y: 0, z: 10.25 }, normal: { x: 0,
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: 3, y: 1.25, z: 9.95 }, normal: { x: 0, z: -1 } },
-  { kind: 'shotgun', position: { x: -3, y: 1.25, z: 9.95 }, normal: { x: 0, z: -1 } },
+  { kind: 'shotgun', weapon: 'ak', position: { x: -3, y: 1.25, z: 9.95 }, normal: { x: 0, z: -1 } },
 ];
 
 // Where the box that switches on the helipad lights stands against the east parapet.

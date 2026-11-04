@@ -2,6 +2,7 @@ import { bakeStaticMeshes } from './bake';
 import { buildDressing } from './dressing';
 import { settings } from '../client/settings';
 import { buildArchitecture } from './architecture';
+import { buildHospital } from './hospital';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { GameState } from '../game/state';
@@ -581,7 +582,9 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   scene.add(staticProps);
   level.boxes.forEach((box, index) => {
     if (box.hidden) return;
-    const object = box.prop ? buildFurniture(box, environment) : buildBoxObject(box, index);
+    const object = level.theme === 'garage' && box.surface === 'building'
+      ? buildHospital(box)
+      : box.prop ? buildFurniture(box, environment) : buildBoxObject(box, index);
     if (object) staticProps.add(object);
   });
   bakeStaticMeshes(staticProps);

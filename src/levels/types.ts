@@ -166,6 +166,8 @@ export type Objective =
 // A buying point on a wall. Walk up, press use, and pay points.
 export interface Station {
   kind: 'ammo' | 'shotgun';
+  // What a weapon wall sells. The pump shotgun when it is left out.
+  weapon?: 'shotgun' | 'ak';
   // The middle of the station on the wall face, and the direction it faces into the room.
   position: Vec3;
   normal: { x: number; z: number };

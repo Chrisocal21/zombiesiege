@@ -29,7 +29,7 @@ const locks: Lock[] = [
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -11.95, y: 1.25, z: 10.5 }, normal: { x: 1, z: 0 } },
-  { kind: 'shotgun', position: { x: -7.5, y: 1.25, z: -11.95 }, normal: { x: 0, z: 1 } },
+  { kind: 'shotgun', weapon: 'ak', position: { x: -7.5, y: 1.25, z: -11.95 }, normal: { x: 0, z: 1 } },
 ];
 
 const lights: LevelLight[] = [

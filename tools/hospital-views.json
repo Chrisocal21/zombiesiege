@@ -1,0 +1,5 @@
+{
+  "hospital-street": { "x": -2, "y": 4.9, "z": 46.5, "yaw": 0.18, "pitch": 0.16 },
+  "hospital-entrance": { "x": -12, "y": 4.9, "z": 24, "yaw": 0, "pitch": 0.22 },
+  "hospital-neighbours": { "x": 17, "y": 4.9, "z": 39, "yaw": 0.61, "pitch": 0.31 }
+}

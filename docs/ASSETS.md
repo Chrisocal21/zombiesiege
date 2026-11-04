@@ -8,6 +8,8 @@ needs its download page checked for use in a commercial game.
 |---|---|---|---|
 | Hands (old pistol, shotgun, melee) | `public/models/left-hand.glb`, `right-hand.glb` | see `public/models/hands-LICENSE.md` | see that file |
 | Glock 17 with arms and animations | `public/models/glock17.glb` | Fab, "G17 - FPS Weapon Animations Pack (v.1)" | Fab Standard License |
+| Pump shotgun (Ithaca 37 style) | `public/models/weapons/pump.glb` | `Shotgun_Model.blend` from the asset folder; its 4K textures were not supplied, so the parts are painted flat steel and wood | *unconfirmed* |
+| AK | `public/models/weapons/ak.glb` | `AK files/akSAl.blend` from `AK files(1).zip`; its arms are left out, and the packed camo texture is replaced by flat paint | *unconfirmed* |
 | Street buildings (8) | `public/models/city/*.glb` | "Buildings" pack (FBX + baked PBR textures) | *unconfirmed* |
 | Zombies (2) and a survivor | `public/models/characters/zombie-a.glb`, `zombie-b.glb`, `survivor.glb` | "3 zombie collection" (FBX, Mixamo skeletons) | *unconfirmed* |
 | Draco decoder | `public/draco/*` | three.js `examples/jsm/libs/draco` | Apache 2.0 |

@@ -42,11 +42,84 @@ type Side = 'right' | 'left';
 // How far the palm's skin sits off the line of the hand's bones.
 const PALM_SKIN = 0.014;
 
+// Where an arm's mesh ends at the elbow, in the forearm's frame, and how thick it is there.
+interface Elbow { local: THREE.Vector3; radius: number }
+
 interface PackHand {
   forearm: THREE.Bone;
+  // The upper arm bone, which turns with the forearm so the mesh moves as one piece.
+  upper: THREE.Object3D;
+  upperRest: { position: THREE.Vector3; quaternion: THREE.Quaternion; scale: THREE.Vector3 };
+  elbow: Elbow;
+  // The upper arm and elbow joint that carry the arm on from the cut end, out of the bottom of the view.
+  extension: { tube: THREE.Mesh; joint: THREE.Mesh };
   // The forearm, from the palm's frame, at rest.
   fromPalm: THREE.Matrix4;
   rest: { position: THREE.Vector3; quaternion: THREE.Quaternion; scale: THREE.Vector3 };
+}
+
+// Finds where an arm's mesh ends at the elbow, in the forearm bone's own frame: among the vertices
+// weighted mostly to this side's bones, the ring furthest from the hand along the forearm. Read
+// from the bind pose, so it holds however the arm is posed.
+function findElbow(scene: THREE.Object3D, prefix: string, wristBone: THREE.Object3D, forearm: THREE.Bone): Elbow | null {
+  const meshes: THREE.SkinnedMesh[] = [];
+  scene.traverse((object) => { if (object instanceof THREE.SkinnedMesh) meshes.push(object); });
+  // From the hand back toward the elbow, in the forearm's frame.
+  const hand = wristBone.position.clone();
+  const direction = hand.clone().negate().normalize();
+  const points: THREE.Vector3[] = [];
+  const reach: number[] = [];
+  for (const mesh of meshes) {
+    const bones = mesh.skeleton.bones;
+    const ours = new Set<number>();
+    bones.forEach((bone, index) => { if (bone.name.startsWith(prefix)) ours.add(index); });
+    const at = bones.indexOf(forearm);
+    if (at < 0) continue;
+    // Bind pose to the forearm's frame.
+    const toBone = mesh.skeleton.boneInverses[at].clone().multiply(mesh.bindMatrix);
+    const indices = mesh.geometry.attributes.skinIndex, weights = mesh.geometry.attributes.skinWeight, position = mesh.geometry.attributes.position;
+    for (let i = 0; i < indices.count; i++) {
+      let weight = 0;
+      for (let j = 0; j < 4; j++) if (ours.has(indices.getComponent(i, j))) weight += weights.getComponent(i, j);
+      if (weight < 0.5) continue;
+      const point = new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(toBone);
+      points.push(point);
+      reach.push(point.clone().sub(hand).dot(direction));
+    }
+  }
+  if (!points.length) return null;
+  const furthest = Math.max(...reach);
+  const ring = points.filter((_, i) => reach[i] > furthest - 1.5);
+  const centre = ring.reduce((sum, p) => sum.add(p), new THREE.Vector3()).divideScalar(ring.length);
+  const around = ring.reduce((sum, p) => {
+    const off = p.clone().sub(centre);
+    return sum + off.addScaledVector(direction, -off.dot(direction)).length();
+  }, 0) / ring.length;
+  // The bone's frame is in centimetres: its world scale turns that into metres.
+  const radius = around * forearm.getWorldScale(new THREE.Vector3()).x;
+  return { local: centre, radius };
+}
+
+// The arm texture's average colour, for the parts that carry the arm on.
+function averageSkin(scene: THREE.Object3D): THREE.Color | null {
+  let color: THREE.Color | null = null;
+  scene.traverse((object) => {
+    if (color || !(object instanceof THREE.SkinnedMesh)) return;
+    const material = Array.isArray(object.material) ? object.material[0] : object.material;
+    const image = (material as THREE.MeshStandardMaterial).map?.image as CanvasImageSource | undefined;
+    if (!image) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 16;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return;
+    context.drawImage(image, 0, 0, 16, 16);
+    const data = context.getImageData(0, 0, 16, 16).data;
+    let r = 0, g = 0, b = 0;
+    for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i + 1]; b += data[i + 2]; }
+    const n = data.length / 4 * 255;
+    color = new THREE.Color().setRGB(r / n, g / n, b / n, THREE.SRGBColorSpace);
+  });
+  return color;
 }
 
 // The Glock 17 pack: both arms, the gun, and its fire, reload and draw animations.
@@ -70,8 +143,12 @@ export function loadGlock(parent: THREE.Object3D): Glock {
   const gun: THREE.Object3D[] = [];
   let loaded = false;
 
+  // The skin the arm extensions are made of, matched to the arm's own texture once it has loaded.
+  const skin = new THREE.MeshStandardMaterial({ color: '#d9ad99', roughness: 0.75 });
+
   new GLTFLoader().load(GLOCK_MODEL, (gltf) => {
     frame.add(gltf.scene);
+    skin.color.copy(averageSkin(gltf.scene) ?? skin.color).multiplyScalar(0.92);
     gltf.scene.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         object.castShadow = true;
@@ -116,9 +193,21 @@ export function loadGlock(parent: THREE.Object3D): Glock {
       const z = x.clone().cross(y);
       const origin = at(wrist).lerp(at(knuckle), 0.6).addScaledVector(z, side === 'right' ? -PALM_SKIN : PALM_SKIN);
       const palm = new THREE.Matrix4().makeBasis(x, y, z).setPosition(origin);
+      const upper = forearm.parent;
+      if (!upper) continue;
+      const elbow = findElbow(gltf.scene, prefix, wrist, forearm);
+      if (!elbow) continue;
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 24, 1, true), skin);
+      const joint = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), skin);
+      tube.castShadow = joint.castShadow = true;
+      tube.frustumCulled = joint.frustumCulled = false;
+      tube.visible = joint.visible = false;
+      root.add(tube, joint);
       hands[side] = {
         forearm, fromPalm: palm.invert().multiply(forearm.matrixWorld),
         rest: { position: forearm.position.clone(), quaternion: forearm.quaternion.clone(), scale: forearm.scale.clone() },
+        upper, upperRest: { position: upper.position.clone(), quaternion: upper.quaternion.clone(), scale: upper.scale.clone() },
+        elbow, extension: { tube, joint },
       };
     }
     const slideMesh = gltf.scene.getObjectByName('Slide_Glock_D_0') as THREE.Mesh | undefined;
@@ -165,29 +254,60 @@ export function loadGlock(parent: THREE.Object3D): Glock {
   const target = new THREE.Matrix4();
   const socketAt = new THREE.Vector3(), socketTurn = new THREE.Quaternion(), socketSize = new THREE.Vector3();
   const ONE = new THREE.Vector3(1, 1, 1);
+  const forearmRest = new THREE.Matrix4();
+  const elbowAt = new THREE.Vector3(), shoulder = new THREE.Vector3(), along = new THREE.Vector3();
+  const UP = new THREE.Vector3(0, 1, 0);
+  // Where each shoulder is, in the view's space: below the frame and behind the eye.
+  const SHOULDER = { right: new THREE.Vector3(0.3, -0.62, 0.34), left: new THREE.Vector3(-0.3, -0.62, 0.34) };
   function place(side: Side, socket: THREE.Object3D | null) {
     const hand = hands[side];
     if (!hand) return;
-    const bone = hand.forearm;
+    const { upper, forearm, extension } = hand;
+    // The arm moves as one piece: the forearm keeps its rest pose in the upper arm, and the upper
+    // arm goes where it must for the palm to land on the socket.
+    forearm.position.copy(hand.rest.position); forearm.quaternion.copy(hand.rest.quaternion); forearm.scale.copy(hand.rest.scale);
     if (!socket) {
-      bone.scale.setScalar(1e-4);
+      upper.scale.setScalar(1e-4);
+      extension.tube.visible = extension.joint.visible = false;
       return;
     }
-    bone.parent!.updateWorldMatrix(true, false);
+    upper.parent!.updateWorldMatrix(true, false);
     socket.updateWorldMatrix(true, false);
     // Only where the socket is and which way it faces: the weapons are scaled up, the arms are not.
     socket.matrixWorld.decompose(socketAt, socketTurn, socketSize);
-    target.compose(socketAt, socketTurn, ONE).multiply(hand.fromPalm).premultiply(bone.parent!.matrixWorld.clone().invert());
-    target.decompose(bone.position, bone.quaternion, bone.scale);
+    forearmRest.compose(hand.rest.position, hand.rest.quaternion, hand.rest.scale);
+    target.compose(socketAt, socketTurn, ONE).multiply(hand.fromPalm).multiply(forearmRest.invert())
+      .premultiply(upper.parent!.matrixWorld.clone().invert());
+    target.decompose(upper.position, upper.quaternion, upper.scale);
+    // The upper arm and elbow, from where the mesh ends to the shoulder, which is below the frame.
+    root.updateWorldMatrix(true, false);
+    forearm.updateWorldMatrix(true, false);
+    elbowAt.copy(hand.elbow.local).applyMatrix4(forearm.matrixWorld);
+    root.worldToLocal(elbowAt);
+    shoulder.copy(SHOULDER[side]);
+    if (root.parent) root.parent.localToWorld(shoulder);
+    root.worldToLocal(shoulder);
+    along.subVectors(shoulder, elbowAt);
+    const length = along.length();
+    const radius = hand.elbow.radius;
+    extension.tube.visible = extension.joint.visible = true;
+    extension.tube.position.copy(elbowAt).addScaledVector(along, 0.5);
+    extension.tube.quaternion.setFromUnitVectors(UP, along.normalize());
+    extension.tube.scale.set(radius * 0.97, length, radius * 0.97);
+    extension.joint.position.copy(elbowAt);
+    extension.joint.scale.setScalar(radius * 0.99);
   }
 
-  // The forearms back where the clips expect them, and the gun out.
+  // The arms and gun back as the clips expect them.
   function holdGlock() {
     for (const part of gun) part.visible = true;
     for (const hand of Object.values(hands)) {
-      hand.forearm.position.copy(hand.rest.position);
-      hand.forearm.quaternion.copy(hand.rest.quaternion);
-      hand.forearm.scale.copy(hand.rest.scale);
+      for (const [bone, rest] of [[hand.forearm, hand.rest], [hand.upper, hand.upperRest]] as const) {
+        bone.position.copy(rest.position);
+        bone.quaternion.copy(rest.quaternion);
+        bone.scale.copy(rest.scale);
+      }
+      hand.extension.tube.visible = hand.extension.joint.visible = false;
     }
   }
 

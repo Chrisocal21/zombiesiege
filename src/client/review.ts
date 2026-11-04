@@ -3,7 +3,7 @@ import { boardBox, closeGate } from '../game/doors';
 import { spawnZombie } from '../game/zombies';
 import { enterLevel } from '../game/state';
 import { levelForFloor } from '../levels';
-import { equipWeapon, giveShotgun, weaponStats, type WeaponId } from '../game/weapons';
+import { equipWeapon, giveShotgun, giveWeapon, weaponStats, type WeaponId } from '../game/weapons';
 import type { Level } from '../levels/types';
 import type { Hud } from '../render/hud';
 import type { Menu } from '../render/menu';
@@ -34,7 +34,7 @@ export function installReview(context: ReviewContext): void {
       player.yaw = -0.3; player.pitch = -0.03;
       context.menu.close();
       if (name === 'character' || name === 'settings' || name === 'controls' || name === 'admin') context.menu.open(name);
-      if (['garage', 'combat', 'map', 'aim', 'zombie-close'].includes(name) || name.includes('reload') || name.startsWith('bodycam') || name.includes('shotgun') || name.includes('machete') || name.includes('bat') || name.includes('melee')) {
+      if (['garage', 'combat', 'map', 'aim', 'zombie-close'].includes(name) || name.includes('reload') || name.startsWith('bodycam') || name.includes('shotgun') || name.startsWith('ak') || name.includes('machete') || name.includes('bat') || name.includes('melee')) {
         player.x = 0; player.z = 7; player.y = 0; player.yaw = 0.22; player.pitch = -0.04;
         state.gate.closed = true; state.gate.closedTick = 100;
         state.waves.phase = 'active'; state.waves.number = 3; state.waves.toSpawn = 8;
@@ -52,6 +52,7 @@ export function installReview(context: ReviewContext): void {
         state.zombies[0].yaw = Math.PI;
       }
       if (name.includes('shotgun')) giveShotgun(player, 0);
+      if (name.startsWith('ak')) giveWeapon(player, 'ak', 0);
       if (name.includes('machete')) equipWeapon(player,'machete',0);
       if (name.includes('bat')) equipWeapon(player,'bat',0);
       if (name.includes('strike') || name.includes('melee')) {
@@ -86,6 +87,7 @@ export function installReview(context: ReviewContext): void {
       player.aiming = !!options.aim;
       if (options.shotgun) giveShotgun(player, 0);
       if (options.weapon==='shotgun') giveShotgun(player,0);
+      else if (options.weapon==='ak') giveWeapon(player,'ak',0);
       else if (options.weapon) equipWeapon(player,options.weapon,0);
       if (options.points !== undefined) state.points[player.id] = options.points;
       if (options.health !== undefined) player.health = options.health;

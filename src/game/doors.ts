@@ -3,7 +3,7 @@ import type { Door, LevelBox } from '../levels/types';
 import { nearestSupply, takeSupply } from './items';
 import { objectiveTarget, useObjective, type ObjectiveTarget } from './objectives';
 import type { GameState, Player } from './state';
-import { giveShotgun, isMelee, owns, reserveOf, setReserve, weaponStats } from './weapons';
+import { giveWeapon, isMelee, owns, reserveOf, setReserve, weaponStats } from './weapons';
 import { spawnZombie } from './zombies';
 
 export type Interaction =
@@ -165,6 +165,12 @@ function openLock(state: GameState, player: Player, index: number): void {
   player.lastBuyTick = state.tick;
 }
 
+// The gun a weapon wall sells, or null at an ammo locker.
+function stationGun(state: GameState, index: number): 'shotgun' | 'ak' | null {
+  const station = state.level.stations[index];
+  return station.kind === 'shotgun' ? station.weapon ?? 'shotgun' : null;
+}
+
 export interface Offer {
   // What pressing use does here: 'weapon' buys the gun itself, 'ammo' fills spare rounds.
   action: 'weapon' | 'ammo';
@@ -176,25 +182,27 @@ export interface Offer {
 
 // What a station is selling this player right now.
 export function stationOffer(state: GameState, player: Player, index: number): Offer {
-  const kind = state.level.stations[index].kind;
   const points = state.points[player.id] ?? 0;
-  if (kind === 'shotgun' && !owns(player, 'shotgun')) {
-    return { action: 'weapon', label: 'Buy sawed-off shotgun', cost: config.stations.shotgunCost, status: points >= config.stations.shotgunCost ? 'ok' : 'poor' };
+  const wall = stationGun(state, index);
+  if (wall && !owns(player, wall)) {
+    const cost = wall === 'ak' ? config.stations.akCost : config.stations.shotgunCost;
+    return { action: 'weapon', label: `Buy ${wall === 'ak' ? 'AK' : 'pump shotgun'}`, cost, status: points >= cost ? 'ok' : 'poor' };
   }
-  // The ammo locker fills whatever is in hand, and the weapon wall fills its own gun's shells.
-  const weapon = kind === 'shotgun' ? 'shotgun' : isMelee(player.weapon) ? player.holsteredGun?.weapon ?? 'pistol' : player.weapon;
-  const cost = kind === 'shotgun' ? config.stations.shellCost : config.stations.ammoCost;
+  // The ammo locker fills whatever is in hand, and the weapon wall fills its own gun's rounds.
+  const weapon = wall ?? (isMelee(player.weapon) ? player.holsteredGun?.weapon ?? 'pistol' : player.weapon);
+  const cost = wall === 'ak' ? config.stations.akAmmoCost : wall ? config.stations.shellCost : config.stations.ammoCost;
   const full = reserveOf(player, weapon) >= weaponStats(weapon).reserveMax;
-  return { action: 'ammo', label: kind === 'shotgun' ? 'Buy shells' : isMelee(player.weapon) ? `Buy ${weaponStats(weapon).name} ammo` : 'Buy ammo', cost, status: full ? 'full' : points >= cost ? 'ok' : 'poor' };
+  return { action: 'ammo', label: wall === 'ak' ? 'Buy AK ammo' : wall ? 'Buy shells' : isMelee(player.weapon) ? `Buy ${weaponStats(weapon).name} ammo` : 'Buy ammo', cost, status: full ? 'full' : points >= cost ? 'ok' : 'poor' };
 }
 
 function buy(state: GameState, player: Player, index: number): void {
   const offer = stationOffer(state, player, index);
   if (offer.status !== 'ok') return;
   state.points[player.id] -= offer.cost;
-  if (offer.action === 'weapon') giveShotgun(player, state.tick);
+  const wall = stationGun(state, index);
+  if (offer.action === 'weapon' && wall) giveWeapon(player, wall, state.tick);
   else {
-    const weapon = state.level.stations[index].kind === 'shotgun' ? 'shotgun' : isMelee(player.weapon) ? player.holsteredGun?.weapon ?? 'pistol' : player.weapon;
+    const weapon = wall ?? (isMelee(player.weapon) ? player.holsteredGun?.weapon ?? 'pistol' : player.weapon);
     setReserve(player, weapon, weaponStats(weapon).reserveMax);
   }
   player.lastBuyTick = state.tick;

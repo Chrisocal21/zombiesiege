@@ -52,7 +52,8 @@ async function main() {
     await send('Emulation.setFocusEmulationEnabled', { enabled: true });
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     const page = process.argv.find(arg => arg.startsWith('--page='))?.slice('--page='.length) ?? '/?review';
-    await send('Page.navigate', { url: `http://127.0.0.1:3000${page}` });
+    const origin = process.argv.find(arg => arg.startsWith('--origin='))?.slice(9) ?? 'http://127.0.0.1:3000';
+    await send('Page.navigate', { url: `${origin}${page}` });
     for (let i = 0; i < 120; i++) {
       const ready = await evaluate(`(() => {
         document.getElementById('launch-continue')?.click();

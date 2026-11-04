@@ -136,7 +136,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
           flights.push({ mesh, end, velocity: velocity.multiplyScalar(config.pistol.bulletSpeed), left: end.distanceTo(muzzle) / config.pistol.bulletSpeed,
             hit: player.lastShotHit, blood: player.lastShotZombie, normal: hit ? new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z) : new THREE.Vector3(0, 1, 0), surface: hit?.box.surface ?? 'wall' });
           // A break-action shotgun keeps its hulls in the chambers until it is opened.
-          if (player.weapon === 'pistol') {
+          if (player.weapon === 'pistol' || player.weapon === 'ak') {
             const eject = weaponToWorld(viewmodel.getEjection(new THREE.Vector3()));
             const shell = new THREE.Mesh(shellGeometry, brass);
             const ejectVelocity = new THREE.Vector3(1.5 + Math.random(), 1.5 + Math.random(), 0.3).applyQuaternion(camera.quaternion);

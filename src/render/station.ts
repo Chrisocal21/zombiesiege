@@ -9,7 +9,7 @@ const STEEL = new THREE.MeshStandardMaterial({ color: 0x3d4a3a, roughness: 0.55,
 const DARK = new THREE.MeshStandardMaterial({ color: 0x1b1e21, roughness: 0.6, metalness: 0.6 });
 const BRASS = new THREE.MeshStandardMaterial({ color: 0xc8943a, roughness: 0.3, metalness: 0.9 });
 
-function screenTexture(kind: 'ammo' | 'shotgun'): THREE.CanvasTexture {
+function screenTexture(kind: 'ammo' | 'shotgun', weapon?: 'shotgun' | 'ak'): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 256;
@@ -22,10 +22,10 @@ function screenTexture(kind: 'ammo' | 'shotgun'): THREE.CanvasTexture {
   context.textAlign = 'center';
   context.fillStyle = '#38e070';
   context.font = '800 96px Bahnschrift, Arial Narrow, sans-serif';
-  context.fillText(kind === 'shotgun' ? 'SAWED-OFF' : 'AMMO', 256, 120);
+  context.fillText(kind === 'shotgun' ? (weapon === 'ak' ? 'AK' : 'SHOTGUN') : 'AMMO', 256, 120);
   context.font = '700 58px Bahnschrift, Arial Narrow, sans-serif';
   context.fillStyle = '#ffd24a';
-  context.fillText(`${kind === 'shotgun' ? config.stations.shotgunCost : config.stations.ammoCost} PTS`, 256, 200);
+  context.fillText(`${kind === 'shotgun' ? (weapon === 'ak' ? config.stations.akCost : config.stations.shotgunCost) : config.stations.ammoCost} PTS`, 256, 200);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -47,7 +47,7 @@ export function buildStations(scene: THREE.Object3D, level: Level, glowMap: THRE
     const lid = new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.5, 0.06, 2, 0.02), DARK);
     lid.position.set(0, -0.32, 0.3);
     group.add(lid);
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.45), new THREE.MeshBasicMaterial({ map: screenTexture(station.kind) }));
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.45), new THREE.MeshBasicMaterial({ map: screenTexture(station.kind, station.weapon) }));
     screen.position.set(0, 0.3, 0.292);
     group.add(screen);
     // A row of brass rounds standing in a rack, or a short shotgun hung up in its place.

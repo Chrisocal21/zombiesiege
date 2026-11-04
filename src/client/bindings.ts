@@ -15,6 +15,7 @@ export type Action =
   | 'melee'
   | 'weapon1'
   | 'weapon2'
+  | 'weapon3'
   | 'wheel'
   | 'bandage'
   | 'medkit'
@@ -48,6 +49,7 @@ export const ACTIONS: ActionInfo[] = [
   { id: 'melee', label: 'Quick melee', group: 'Combat' },
   { id: 'weapon1', label: 'Pistol', group: 'Weapons' },
   { id: 'weapon2', label: 'Shotgun', group: 'Weapons' },
+  { id: 'weapon3', label: 'AK', group: 'Weapons' },
   { id: 'wheel', label: 'Weapon and item wheel (hold)', group: 'Weapons' },
   { id: 'bandage', label: 'Use a bandage', group: 'Weapons' },
   { id: 'medkit', label: 'Use a first aid kit', group: 'Weapons' },
@@ -76,6 +78,7 @@ const DEFAULTS: Record<Action, string> = {
   melee: 'KeyB',
   weapon1: 'Digit1',
   weapon2: 'Digit2',
+  weapon3: 'Digit3',
   wheel: 'Tab',
   bandage: 'Digit5',
   medkit: 'Digit6',
@@ -104,7 +107,7 @@ export function loadBindings(): void {
     }
     // New combat shortcuts must not take a key the player already assigned elsewhere.
     let migrated = false;
-    for (const action of ['melee','weapon1','weapon2','wheel','bandage','medkit','water'] as Action[]) {
+    for (const action of ['melee','weapon1','weapon2','weapon3','wheel','bandage','medkit','water'] as Action[]) {
       if (typeof parsed[action] === 'string') continue;
       const occupied = new Set((Object.keys(DEFAULTS) as Action[]).filter(id=>id!==action).map(id=>bindings[id]));
       if (!occupied.has(bindings[action])) continue;

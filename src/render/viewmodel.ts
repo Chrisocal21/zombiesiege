@@ -11,7 +11,7 @@ import { handSocket, showSockets, triggerContact } from './handSockets';
 import type { CameraPose } from './view';
 import { buildLampCase } from './objectives';
 import { box, softBox, profile, barrelPart } from './weaponGeometry';
-import { createShotgun } from './shotgun';
+import { createLongGun } from './longGuns';
 import { createMeleeWeapons } from './meleeWeapons';
 import { GLOCK_PIVOT, loadGlock } from './glock';
 
@@ -25,9 +25,12 @@ const REST_PITCH = 0.03;
 // Aimed, the sights sit dead on the camera's center line. The pitch levels the rear dots
 // with the front dot, and the height puts that line through the eye.
 const AIM_POSITION = new THREE.Vector3(0, -0.1120, -0.50);
-const SHOTGUN_REST_POSITION = new THREE.Vector3(0.14, -0.19, -0.75);
-const SHOTGUN_BODYCAM_POSITION = new THREE.Vector3(0.02, -0.12, -0.67);
-const SHOTGUN_AIM_POSITION = new THREE.Vector3(0, -0.1120, -0.68);
+// The pump shotgun and the AK, held by the Glock pack's arms. At the hip each is pulled back and down
+// so the arms rise from the bottom of the view; aimed, the top of the receiver sits on the centre line.
+const LONG_POSE = {
+  shotgun: { rest: new THREE.Vector3(0.16, -0.24, -0.56), bodycam: new THREE.Vector3(0.05, -0.17, -0.52), aim: new THREE.Vector3(0, -0.075, -0.46), yaw: 0.16 },
+  ak: { rest: new THREE.Vector3(0.16, -0.25, -0.54), bodycam: new THREE.Vector3(0.05, -0.18, -0.5), aim: new THREE.Vector3(0, -0.105, -0.46), yaw: 0.16 },
+};
 const TOOL_POSITION = new THREE.Vector3(0.23, -0.20, -0.68);
 const AIM_PITCH = 0.0157;
 // The Glock pack holds its gun at eye level. At the hip it sits lower, out to the right and
@@ -321,24 +324,28 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   root.add(leftHand);
   const supportHand = loadHand(leftHand, LEFT_HAND_MODEL);
 
-  const shotgun = createShotgun({ steel: slideMetal, dark: darkMetal, edge: brightMetal, rubber: gripPolymer });
-  root.add(shotgun.root);
+  const longGuns = { shotgun: createLongGun('shotgun'), ak: createLongGun('ak') };
+  root.add(longGuns.shotgun.root, longGuns.ak.root);
   const tools = createMeleeWeapons(slideMetal, gripPolymer);
   root.add(tools.machete, tools.bat);
   const holds = {
     pistol: { grip: GUN_GRIP, socket: pistolSockets.primary },
     pistolSupport: { grip: SUPPORT_GRIP, socket: pistolSockets.support },
-    shotgun: { grip: SHOTGUN_GRIP, socket: shotgun.sockets.primary },
-    forend: { grip: FOREND_GRIP, socket: shotgun.sockets.support },
+    shotgun: { grip: SHOTGUN_GRIP, socket: longGuns.shotgun.sockets.primary },
+    forend: { grip: FOREND_GRIP, socket: longGuns.shotgun.sockets.support },
+    ak: { grip: SHOTGUN_GRIP, socket: longGuns.ak.sockets.primary },
+    akForend: { grip: FOREND_GRIP, socket: longGuns.ak.sockets.support },
     machete: { grip: FIST_GRIP, socket: tools.sockets.machete },
     bat: { grip: BAT_GRIP, socket: tools.sockets.batRight },
     batSupport: { grip: BAT_GRIP, socket: tools.sockets.batLeft },
   } satisfies Record<string, Hold>;
   const weaponParts = new Set<THREE.Object3D>();
-  for (const weapon of [pistol, shotgun.root, tools.machete, tools.bat]) weapon.traverse((part) => weaponParts.add(part));
+  for (const weapon of [pistol, longGuns.shotgun.root, longGuns.ak.root, tools.machete, tools.bat]) weapon.traverse((part) => weaponParts.add(part));
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('sockets')) {
     showSockets(Object.values(holds).map((hold) => hold.socket));
   }
+  // The long guns' models load after the viewmodel is built, so their meshes are not in weaponParts.
+  const onLongGun = (part: THREE.Object3D) => { for (let up: THREE.Object3D | null = part; up; up = up.parent) if (up === longGuns.shotgun.root || up === longGuns.ak.root) return true; return false; };
   const supportMatrix = new THREE.Matrix4();
   const rootInverse = new THREE.Matrix4();
   const supportOffset = new THREE.Matrix4();
@@ -483,7 +490,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
 
   return {
     update(player, pose, frameSeconds, preview = false) {
-      const shotgunHeld = player.weapon === 'shotgun';
+      // The pump shotgun or the AK.
+      const shotgunHeld = player.weapon === 'shotgun' || player.weapon === 'ak';
+      const longGun = longGuns[player.weapon === 'ak' ? 'ak' : 'shotgun'];
+      const longPose = LONG_POSE[player.weapon === 'ak' ? 'ak' : 'shotgun'];
       const toolHeld = isMelee(player.weapon);
       const glockHeld = player.weapon === 'pistol' && glock.ready();
       // The Glock pack's arms hold the other weapons too, once they have loaded.
@@ -498,8 +508,9 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         pistol.visible = player.weapon === 'pistol';
         tools.machete.visible = player.weapon === 'machete';
         tools.bat.visible = player.weapon === 'bat';
-        shotgun.root.visible = shotgunHeld;
-        (shotgunHeld ? shotgun.muzzle : glockHeld ? glock.muzzle : slide).add(muzzle);
+        longGuns.shotgun.root.visible = player.weapon === 'shotgun';
+        longGuns.ak.root.visible = player.weapon === 'ak';
+        (shotgunHeld ? longGun.muzzle : glockHeld ? glock.muzzle : slide).add(muzzle);
         if (shotgunHeld || glockHeld) muzzle.position.set(0, 0, 0);
         else muzzle.position.set(0, 0.0475, -0.14);
       }
@@ -517,13 +528,13 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       if (player.lastShotTick !== seenShotTick) {
         seenShotTick = player.lastShotTick;
         if (seenShotTick >= 0) {
-          recoilVelocity += shotgunHeld ? 5 : 2.2;
+          recoilVelocity += player.weapon === 'shotgun' ? 5 : player.weapon === 'ak' ? 2.8 : 2.2;
           slideKick = 1;
           triggerPull = 1;
           sinceShot = 0;
           flashLeft = FLASH_SECONDS;
           flashMaterial.rotation = Math.random() * Math.PI * 2;
-          flash.scale.setScalar(FLASH_SIZE * (shotgunHeld ? 1.6 : 1) * (0.8 + Math.random() * 0.5));
+          flash.scale.setScalar(FLASH_SIZE * (player.weapon === 'shotgun' ? 1.6 : 1) * (0.8 + Math.random() * 0.5));
         }
       }
       // Integrate a damped spring in short steps so 30 Hz and 144 Hz settle alike.
@@ -596,8 +607,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         if (droppedMagazine.position.y < -1.5) droppedMagazine.visible = false;
       }
 
-      const firing = toolHeld ? (player.weapon === 'bat' ? holds.bat : holds.machete) : shotgunHeld ? holds.shotgun : holds.pistol;
-      rightHand.holdWeapon(toolHeld ? (player.weapon === 'bat' ? tools.bat : tools.machete) : shotgunHeld ? shotgun.root : pistol, firing);
+      const firing = toolHeld ? (player.weapon === 'bat' ? holds.bat : holds.machete) : shotgunHeld ? holds[player.weapon === 'ak' ? 'ak' : 'shotgun'] : holds.pistol;
+      rightHand.holdWeapon(toolHeld ? (player.weapon === 'bat' ? tools.bat : tools.machete) : shotgunHeld ? longGun.root : pistol, firing);
       root.updateWorldMatrix(true, true);
       rootInverse.copy(root.matrixWorld).invert();
       supportMatrix.copy(rootInverse).multiply(grip.matrixWorld);
@@ -610,10 +621,10 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         supportHand.blendPose(holds.batSupport, holds.batSupport, 0);
       } else if (shotgunHeld) {
         magazine.visible = false;
-        const loading = shotgun.update(player.ammo, progress, reloading, triggerPull);
-        supportMatrix.copy(rootInverse).multiply(shotgun.root.matrixWorld).multiply(shotgun.supportTransform).multiply(grip.matrix);
+        const loading = longGun.update(player.ammo, progress, reloading, triggerPull, sinceShot);
+        supportMatrix.copy(rootInverse).multiply(longGun.root.matrixWorld).multiply(longGun.supportTransform).multiply(grip.matrix);
         supportMatrix.decompose(leftHand.position, leftHand.quaternion, leftHand.scale);
-        supportHand.blendPose(holds.forend, LEFT_HAND_LOADING_SHOTGUN, loading);
+        supportHand.blendPose(holds[player.weapon === 'ak' ? 'akForend' : 'forend'], LEFT_HAND_LOADING_SHOTGUN, loading);
       } else if (reloading) {
         // Keep both hands joined as the pistol rolls inward, then bring a fresh
         // magazine up from the belt, insert it, work the slide and rebuild the grip.
@@ -658,7 +669,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       leftArm.rig.visible = leftArm.upperRig.visible = !packArms && player.weapon !== 'machete';
       // Only the hands' own meshes: the right hand carries the equipped weapon as its child.
       for (const hand of [root.getObjectByName('Primary hand mesh'), leftHand.getObjectByName('Support hand mesh')]) {
-        hand?.traverse((part) => { if (part instanceof THREE.Mesh && !weaponParts.has(part)) part.visible = !packArms; });
+        hand?.traverse((part) => { if (part instanceof THREE.Mesh && !weaponParts.has(part) && !onLongGun(part)) part.visible = !packArms; });
       }
 
       // The gun jolts up a little as the magazine is pushed home.
@@ -673,9 +684,9 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       aimProgress = clamp(aimProgress + (player.aiming ? aimStep : -aimStep), 0, 1);
       aim = smooth(aimProgress);
       const loose = 1 - aim * 0.8;
-      basePosition.copy(shotgunHeld ? SHOTGUN_REST_POSITION : REST_POSITION)
-        .lerp(shotgunHeld ? SHOTGUN_BODYCAM_POSITION : BODYCAM_POSITION, bodycamAmount)
-        .lerp(shotgunHeld ? SHOTGUN_AIM_POSITION : AIM_POSITION, aim);
+      basePosition.copy(shotgunHeld ? longPose.rest : REST_POSITION)
+        .lerp(shotgunHeld ? longPose.bodycam : BODYCAM_POSITION, bodycamAmount)
+        .lerp(shotgunHeld ? longPose.aim : AIM_POSITION, aim);
       if (toolHeld) basePosition.copy(TOOL_POSITION);
 
       root.position.set(
@@ -685,7 +696,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       );
       root.rotation.set(
         REST_PITCH + (AIM_PITCH - REST_PITCH) * aim + swayPitch * loose + recoil * 0.75 * (1 - aim * 0.6) + tilt * 0.3,
-        (shotgunHeld ? 0.23 : REST_YAW) * (1 - bodycamAmount) * (1 - aim) + swayYaw * loose,
+        (shotgunHeld ? longPose.yaw : REST_YAW) * (1 - bodycamAmount) * (1 - aim) + swayYaw * loose,
         -tilt * 0.5 + Math.sin(bobPhase) * walking * 0.012 * loose * motion,
       );
       if (toolHeld) {
@@ -744,15 +755,15 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         // on the fore-end or the bat's lower grip. The machete is held in one hand.
         const bat = player.weapon === 'bat';
         glock.holdOther(
-          toolHeld ? (bat ? holds.bat.socket : holds.machete.socket) : holds.shotgun.socket,
-          toolHeld ? (bat ? holds.batSupport.socket : null) : holds.forend.socket,
+          toolHeld ? (bat ? holds.bat.socket : holds.machete.socket) : longGun.sockets.primary,
+          toolHeld ? (bat ? holds.batSupport.socket : null) : longGun.sockets.support,
         );
       }
     },
 
     aimAmount: () => aim,
 
-    getEjection(out) { return (glockShown ? glock.ejection : ejection).getWorldPosition(out); },
+    getEjection(out) { return (glockShown ? glock.ejection : heldWeapon === 'ak' ? longGuns.ak.ejection : ejection).getWorldPosition(out); },
 
     getMuzzle(out) {
       return muzzle.getWorldPosition(out);
