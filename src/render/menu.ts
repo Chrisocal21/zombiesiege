@@ -966,7 +966,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           slider('fieldOfView', 'Field of view', (value) => `${Math.round(value)}`);
           slider('fisheye', 'Lens warp', (value) => (value === 0 ? 'Off' : value.toFixed(2)));
 
-          const toggle = (key: 'showRadar' | 'showCompass' | 'showHitMarkers' | 'bloom' | 'cameraMotion', label: string): void => {
+          const toggle = (key: 'showRadar' | 'showCompass' | 'showHitMarkers' | 'bloom' | 'cameraMotion' | 'sprintToggle', label: string): void => {
             text(context, label, x, y, { size: 25 * unit, color: COLOR.dim, shadow: false });
             const w = 84 * unit;
             const h = 38 * unit;
@@ -995,6 +995,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           toggle('showHitMarkers', 'Hit markers');
           toggle('bloom', 'Light diffusion');
           toggle('cameraMotion', 'Camera motion');
+          toggle('sprintToggle', 'Toggle sprint');
           if (button('RESET TO DEFAULTS', x, buttonY, 300 * unit, buttonHeight)) resetSettings();
         }
         if (panelScreen !== 'admin' && button('BACK', px + panelWidth - 44 * unit - 220 * unit, buttonY, 220 * unit, buttonHeight, true)) current = parent;

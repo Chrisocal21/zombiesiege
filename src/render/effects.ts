@@ -130,7 +130,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
           const end = new THREE.Vector3(player.lastShotEnd.x, player.lastShotEnd.y, player.lastShotEnd.z);
           const velocity = end.clone().sub(muzzle).normalize();
           const cameraRay = end.clone().sub(camera.position).normalize();
-          const hit = player.lastShotZombie ? null : raycastBoxHit(level, camera.position, cameraRay, config.pistol.range + 0.1);
+          const hit = player.lastShotZombie ? null : raycastBoxHit(level, camera.position, cameraRay, config.pistol.range + 0.1, true);
           const mesh = new THREE.Mesh(tracerGeometry, tracerMaterial); mesh.position.copy(muzzle);
           mesh.quaternion.setFromUnitVectors(up, velocity); scene.add(mesh);
           flights.push({ mesh, end, velocity: velocity.multiplyScalar(config.pistol.bulletSpeed), left: end.distanceTo(muzzle) / config.pistol.bulletSpeed,

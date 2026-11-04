@@ -100,7 +100,8 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     zombie.yaw = Math.atan2(-heading.x, -heading.z);
 
     const inReach =
-      zombie.entry === null && distance <= zombieConfig.attackRange && target.y < zombieConfig.reachHeight;
+      zombie.entry === null && distance <= zombieConfig.attackRange && target.y < zombieConfig.reachHeight
+      && !caged(level, zombie, target);
     if (inReach) {
       if (zombie.attackCooldown === 0) {
         zombie.attackCooldown = zombieConfig.secondsBetweenAttacks;
@@ -136,6 +137,25 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
 
   separate(state);
   state.zombies = state.zombies.filter((zombie) => !zombie.dead || zombie.deadLeft > 0);
+}
+
+// Whether a cage across a doorway is between a zombie and its target, so it cannot reach through.
+function caged(level: Level, zombie: Zombie, target: { x: number; z: number }): boolean {
+  for (const box of level.boxes) {
+    if (box.surface !== 'board') continue;
+    const hx = box.size.x / 2 + 0.2, hz = box.size.z / 2 + 0.2;
+    // The segment against the box grown by a body's width, a slab at a time.
+    let near = 0, far = 1;
+    for (const [from, to, centre, half] of [[zombie.x, target.x, box.position.x, hx], [zombie.z, target.z, box.position.z, hz]]) {
+      const delta = to - from;
+      if (Math.abs(delta) < 1e-9) { if (Math.abs(from - centre) > half) { near = 2; break; } continue; }
+      let a = (centre - half - from) / delta, b = (centre + half - from) / delta;
+      if (a > b) [a, b] = [b, a];
+      near = Math.max(near, a); far = Math.min(far, b);
+    }
+    if (near <= far) return true;
+  }
+  return false;
 }
 
 // Keeps zombies from standing inside each other.

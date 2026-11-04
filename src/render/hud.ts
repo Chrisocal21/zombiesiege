@@ -889,8 +889,8 @@ export function createHud(menu: Menu): Hud {
     else if (player.carrying >= 0) prompt = { keys: [bindings.fire], label: 'Put the case down' };
     else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
     else if (interaction?.kind === 'supply') prompt = { keys: [bindings.use], label: `Pick up ${ITEMS[state.supplies[interaction.index].item].name.toLowerCase()}` };
-    else if (interaction?.kind === 'pickup') prompt = { keys: [bindings.use], label: 'Pick up the boards' };
-    else if (interaction?.kind === 'door') prompt = { keys: [bindings.use], label: 'Board up this door' };
+    else if (interaction?.kind === 'pickup') prompt = { keys: [bindings.use], label: 'Pick up a cage panel' };
+    else if (interaction?.kind === 'door') prompt = { keys: [bindings.use], label: 'Put up a cage across this door' };
     else if (player.ladder) prompt = { keys: [bindings.forward, bindings.back], label: 'Climb' };
     else if (ladderInReach(player, state.level)) prompt = { keys: [bindings.forward], label: 'Climb the ladder' };
     else if (player.cover) prompt = { keys: [bindings.leanLeft, bindings.leanRight], label: 'Peek, aim to stand up' };
@@ -981,7 +981,7 @@ export function createHud(menu: Menu): Hud {
     } else if (waves.arrivedTick >= 0 && seconds(waves.arrivedTick) < BANNER_SECONDS) {
       eyebrow = floorName(state.floor).toUpperCase();
       title = stopAt(state.floor).name.toUpperCase();
-      detail = state.level.objective?.kind === 'breakers' ? 'The power is out. Board up the doors before they come' : 'Board up the doors before they come';
+      detail = state.level.objective?.kind === 'breakers' ? 'The power is out. Cage the doors before they come' : 'Cage the doors before they come';
       color = COLOR.accent;
       age = seconds(waves.arrivedTick);
     } else if (waves.diedTick >= 0 && seconds(waves.diedTick) < BANNER_SECONDS) {

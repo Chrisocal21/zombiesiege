@@ -17,6 +17,8 @@ export interface InputMessage {
   lean: number;
   // Held while crouching.
   crouch: boolean;
+  // Held while sprinting.
+  sprint?: boolean;
   // True for any tick where jump was pressed since the last message.
   jump: boolean;
   // True when the cover key was pressed since the last message.

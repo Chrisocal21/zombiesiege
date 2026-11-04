@@ -52,9 +52,12 @@ export function raycastBoxHit(
   origin: Vec3,
   direction: Vec3,
   maxDistance: number,
+  // Shots go through the cages across doorways, which are bars and not a wall.
+  ignoreCages = false,
 ): BoxRayHit | null {
   let nearest: BoxRayHit | null = null;
   for (const box of level.boxes) {
+    if (ignoreCages && box.surface === 'board') continue;
     const half = { x: box.size.x / 2, y: box.size.y / 2, z: box.size.z / 2 };
     const hit = rayAabb(
       origin,
@@ -75,5 +78,5 @@ export function raycastBoxes(
   direction: Vec3,
   maxDistance: number,
 ): number | null {
-  return raycastBoxHit(level, origin, direction, maxDistance)?.distance ?? null;
+  return raycastBoxHit(level, origin, direction, maxDistance, true)?.distance ?? null;
 }

@@ -16,6 +16,8 @@ export interface Settings {
   showHitMarkers: boolean;
   bloom: boolean;
   cameraMotion: boolean;
+  // Sprint stays on after one press of the key, instead of only while it is held.
+  sprintToggle: boolean;
   cameraStyle: 'standard' | 'bodycam';
   reducedFlashing: boolean;
 }
@@ -37,6 +39,7 @@ const DEFAULTS: Settings = {
   showHitMarkers: true,
   bloom: true,
   cameraMotion: true,
+  sprintToggle: false,
   cameraStyle: 'standard',
   reducedFlashing: true,
 };

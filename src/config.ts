@@ -19,6 +19,8 @@ export const config = {
     // Fraction of normal speed while aiming down the sights, crouching, or sliding along cover.
     aimMoveMultiplier: 0.6,
     crouchMoveMultiplier: 0.55,
+    // Sprinting: forward only, not while aiming, crouching, in cover or carrying.
+    sprintMoveMultiplier: 1.5,
     coverMoveMultiplier: 0.5,
     aimSeconds: 0.14,
     // How far the head moves out to the side at a full lean, and how long the lean takes.

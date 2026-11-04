@@ -66,6 +66,7 @@ function walk(player: Player, input: InputMessage, dt: number, level: Level): vo
     const cos = Math.cos(player.yaw);
     let speed = moveSpeed;
     if (player.aiming) speed *= aimMoveMultiplier;
+    else if (input.sprint && input.moveForward > 0 && player.crouch < 0.1 && !player.cover && player.carrying < 0) speed *= config.player.sprintMoveMultiplier;
     speed *= 1 - player.crouch * (1 - crouchMoveMultiplier);
     if (player.cover) speed *= coverMoveMultiplier;
     if (player.carrying >= 0) speed *= config.objectives.carryMoveMultiplier;

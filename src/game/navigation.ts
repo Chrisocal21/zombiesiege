@@ -59,6 +59,8 @@ function build(state: GameState): Field | null {
   // A box blocks every cell whose middle is within the zombie's radius of it, if it stands in
   // the way of a zombie's body.
   for (const box of state.level.boxes) {
+    // A cage across a doorway still counts as a way in: zombies come to it and cannot get through.
+    if (box.surface === 'board') continue;
     const top = box.position.y + box.size.y / 2;
     const bottom = box.position.y - box.size.y / 2;
     if (top <= config.player.stepHeight || bottom >= config.zombie.height) continue;

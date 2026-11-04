@@ -28,7 +28,7 @@ export interface LocalInput {
 }
 
 // Presses that are remembered until the next message goes out, even if released first.
-const LATCHED: Action[] = ['jump', 'cover', 'use', 'freeze', 'swap', 'light', 'melee'];
+const LATCHED: Action[] = ['jump', 'cover', 'use', 'freeze', 'swap', 'light', 'melee', 'sprint'];
 
 export function createLocalInput(element: HTMLElement): LocalInput {
   const down = new Set<string>();
@@ -40,6 +40,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   let clickQueued = false;
   let selectedWeapon: WeaponId | undefined;
   let selectedItem: ItemId | undefined;
+  let sprintOn = false;
   let wheelX = 0;
   let wheelY = 0;
   let wheelDirection: -1 | 1 = 1;
@@ -160,6 +161,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
       clickQueued = false;
       selectedWeapon = undefined;
       selectedItem = undefined;
+      sprintOn = false;
       wheelX = 0;
       wheelY = 0;
       yaw = 0;
@@ -170,6 +172,12 @@ export function createLocalInput(element: HTMLElement): LocalInput {
       lookScale = scale;
     },
     poll(playerId) {
+      const forward = (held('forward') ? 1 : 0) - (held('back') ? 1 : 0);
+      // A toggled sprint ends when the player stops moving forward.
+      if (settings.sprintToggle) {
+        if (queued.has('sprint')) sprintOn = !sprintOn;
+        if (forward <= 0) sprintOn = false;
+      } else sprintOn = false;
       const message: InputMessage = {
         cameraStyle: settings.cameraStyle,
         playerId,
@@ -182,6 +190,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         aim: held('aim'),
         lean: (held('leanRight') ? 1 : 0) - (held('leanLeft') ? 1 : 0),
         crouch: held('crouch'),
+        sprint: settings.sprintToggle ? sprintOn : held('sprint'),
         // Holding the jump key keeps trying to jump, so it climbs as soon as a ledge is in reach.
         jump: queued.has('jump') || held('jump'),
         toggleCover: queued.has('cover'),

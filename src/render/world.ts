@@ -10,7 +10,6 @@ import type { Ladder, Level, LevelBox, LevelLight } from '../levels/types';
 import {
   floorDecalTexture,
   glowTexture,
-  plankMaterial,
   puddleAlphaTexture,
   surfaceMaterial,
   tileMeters,
@@ -293,14 +292,12 @@ function buildFitting(lightConfig: LevelLight, color: THREE.Color, glowMap: THRE
 
 // How long the boards take to fly into place, in ticks.
 const BOARD_TICKS = 40;
-const PLANK_HEIGHTS = [0.42, 0.92, 1.45, 1.98];
 
 // Door frames, the red lights behind them, the boards that appear when a door is boarded up, and
 // the bundles of boards lying on the floor waiting to be found.
 function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
-  const wood = plankMaterial();
   const frameMaterial = new THREE.MeshStandardMaterial({ color: 0xb59a2e, roughness: 0.55, metalness: 0.35 });
-  const nailMaterial = new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.5, metalness: 0.7 });
+  const cageMaterial = new THREE.MeshStandardMaterial({ color: 0x5b6168, roughness: 0.4, metalness: 0.85 });
 
   const boards: THREE.Group[] = [];
   for (const door of level.doors) {
@@ -333,21 +330,23 @@ function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture)
     lamp.add(bulb);
     scene.add(lamp);
 
-    // The boards, across the opening on the room side.
+    // The cage, across the opening on the room side: a steel frame with a grid of bars. Each part
+    // is its own child so they can slam in one after the other.
     const planks = new THREE.Group();
-    PLANK_HEIGHTS.forEach((y, index) => {
-      const plank = new THREE.Mesh(new RoundedBoxGeometry(door.width + 0.7, 0.21, 0.06, 2, 0.01), wood);
-      plank.position.set(index % 2 === 0 ? 0.05 : -0.07, y, 0.2);
-      plank.rotation.z = (index % 2 === 0 ? 1 : -1) * (0.025 + index * 0.012);
-      plank.castShadow = plank.receiveShadow = true;
-      for (const side of [-1, 1]) {
-        const nail = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.02, 8), nailMaterial);
-        nail.rotation.x = Math.PI / 2;
-        nail.position.set(side * (door.width / 2 + 0.05), 0, 0.035);
-        plank.add(nail);
-      }
-      planks.add(plank);
-    });
+    const steel = cageMaterial;
+    const part = (build: (holder: THREE.Group) => void) => { const holder = new THREE.Group(); build(holder); planks.add(holder); };
+    const bar = (w: number, h: number, d: number, x: number, y: number, holder: THREE.Group) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), steel);
+      mesh.position.set(x, y, 0.2);
+      mesh.castShadow = true;
+      holder.add(mesh);
+    };
+    const wide = door.width + 0.5;
+    part((h) => { bar(0.09, door.height, 0.09, -wide / 2, door.height / 2, h); });
+    part((h) => { bar(0.09, door.height, 0.09, wide / 2, door.height / 2, h); });
+    part((h) => { bar(wide, 0.08, 0.09, 0, door.height - 0.04, h); bar(wide, 0.08, 0.09, 0, 0.1, h); });
+    part((h) => { for (let y = 0.5; y < door.height - 0.2; y += 0.4) bar(wide, 0.03, 0.04, 0, y, h); });
+    part((h) => { for (let x = -wide / 2 + 0.2; x < wide / 2 - 0.1; x += 0.2) bar(0.03, door.height, 0.04, x, door.height / 2, h); });
     planks.visible = false;
     group.add(planks);
     boards.push(planks);
@@ -375,10 +374,11 @@ function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture)
     const group = new THREE.Group();
     group.position.set(bar.x, 0, bar.z);
     group.rotation.y = index * 1.3 + 0.4;
-    for (let i = 0; i < 5; i++) {
-      const plank = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.07, 0.2, 2, 0.015), wood);
-      plank.position.set((i % 2) * 0.05 - 0.03, 0.04 + Math.floor(i / 2) * 0.075, (i - 2) * 0.1);
-      plank.rotation.y = (i - 2) * 0.05;
+    for (let i = 0; i < 4; i++) {
+      // Flat cage panels, stacked.
+      const plank = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.05, 0.7, 2, 0.01), cageMaterial);
+      plank.position.set((i % 2) * 0.03 - 0.015, 0.04 + i * 0.055, 0);
+      plank.rotation.y = (i - 2) * 0.03;
       plank.castShadow = plank.receiveShadow = true;
       group.add(plank);
     }

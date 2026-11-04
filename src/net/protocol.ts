@@ -81,6 +81,7 @@ export function readClientMessage(data: unknown, playerId: number): ReadMessage 
       aim: flag('aim'),
       lean: asNumber(raw.lean, 1),
       crouch: flag('crouch'),
+      sprint: flag('sprint'),
       jump: flag('jump'),
       toggleCover: flag('toggleCover'),
       use: flag('use'),
