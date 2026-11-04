@@ -4,6 +4,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { config } from '../config';
 import type { GameState, Zombie } from '../game/state';
 import { paintTexture } from './materials';
+import { riggedBody, whenZombieModelsLoad, zombieModelsReady, type RiggedBody } from './zombieRig';
 
 const SHIRTS = ['#61544a', '#48565b', '#5b5c4c', '#704a42', '#53515b', '#4f5d53'];
 const PANTS = ['#343c43', '#49453c', '#343739', '#48433d'];
@@ -27,8 +28,11 @@ interface ZombieView {
   legs: THREE.Group[];
   knees: THREE.Group[];
   ankles: THREE.Group[];
-  material: THREE.MeshStandardMaterial;
+  // The drawn zombie's one material, or null for a skinned model, whose materials are shared.
+  material: THREE.MeshStandardMaterial | null;
   geometries: THREE.BufferGeometry[];
+  // The skinned model the joints pose, once the models have loaded.
+  rig: RiggedBody | null;
   phase: number;
   gait: number;
   initialised: boolean;
@@ -127,7 +131,35 @@ function wedge(points: number[]): THREE.BufferGeometry {
 export function createZombieViews(scene: THREE.Scene): ZombieViews {
   const atlas = surfaceAtlas();
   const views = new Map<number, ZombieView>();
+  // Once the skinned models arrive, the drawn zombies are rebuilt as models.
+  whenZombieModelsLoad(() => {
+    for (const [id, view] of views) { dispose(view); views.delete(id); }
+  });
+  // A skinned zombie: the same tree of joints as the drawn one, without its meshes, posing a model.
+  function buildRigged(zombie: Zombie): ZombieView {
+    const group = new THREE.Group(); group.name = `Infected ${zombie.id}`;
+    group.rotation.order = 'YXZ';
+    const joint = (parent: THREE.Object3D, x: number, y: number, z: number) => {
+      const node = new THREE.Group(); node.position.set(x, y, z); parent.add(node); return node;
+    };
+    const frame = new THREE.Group();
+    const hips = joint(frame, 0, 0.94, 0), torso = joint(hips, 0, 0, 0), head = joint(torso, 0, 0.56, 0);
+    const arms: THREE.Group[] = [], elbows: THREE.Group[] = [], wrists: THREE.Group[] = [];
+    const legs: THREE.Group[] = [], knees: THREE.Group[] = [], ankles: THREE.Group[] = [];
+    for (const side of [-1, 1]) {
+      arms.push(joint(torso, side * 0.2, 0.46, 0)); elbows.push(joint(arms[arms.length - 1], 0, -0.3, 0));
+      wrists.push(joint(elbows[elbows.length - 1], 0, -0.27, 0));
+      legs.push(joint(hips, side * 0.09, 0, 0)); knees.push(joint(legs[legs.length - 1], 0, -0.42, 0));
+      ankles.push(joint(knees[knees.length - 1], 0, -0.4, 0));
+    }
+    const rig = riggedBody(zombie.id);
+    group.add(rig.object);
+    scene.add(group);
+    return { group, hips, torso, head, arms, elbows, wrists, legs, knees, ankles, material: null, geometries: [], rig,
+      phase: zombie.id * 1.77, gait: 0, initialised: false };
+  }
   function build(zombie: Zombie): ZombieView {
+    if (zombieModelsReady()) return buildRigged(zombie);
     const group = new THREE.Group(); group.name = `Infected ${zombie.id}`;
     // Turn to face first, then fall about the body's own axes.
     group.rotation.order = 'YXZ';
@@ -256,7 +288,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     }
     scene.add(group);
     return { group, hips: body.group, torso: chest.group, head: head.group, arms, elbows, wrists, legs, knees, ankles,
-      material, geometries, phase: zombie.id * 1.77, gait: 0, initialised: false };
+      material, geometries, rig: null, phase: zombie.id * 1.77, gait: 0, initialised: false };
   }
   // A body going down: the knees give first and the hips drop, then it topples, gathering speed,
   // and lands with a small bounce, limp, arms flung out and head turned aside. Most fall on their
@@ -296,7 +328,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     });
   }
   function dispose(view: ZombieView): void {
-    scene.remove(view.group); view.material.dispose(); view.geometries.forEach(g => g.dispose());
+    scene.remove(view.group); view.material?.dispose(); view.geometries.forEach(g => g.dispose());
   }
   return {
     update(state, dt) {
@@ -337,7 +369,8 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         const attack = zombie.lastAttackTick >= 0 && attackAge < 0.55 ? Math.sin(attackAge / 0.55 * Math.PI) : 0;
         view.arms.forEach((arm, side) => {
           const asymmetry = side === 0 ? 1 : -1;
-          arm.rotation.x = 0.45 + 0.15 * Math.sin(phase * 0.7 + side) + attack * 0.83;
+          // The skinned zombies reach further out in front, the arms of the drawn ones being shorter.
+          arm.rotation.x = (view.rig ? 0.85 : 0.45) + 0.15 * Math.sin(phase * 0.7 + side) + attack * (view.rig ? 0.55 : 0.83);
           arm.rotation.z = asymmetry * (0.08 + Math.sin(phase * 0.5) * 0.025);
           view.elbows[side].rotation.x = 0.58 + Math.sin(phase * 0.8 + side) * 0.1 - attack * 0.38;
           view.wrists[side].rotation.x = -0.12 - attack * 0.15;
@@ -346,8 +379,9 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         const hitAge = (state.tick - zombie.lastHitTick) / config.ticksPerSecond;
         const flinch = zombie.lastHitTick >= 0 && hitAge < 0.22 ? Math.sin(hitAge / 0.22 * Math.PI) : 0;
         view.torso.rotation.x += flinch * 0.2; view.head.rotation.x -= flinch * 0.18;
-        view.material.emissiveIntensity = flinch * 0.025;
+        if (view.material) view.material.emissiveIntensity = flinch * 0.025;
         if (zombie.dead) collapse(view, zombie.id, config.zombie.deathSeconds - zombie.deadLeft, zombie.deadLeft);
+        view.rig?.pose(view);
       }
       for (const [id, view] of views) if (!live.has(id)) { dispose(view); views.delete(id); }
     },
