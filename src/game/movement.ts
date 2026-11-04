@@ -139,9 +139,11 @@ function fall(player: Player, input: InputMessage, dt: number, level: Level): vo
   player.vy -= gravity * dt;
   let nextY = player.y + player.vy * dt;
   if (player.vy > 0) {
-    const ceiling = ceilingHeight(level, player.x, player.z, radius, player.y + height);
+    // Anything above the step height that overlaps the body counts, not just what is above the head.
+    const ceiling = ceilingHeight(level, player.x, player.z, radius, player.y + height, player.y + config.player.stepHeight);
     if (nextY + height > ceiling) {
-      nextY = ceiling - height;
+      // Never up into it: a head already in a slab stays where it is.
+      nextY = Math.min(nextY, Math.max(player.y, ceiling - height));
       player.vy = 0;
     }
   } else if (nextY <= ground) {

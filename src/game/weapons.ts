@@ -1,8 +1,11 @@
 import { config } from '../config';
 import type { Player } from './state';
 
-export const WEAPON_IDS = ['pistol', 'shotgun', 'machete', 'bat'] as const;
-export type WeaponId = (typeof WEAPON_IDS)[number];
+const ALL_WEAPONS = ['pistol', 'shotgun', 'machete', 'bat'] as const;
+export type WeaponId = (typeof ALL_WEAPONS)[number];
+// The machete and spiked bat are switched off until they look right: nobody can pick, cycle to or
+// be sent one. Their rules and models stay, so turning them back on is adding them here.
+export const WEAPON_IDS: readonly WeaponId[] = ['pistol', 'shotgun'];
 
 export interface WeaponLoadout { weapon: WeaponId; ammo: number; reserve: number }
 export interface MeleeStats {
@@ -78,7 +81,7 @@ export function swapWeapon(player: Player, tick: number, direction = 1): void {
 }
 
 export function owns(player: Player, weapon: WeaponId): boolean {
-  return isMelee(weapon) || player.weapon === weapon || player.stowed?.weapon === weapon || player.holsteredGun?.weapon === weapon;
+  return WEAPON_IDS.includes(weapon) && (player.weapon === weapon || player.stowed?.weapon === weapon || player.holsteredGun?.weapon === weapon);
 }
 
 // Spare rounds of a weapon whether it is in hand or put away.

@@ -3,7 +3,7 @@ import type { Level, Vec3 } from '../levels/types';
 import { resolveCircle } from './collision';
 import { rayAabb } from './hitscan';
 import { dropSupply } from './items';
-import { nextStep } from './navigation';
+import { nextStep, routeOf } from './navigation';
 import type { GameState, Player, Zombie } from './state';
 
 export function spawnZombie(
@@ -50,6 +50,12 @@ function nearestPlayer(state: GameState, zombie: Zombie): Player | null {
   return nearest;
 }
 
+// How a side-route zombie arcs: no swing inside FLANK_END metres, building at FLANK_RATE per metre
+// of distance, up to FLANK_MAX metres sideways.
+const FLANK_END = 3.5;
+const FLANK_RATE = 0.6;
+const FLANK_MAX = 7;
+
 // Chasing, swinging, and falling over, for every zombie, once per tick.
 export function updateZombies(state: GameState, dt: number, level: Level): void {
   const zombieConfig = config.zombie;
@@ -79,6 +85,16 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
       const step = nextStep(state, zombie, target);
       if (step === undefined) blocked = true;
       else if (step) heading = { x: step.x - zombie.x, z: step.z - zombie.z };
+    }
+    // Walking at the player in the open, the side routes swing wide, left or right, and close in
+    // once near, so a crowd comes at the player from several directions.
+    if (zombie.entry === null && !blocked && distance > FLANK_END) {
+      const route = routeOf(zombie);
+      if (route !== 0 && heading.x === dx && heading.z === dz) {
+        const side = route === 1 ? 1 : -1;
+        const swing = Math.min(FLANK_MAX, (distance - FLANK_END) * FLANK_RATE);
+        heading = { x: dx + (dz / distance) * swing * side, z: dz - (dx / distance) * swing * side };
+      }
     }
     // Yaw 0 faces -z, the same as the player.
     zombie.yaw = Math.atan2(-heading.x, -heading.z);

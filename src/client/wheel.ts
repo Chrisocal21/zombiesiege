@@ -8,8 +8,6 @@ export type WheelSegment = { kind: 'weapon'; id: WeaponId } | { kind: 'item'; id
 export const WHEEL_SEGMENTS: WheelSegment[] = [
   { kind: 'weapon', id: 'pistol' },
   { kind: 'weapon', id: 'shotgun' },
-  { kind: 'weapon', id: 'machete' },
-  { kind: 'weapon', id: 'bat' },
   { kind: 'item', id: 'bandage' },
   { kind: 'item', id: 'medkit' },
   { kind: 'item', id: 'water' },

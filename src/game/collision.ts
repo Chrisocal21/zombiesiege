@@ -55,12 +55,15 @@ export function groundHeight(level: Level, x: number, z: number, radius: number,
   return ground;
 }
 
-// The lowest underside above the head, for hitting your head while jumping. Infinity if clear.
-export function ceilingHeight(level: Level, x: number, z: number, radius: number, headY: number): number {
+// The lowest underside above `from`, for hitting your head while jumping. Infinity if clear.
+// `from` is the head by default. Passing a lower height, such as the feet plus a step, also finds a
+// slab the head is already inside, which is what stops a jump from standing on a crate going
+// straight up through a ceiling.
+export function ceilingHeight(level: Level, x: number, z: number, radius: number, headY: number, from = headY): number {
   let ceiling = Infinity;
   for (const box of level.boxes) {
     const boxBottom = bottom(box);
-    if (boxBottom < headY - 0.01 || boxBottom >= ceiling) continue;
+    if (boxBottom < from - 0.01 || boxBottom >= ceiling) continue;
     const { dx, dz } = footprintDistance(box, x, z);
     if (Math.hypot(dx, dz) < radius) ceiling = boxBottom;
   }
