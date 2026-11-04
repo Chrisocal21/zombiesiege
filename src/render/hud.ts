@@ -13,7 +13,7 @@ import { objectiveMarkers } from '../game/objectives';
 import { clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
 import { aliveZombies } from '../game/zombies';
 import type { Menu } from './menu';
-import { drawItemBar, drawItemUse, drawWheel } from './itemsHud';
+import { drawHotbar, drawItemUse, drawWheel } from './itemsHud';
 import type { WheelState } from '../client/wheel';
 import { COLOR, clamp, keycap, measure, roundedRect, text } from './ui';
 
@@ -161,7 +161,7 @@ export function createHud(menu: Menu): Hud {
       for (const marker of objectiveMarkers(state, player)) points.push({ x: marker.at.x, z: marker.at.z, color: COLOR.good, label: marker.label });
     }
     // Boards can be picked up and nailed up any time on a floor.
-    if (phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'cleared' || phase === 'search' || phase === 'hold' || phase === 'evac') {
+    if (phase === 'entry' || phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'cleared' || phase === 'search' || phase === 'hold' || phase === 'evac') {
       if (player.bars < config.doors.carryLimit) {
         state.pickups.forEach((pickup) => {
           if (!pickup.taken) points.push({ x: pickup.x, z: pickup.z, color: COLOR.accent, label: 'BOARDS' });
@@ -199,7 +199,7 @@ export function createHud(menu: Menu): Hud {
       context.beginPath(); context.arc(rx + 6 * unit, margin + 196 * unit, 4 * unit, 0, Math.PI * 2); context.fill();
       text(context, `REC / BODY 01   ${timestamp}`, rx + 18 * unit, margin + 201 * unit, { size: 13 * unit, color: COLOR.dim, spacing: 1 * unit });
     }
-    drawItemBar(context, margin + 224 * unit + 120 * unit, height - margin + 6 * unit, unit, player);
+    drawHotbar(context, width, height - margin + 22 * unit, unit, player);
     drawItemUse(context, width, height, unit, player);
     drawPrompt(width, height, unit, state, player);
     if (wheel) drawWheel(context, width, height, unit, player, wheel);
@@ -848,26 +848,6 @@ export function createHud(menu: Menu): Hud {
     if (time - killAt < 1.3) {
       text(context, killWasHead ? 'HEADSHOT' : 'KILL', width / 2, height / 2 + 80 * unit, { size: 15 * unit, weight: 800, align: 'center', color: killWasHead ? COLOR.danger : COLOR.text, spacing: 4 * unit, alpha: Math.min(1, (1.3 - time + killAt) * 3) });
     }
-
-    // Reminders of the less obvious keys, faint along the bottom.
-    const hintY = height - margin + 26 * unit;
-    const hints = [[bindings.map, 'MAP'], [bindings.melee, 'MELEE'], [bindings.swap, 'CYCLE'], [bindings.cover, 'COVER'], [bindings.light, 'LIGHT'], [bindings.wheel, 'ITEMS']];
-    const hintSize = 20 * unit;
-    const widths = hints.map(([key, label]) => Math.max(hintSize, measure(context, keyLabel(key), hintSize * 0.62, 700, 0.5) + hintSize * 0.7) + 6 * unit + measure(context, label, 11 * unit, 700, 2 * unit));
-    const spacing = 26 * unit;
-    let hx = width / 2 - (widths.reduce((sum, value) => sum + value, 0) + spacing * (hints.length - 1)) / 2;
-    const rowWidth = widths.reduce((sum, value) => sum + value, 0) + spacing * (hints.length - 1);
-    context.save();
-    roundedRect(context, hx - 12 * unit, hintY - 21 * unit, rowWidth + 24 * unit, 28 * unit, 14 * unit);
-    context.fillStyle = 'rgba(4,8,12,0.45)';
-    context.fill();
-    context.globalAlpha = 0.85;
-    hints.forEach(([key, label], index) => {
-      const kw = keycap(context, keyLabel(key), hx, hintY, hintSize);
-      text(context, label, hx + kw + 6 * unit, hintY - 3 * unit, { size: 11 * unit, color: COLOR.text, spacing: 2 * unit, weight: 700 });
-      hx += widths[index] + spacing;
-    });
-    context.restore();
   }
 
   // What pressing use does here: a pill low in the middle of the screen with the key, what it

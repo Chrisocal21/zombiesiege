@@ -25,11 +25,13 @@ function doorSide(door: Door): { x: number; z: number } {
 // Boards can be picked up and nailed up at any time on a floor, mid-wave included.
 export function interactionTarget(state: GameState, player: Player): Interaction {
   if (state.waves.phase === 'entry') {
+    // The gate control comes first. Anywhere else the cages on the ground can still be picked up.
     const gate = state.level.gate;
-    if (!gate) return null;
-    const panel = gate.panel;
-    const near = Math.hypot(panel.x - player.x, panel.z - player.z) <= config.doors.gateRange;
-    return near && player.y < 1 ? { kind: 'gate' } : null;
+    if (gate) {
+      const panel = gate.panel;
+      const near = Math.hypot(panel.x - player.x, panel.z - player.z) <= config.doors.gateRange;
+      if (near && player.y < 1) return { kind: 'gate' };
+    }
   }
   const phase = state.waves.phase;
   if (phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'cleared' || phase === 'search' || phase === 'hold' || phase === 'evac' || phase === 'lift') {
@@ -86,8 +88,8 @@ export function interactionTarget(state: GameState, player: Player): Interaction
   return null;
 }
 
-// Every phase spent on a floor, as opposed to the street run, the lift and the end.
-const BOARDING_PHASES = new Set<GameState['waves']['phase']>(['prep', 'break', 'active', 'cleared', 'search', 'hold', 'evac']);
+// Every phase spent on a floor, and the run in from the street, as opposed to the lift and the end.
+const BOARDING_PHASES = new Set<GameState['waves']['phase']>(['entry', 'prep', 'break', 'active', 'cleared', 'search', 'hold', 'evac']);
 
 // A living zombie standing in the doorway, which the boards would seal inside the wall.
 function blocked(state: GameState, door: Door): boolean {

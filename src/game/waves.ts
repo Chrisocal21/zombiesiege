@@ -150,10 +150,10 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
       waves.phase = 'cleared';
       waves.timer = config.waves.levelClearedSeconds;
       // The floor is done: stock up before the lift.
-      dropCache(state, ['bandage', 'bandage', 'medkit', 'water', 'water']);
+      dropCache(state, ['bandage', 'medkit', 'water']);
     } else {
       // A wave is done: a little something before the next.
-      dropCache(state, ['bandage', 'water']);
+      dropCache(state, state.waves.number % 2 ? ['bandage'] : ['water']);
       waves.number++;
       waves.phase = 'break';
       waves.timer = config.waves.breakSeconds;

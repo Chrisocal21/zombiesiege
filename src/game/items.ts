@@ -18,9 +18,9 @@ export interface ItemStats {
 }
 
 export const ITEMS: Record<ItemId, ItemStats> = {
-  bandage: { name: 'BANDAGE', heal: 0.5, drink: 0, useSeconds: 1.6, carryMax: 10, dropChance: 0.1 },
-  medkit: { name: 'FIRST AID KIT', heal: 1, drink: 0, useSeconds: 3.2, carryMax: 10, dropChance: 0.03 },
-  water: { name: 'WATER', heal: 0, drink: 35, useSeconds: 1, carryMax: 10, dropChance: 0.08 },
+  bandage: { name: 'BANDAGE', heal: 0.5, drink: 0, useSeconds: 1.6, carryMax: 10, dropChance: 0.05 },
+  medkit: { name: 'FIRST AID KIT', heal: 1, drink: 0, useSeconds: 3.2, carryMax: 10, dropChance: 0.015 },
+  water: { name: 'WATER', heal: 0, drink: 35, useSeconds: 1, carryMax: 10, dropChance: 0.04 },
 };
 
 export type Items = Record<ItemId, number>;

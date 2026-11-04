@@ -1,9 +1,9 @@
 import { bindings, keyLabel } from '../client/bindings';
 import { WHEEL_SEGMENTS, wheelSegment, type WheelState } from '../client/wheel';
-import { ITEMS, ITEM_IDS, regenFactor, type ItemId } from '../game/items';
+import { ITEMS, regenFactor, type ItemId } from '../game/items';
 import type { Player } from '../game/state';
 import { owns, weaponStats, type WeaponId } from '../game/weapons';
-import { COLOR, keycap, roundedRect, text } from './ui';
+import { COLOR, roundedRect, text } from './ui';
 
 const ITEM_COLOR: Record<ItemId, string> = { bandage: '#e8e2d2', medkit: '#e5483c', water: '#5db4ff' };
 
@@ -35,27 +35,98 @@ function itemIcon(context: CanvasRenderingContext2D, item: ItemId, cx: number, c
   context.restore();
 }
 
-// Items in hand and how fast health is coming back, beside the health readout.
-export function drawItemBar(context: CanvasRenderingContext2D, x: number, base: number, unit: number, player: Player): void {
-  const slot = 50 * unit;
-  const gap = 8 * unit;
-  ITEM_IDS.forEach((item, index) => {
-    const sx = x + index * (slot + gap);
-    const count = player.items[item];
-    const active = player.item === item;
-    roundedRect(context, sx, base - slot, slot, slot, 6 * unit);
-    context.fillStyle = active ? 'rgba(232,184,102,0.28)' : 'rgba(6,10,14,0.55)';
+// A small drawing of each gun, side on, muzzle to the left.
+function gunIcon(context: CanvasRenderingContext2D, weapon: WeaponId, cx: number, cy: number, size: number): void {
+  const u = size / 100;
+  const poly = (points: [number, number][]) => {
+    context.beginPath();
+    points.forEach(([x, y], i) => (i ? context.lineTo(cx + x * u, cy + y * u) : context.moveTo(cx + x * u, cy + y * u)));
+    context.closePath();
+    context.fill();
+  };
+  if (weapon === 'pistol') {
+    poly([[-30, -12], [28, -12], [28, 0], [10, 0], [14, 34], [0, 34], [-6, 0], [-30, 0]]);
+  } else if (weapon === 'shotgun') {
+    poly([[-48, -8], [10, -8], [14, -14], [24, -14], [28, -2], [46, 14], [40, 20], [20, 8], [10, 6], [-48, 6]]);
+    context.fillStyle = '#8a5a30';
+    poly([[-20, 6], [-4, 6], [-4, 14], [-20, 14]]);
+    poly([[24, -2], [46, 14], [40, 20], [20, 8]]);
+  } else {
+    poly([[-50, -8], [-10, -8], [-6, -14], [14, -14], [16, -4], [50, -4], [48, 8], [14, 8], [10, 30], [-2, 22], [0, 10], [-12, 10], [-50, 4]]);
+    context.fillStyle = '#8a5a30';
+    poly([[14, -4], [50, -4], [48, 8], [14, 8]]);
+  }
+}
+
+// A cage panel: a frame with a grid of bars.
+function cageIcon(context: CanvasRenderingContext2D, cx: number, cy: number, size: number, alpha: number): void {
+  context.save();
+  context.globalAlpha = alpha;
+  context.strokeStyle = '#9aa3ad';
+  context.lineWidth = Math.max(1, size * 0.05);
+  const half = size * 0.42;
+  context.strokeRect(cx - half, cy - half, half * 2, half * 2);
+  context.lineWidth = Math.max(1, size * 0.025);
+  for (let i = -1; i <= 1; i++) {
+    context.beginPath();
+    context.moveTo(cx + i * half * 0.55, cy - half); context.lineTo(cx + i * half * 0.55, cy + half);
+    context.moveTo(cx - half, cy + i * half * 0.55); context.lineTo(cx + half, cy + i * half * 0.55);
+    context.stroke();
+  }
+  context.restore();
+}
+
+// The hotbar low in the middle: the guns, the cage panels being carried, and the bandages, first
+// aid kits and water, each in its own numbered slot. The gun in hand is lit.
+export function drawHotbar(context: CanvasRenderingContext2D, width: number, base: number, unit: number, player: Player): void {
+  const slot = 54 * unit;
+  const gap = 6 * unit;
+  type Slot = { key: string; weapon?: WeaponId; item?: ItemId; cage?: boolean };
+  const slots: Slot[] = [
+    { key: keyLabel(bindings.weapon1), weapon: 'pistol' },
+    { key: keyLabel(bindings.weapon2), weapon: 'shotgun' },
+    { key: keyLabel(bindings.weapon3), weapon: 'ak' },
+    { key: '4', cage: true },
+    { key: keyLabel(bindings.bandage), item: 'bandage' },
+    { key: keyLabel(bindings.medkit), item: 'medkit' },
+    { key: keyLabel(bindings.water), item: 'water' },
+  ];
+  const total = slots.length * slot + (slots.length - 1) * gap;
+  const x0 = (width - total) / 2;
+  slots.forEach((entry, index) => {
+    const sx = x0 + index * (slot + gap);
+    const sy = base - slot;
+    const weapon = entry.weapon;
+    const owned = weapon ? owns(player, weapon) : entry.item ? player.items[entry.item] > 0 : player.bars > 0;
+    const active = weapon ? player.weapon === weapon : entry.item ? player.item === entry.item && player.itemLeft > 0 : false;
+    roundedRect(context, sx, sy, slot, slot, 5 * unit);
+    context.fillStyle = active ? 'rgba(232,184,102,0.3)' : 'rgba(6,10,14,0.62)';
     context.fill();
     context.strokeStyle = active ? COLOR.accent : COLOR.border;
-    context.lineWidth = 1.5 * unit;
+    context.lineWidth = (active ? 2 : 1.5) * unit;
     context.stroke();
-    itemIcon(context, item, sx + slot / 2, base - slot / 2 + 2 * unit, slot * 0.6, count > 0 ? 1 : 0.28);
-    text(context, `${count}`, sx + slot - 6 * unit, base - 6 * unit, { size: 14 * unit, weight: 800, align: 'right', color: count > 0 ? COLOR.text : COLOR.faint });
-    keycap(context, keyLabel(bindings[item]), sx + 4 * unit, base - slot + 18 * unit, 14 * unit);
+    const cx = sx + slot / 2;
+    const cy = sy + slot / 2 + 2 * unit;
+    if (weapon) {
+      context.save();
+      context.globalAlpha = owned ? 1 : 0.22;
+      context.fillStyle = active ? '#f4f1ea' : '#c8ced6';
+      gunIcon(context, weapon, cx, cy, slot * 0.8);
+      context.restore();
+      if (owned && player.weapon === weapon) {
+        text(context, `${player.ammo}`, sx + slot - 5 * unit, sy + slot - 6 * unit, { size: 12 * unit, weight: 800, align: 'right', color: player.ammo === 0 ? COLOR.danger : COLOR.text });
+      }
+    } else if (entry.item) {
+      itemIcon(context, entry.item, cx, cy, slot * 0.58, owned ? 1 : 0.28);
+      text(context, `${player.items[entry.item]}`, sx + slot - 5 * unit, sy + slot - 6 * unit, { size: 13 * unit, weight: 800, align: 'right', color: owned ? COLOR.text : COLOR.faint });
+    } else {
+      cageIcon(context, cx, cy, slot * 0.62, owned ? 1 : 0.28);
+      text(context, `${player.bars}`, sx + slot - 5 * unit, sy + slot - 6 * unit, { size: 13 * unit, weight: 800, align: 'right', color: owned ? COLOR.text : COLOR.faint });
+    }
+    text(context, entry.key, sx + 6 * unit, sy + 14 * unit, { size: 11 * unit, weight: 800, color: active ? COLOR.accent : COLOR.dim });
   });
   const regen = Math.round(regenFactor(player) * 100);
-  const thirsty = player.hydration < 25;
-  text(context, `REGEN ${regen}%`, x, base - slot - 8 * unit, { size: 12 * unit, weight: 700, spacing: 2 * unit, color: thirsty ? COLOR.danger : COLOR.dim });
+  text(context, `REGEN ${regen}%`, x0, base - slot - 7 * unit, { size: 11 * unit, weight: 700, spacing: 2 * unit, color: player.hydration < 25 ? COLOR.danger : COLOR.dim });
 }
 
 // Progress while a bandage, kit or drink is being used, low in the middle of the screen.
