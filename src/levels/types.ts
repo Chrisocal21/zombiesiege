@@ -65,6 +65,9 @@ export interface LevelBox {
   prop?: Prop;
   // Rotation about y of the prop's front, as for signs: 0 faces +z. A bed's front is its foot.
   facing?: number;
+  // Solid but not drawn, because something else is drawn in its place: the real buildings that
+  // stand along the street.
+  hidden?: boolean;
 }
 
 // A ladder runs up the face of a box. The player climbs it from the side the normal points to.

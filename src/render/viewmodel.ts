@@ -36,6 +36,8 @@ const AIM_PITCH = 0.0157;
 const GLOCK_HIP_OFFSET = new THREE.Vector3(0.065, -0.08, -0.02);
 const GLOCK_HIP_YAW = 0.12;
 const GLOCK_AIM_FORWARD = -0.08;
+const GLOCK_PREVIEW_POSITION = new THREE.Vector3(-0.035, -0.005, -0.40);
+const GLOCK_PREVIEW_ROTATION = new THREE.Euler(0.05, 1.1, 0);
 const FLASH_SECONDS = 0.05;
 const FLASH_SIZE = 0.13;
 const SLIDE_TRAVEL = 0.032;
@@ -481,7 +483,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     update(player, pose, frameSeconds, preview = false) {
       const shotgunHeld = player.weapon === 'shotgun';
       const toolHeld = isMelee(player.weapon);
-      const glockHeld = player.weapon === 'pistol' && glock.ready() && !preview;
+      const glockHeld = player.weapon === 'pistol' && glock.ready();
       if (player.weapon !== heldWeapon || glockHeld !== glockShown) {
         if (player.weapon !== heldWeapon) {
           swapDip = 1;
@@ -717,6 +719,11 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
           root.rotation.y - REST_YAW * (1 - bodycamAmount) * (1 - aim) + GLOCK_HIP_YAW * (1 - aim),
           root.rotation.z,
         );
+        // The character preview shows the gun side on, muzzle to the left, both hands on the grip.
+        if (preview) {
+          glock.root.position.copy(GLOCK_PREVIEW_POSITION);
+          glock.root.rotation.copy(GLOCK_PREVIEW_ROTATION);
+        }
         glock.pose({
           sinceShot, reload: reloading ? progress : null, reloadEmpty: reloadWasEmpty, sinceDraw,
           empty: player.ammo === 0 && !reloading,

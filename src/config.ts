@@ -171,7 +171,8 @@ export const config = {
     firstAttackDelay: 0.4,
     // A zombie can not hit you if you are standing this far above its feet.
     reachHeight: 1.0,
-    deathSeconds: 1.1,
+    // How long a body stays down before it is removed. Dead zombies block nothing.
+    deathSeconds: 4,
   },
 
   waves: {

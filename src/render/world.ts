@@ -26,6 +26,7 @@ import { config } from '../config';
 const CITY_DEPTH = 48;
 import { buildStations } from './station';
 import { buildGate, buildStreet } from './street';
+import { buildStreetBuildings } from './streetBuildings';
 import { asphaltMaterial, hazardMaterial, labelTexture } from './streetTextures';
 import { buildCartons, buildPillar, buildVehicle } from './vehicles';
 
@@ -579,6 +580,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const staticProps = new THREE.Group();
   scene.add(staticProps);
   level.boxes.forEach((box, index) => {
+    if (box.hidden) return;
     const object = box.prop ? buildFurniture(box, environment) : buildBoxObject(box, index);
     if (object) staticProps.add(object);
   });
@@ -648,6 +650,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   if (garage) {
     buildSky(scene, 0);
     buildStreet(scene, level, glowMap);
+    buildStreetBuildings(scene, level);
   }
   if (level.theme === 'roof') {
     buildSky(scene, -CITY_DEPTH);

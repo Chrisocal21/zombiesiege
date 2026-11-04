@@ -9,6 +9,10 @@ const SHIRTS = ['#61544a', '#48565b', '#5b5c4c', '#704a42', '#53515b', '#4f5d53'
 const PANTS = ['#343c43', '#49453c', '#343739', '#48433d'];
 const SKINS = ['#a99c88', '#96816a', '#756553', '#b7ad9a', '#8e8475'];
 const HAIR = ['#37332d', '#4c4840', '#666057', '#393732'];
+// A dead body takes this long to hit the floor, and sinks out of sight over its last moments.
+const COLLAPSE_SECONDS = 0.95;
+const SINK_SECONDS = 0.8;
+const SINK_DEPTH = 0.35;
 
 type Ring = [y: number, width: number, depth: number, centerZ?: number];
 interface Segment { group: THREE.Group; parts: THREE.BufferGeometry[]; }
@@ -125,6 +129,8 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
   const views = new Map<number, ZombieView>();
   function build(zombie: Zombie): ZombieView {
     const group = new THREE.Group(); group.name = `Infected ${zombie.id}`;
+    // Turn to face first, then fall about the body's own axes.
+    group.rotation.order = 'YXZ';
     const shirt = SHIRTS[zombie.id % SHIRTS.length], pants = PANTS[zombie.id % PANTS.length];
     const skin = SKINS[zombie.id % SKINS.length], hair = HAIR[zombie.id % HAIR.length];
     const longSleeves = zombie.id % 3 !== 1;
@@ -252,6 +258,43 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     return { group, hips: body.group, torso: chest.group, head: head.group, arms, elbows, wrists, legs, knees, ankles,
       material, geometries, phase: zombie.id * 1.77, gait: 0, initialised: false };
   }
+  // A body going down: the knees give first and the hips drop, then it topples, gathering speed,
+  // and lands with a small bounce, limp, arms flung out and head turned aside. Most fall on their
+  // face; some go over backwards. Near the end it sinks out of sight before it is removed.
+  function collapse(view: ZombieView, id: number, since: number, left: number): void {
+    const forward = id % 3 !== 0, side = id % 2 ? 1 : -1;
+    const t = since / COLLAPSE_SECONDS;
+    const stage = (from: number, to: number) => { const x = Math.max(0, Math.min(1, (t - from) / (to - from))); return x * x * (3 - 2 * x); };
+    // Going over backwards, the knees only half give, and the legs end up straight.
+    const buckle = stage(0, 0.35) * (forward ? 1 - 0.75 * stage(0.6, 1) : 0.4 * (1 - stage(0.5, 0.9)));
+    const drop = Math.max(0, Math.min(1, (t - 0.15) / 0.85));
+    const bounce = t > 1 && t < 1.35 ? Math.sin((t - 1) / 0.35 * Math.PI) * 0.07 : 0;
+    const topple = drop * drop;
+    const limp = stage(0.1, 0.9);
+    view.group.rotation.x = (forward ? -1 : 1) * (Math.PI / 2 * topple - bounce);
+    view.group.rotation.z = side * 0.18 * topple;
+    view.group.position.y = 0.13 * topple - SINK_DEPTH * Math.max(0, 1 - left / SINK_SECONDS);
+    view.hips.position.y = 0.94 - 0.36 * buckle;
+    view.hips.rotation.y = view.hips.rotation.z = 0;
+    view.torso.rotation.x = forward ? -0.13 - 0.45 * buckle : -0.13 + 0.25 * buckle;
+    view.torso.rotation.y = side * 0.2 * limp;
+    view.torso.rotation.z = 0;
+    view.head.rotation.x = forward ? 0.35 * buckle * (1 - topple) : -0.3 * buckle;
+    view.head.rotation.y = side * 1.0 * topple;
+    view.head.rotation.z = side * 0.2 * limp;
+    view.legs.forEach((leg, i) => {
+      leg.rotation.x = 0.85 * buckle + (i === 0 ? 0.12 : -0.05) * topple;
+      view.knees[i].rotation.x = -1.55 * buckle - (i === 0 ? 0.35 : 0.12) * topple;
+      view.ankles[i].rotation.x = 0.45 * buckle;
+    });
+    view.arms.forEach((arm, i) => {
+      const out = i === 0 ? -1 : 1;
+      arm.rotation.x = (forward ? 0.5 : 0.25) * (1 - limp) + (forward ? 0.35 : -0.3) * topple + bounce * 2;
+      arm.rotation.z = out * (0.08 + 0.85 * topple) + bounce * out * 1.5;
+      view.elbows[i].rotation.x = 0.58 * (1 - limp) + (0.25 + 0.3 * i) * limp;
+      view.wrists[i].rotation.x = -0.12 * (1 - limp) + 0.3 * limp;
+    });
+  }
   function dispose(view: ZombieView): void {
     scene.remove(view.group); view.material.dispose(); view.geometries.forEach(g => g.dispose());
   }
@@ -304,15 +347,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         const flinch = zombie.lastHitTick >= 0 && hitAge < 0.22 ? Math.sin(hitAge / 0.22 * Math.PI) : 0;
         view.torso.rotation.x += flinch * 0.2; view.head.rotation.x -= flinch * 0.18;
         view.material.emissiveIntensity = flinch * 0.025;
-        if (zombie.dead) {
-          const t = Math.min(1, 1 - zombie.deadLeft / (config.zombie.deathSeconds * 0.7));
-          const fall = t * t * (3 - 2 * t);
-          view.group.rotation.x = Math.PI / 2 * fall;
-          view.group.rotation.z = (zombie.id % 2 ? 1 : -1) * 0.13 * fall;
-          view.group.position.y = 0.14 * fall;
-          view.torso.rotation.x = -0.13 + 0.3 * fall;
-          view.arms.forEach((arm, i) => { arm.rotation.x = 0.65 - 0.5 * fall; view.elbows[i].rotation.x = 0.3 + 0.5 * fall; });
-        }
+        if (zombie.dead) collapse(view, zombie.id, config.zombie.deathSeconds - zombie.deadLeft, zombie.deadLeft);
       }
       for (const [id, view] of views) if (!live.has(id)) { dispose(view); views.delete(id); }
     },

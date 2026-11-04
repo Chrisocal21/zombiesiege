@@ -1,0 +1,40 @@
+<!doctype html><html><head><link rel="icon" href="/favicon.svg"><style>body{margin:0;background:#9aa0a6;overflow:hidden}canvas{display:block}</style></head><body><script type="module">
+// A scenery model from four sides (looking at its +z, +x, -z and -x faces) and from above, at
+// dusk, with its size. With the dev server running, open /tools/models.html?model=city/skyscraper-01
+import * as THREE from '/node_modules/.vite/deps/three.js';
+import { loadModel } from '/src/render/models.ts';
+const params = new URLSearchParams(location.search);
+const name = params.get('model') ?? 'city/skyscraper-01';
+const W = 1500, H = 900;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H); renderer.setPixelRatio(1); renderer.setScissorTest(true);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#9aa0a6');
+scene.add(new THREE.HemisphereLight(0xdce6f5, 0x3a3c40, 1.6));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.4); sun.position.set(0.6, 1, 0.8); scene.add(sun);
+const label = document.createElement('div');
+label.style.cssText = 'position:fixed;left:12px;top:8px;font:600 16px sans-serif;color:#111';
+document.body.appendChild(label);
+window.__models = { ready: false };
+const gltf = await loadModel(`/models/${name}.glb`);
+scene.add(gltf.scene);
+const box = new THREE.Box3().setFromObject(gltf.scene), size = box.getSize(new THREE.Vector3()), centre = box.getCenter(new THREE.Vector3());
+const span = Math.max(size.x, size.y, size.z) * 0.6;
+label.textContent = `${name}   ${size.x.toFixed(1)} x ${size.y.toFixed(1)} x ${size.z.toFixed(1)} m (x, y up, z)   faces: +z | +x | -z | -x | top`;
+const sides = [[0, 0, 1], [1, 0, 0], [0, 0, -1], [-1, 0, 0], [0, 1, 0.001]];
+const cells = [[0, 0, 300, 860], [300, 0, 300, 860], [600, 0, 300, 860], [900, 0, 300, 860], [1200, 0, 300, 860]];
+const cameras = sides.map(([x, y, z]) => {
+  const aspect = 300 / 860, half = span;
+  const camera = new THREE.OrthographicCamera(-half * aspect, half * aspect, half, -half, 0.1, span * 10);
+  camera.position.copy(centre).add(new THREE.Vector3(x, y, z).multiplyScalar(span * 4));
+  camera.lookAt(centre);
+  return camera;
+});
+for (let i = 0; i < cameras.length; i++) {
+  const [x, y, w, h] = cells[i];
+  renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
+  renderer.render(scene, cameras[i]);
+}
+window.__models.ready = true;
+</script></body></html>

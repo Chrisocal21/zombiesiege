@@ -143,16 +143,17 @@ export const level0: Level = {
     { position: { x: ramp.x, y: STREET - 0.2, z: (-16 + 10.5) / 2 }, size: { x: ramp.width + 1, y: 0.4, z: 26.5 }, color: SLAB, surface: 'slab' },
     { position: { x: ramp.x, y: STREET - 0.2, z: (ramp.zTop + 48) / 2 }, size: { x: ramp.width + 1, y: 0.4, z: 48 - ramp.zTop }, color: SLAB, surface: 'slab' },
 
-    // The tower over the garage, and the buildings that close in the street.
+    // The tower over the garage, and the buildings that close in the street. Those along the sides
+    // and across the road are drawn as real buildings (render/streetBuildings), standing on them.
     { position: { x: 0, y: STREET + 32, z: -3 }, size: { x: 80, y: 64, z: 27 }, color: BUILDING, surface: 'building' },
     ...[-33, 33].flatMap((x): LevelBox[] => [
-      onStreet(x, 22.75, 14, 40, 25.5, BUILDING, 'building'),
-      { position: { x, y: STREET + 24, z: 41.75 }, size: { x: 14, y: 32, z: 12.5 }, color: BUILDING, surface: 'building' },
+      { ...onStreet(x, 22.75, 14, 40, 25.5, BUILDING, 'building'), hidden: true },
+      { position: { x, y: STREET + 24, z: 41.75 }, size: { x: 14, y: 32, z: 12.5 }, color: BUILDING, surface: 'building', hidden: true },
       onStreet(x, 47.25, 14, 8, 1.5, BUILDING, 'wall'),
       onStreet(x < 0 ? -33.5 : 33.5, 41, 0.5, 2.2, 10, BARRIER, 'plain'),
     ]),
 
-    { position: { x: 0, y: STREET + 20, z: 54 }, size: { x: 80, y: 40, z: 12 }, color: BUILDING, surface: 'building' },
+    { position: { x: 0, y: STREET + 20, z: 54 }, size: { x: 80, y: 40, z: 12 }, color: BUILDING, surface: 'building', hidden: true },
 
     // Both road lanes follow x. Keep the marked crossing and the ramp approach clear.
     onStreet(-16, 38.2, 4.55, 1.48, 1.86, '#7a3030', 'car'),
