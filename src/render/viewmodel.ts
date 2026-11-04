@@ -334,6 +334,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
     bat: { grip: BAT_GRIP, socket: tools.sockets.batRight },
     batSupport: { grip: BAT_GRIP, socket: tools.sockets.batLeft },
   } satisfies Record<string, Hold>;
+  const weaponParts = new Set<THREE.Object3D>();
+  for (const weapon of [pistol, shotgun.root, tools.machete, tools.bat]) weapon.traverse((part) => weaponParts.add(part));
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('sockets')) {
     showSockets(Object.values(holds).map((hold) => hold.socket));
   }
@@ -484,6 +486,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       const shotgunHeld = player.weapon === 'shotgun';
       const toolHeld = isMelee(player.weapon);
       const glockHeld = player.weapon === 'pistol' && glock.ready();
+      // The Glock pack's arms hold the other weapons too, once they have loaded.
+      const packArms = !glockHeld && glock.ready();
       if (player.weapon !== heldWeapon || glockHeld !== glockShown) {
         if (player.weapon !== heldWeapon) {
           swapDip = 1;
@@ -562,7 +566,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       carried.position.set(bobX * 2, -0.9 + 0.3 * carry + bobY * 3, -0.6);
       carried.rotation.set(0.32, Math.sin(bobPhase) * 0.03 * walking, Math.sin(bobPhase) * 0.02 * walking);
       root.visible = carry < 0.98 && !glockHeld;
-      glock.root.visible = carry < 0.98 && glockHeld;
+      glock.root.visible = carry < 0.98 && (glockHeld || packArms);
       const breathing = Math.sin(time * 1.7) * 0.0015;
       const motion = settings.cameraMotion ? 1 : 0;
 
@@ -649,7 +653,13 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       syncArm(rightArm, rightWrist, 1, bodycamAmount, shotgunHeld);
       syncArm(leftArm, leftWrist, -1, bodycamAmount, shotgunHeld);
 
-      leftArm.rig.visible = leftArm.upperRig.visible = player.weapon !== 'machete';
+      // The drawn hands and sleeves stand in only until the Glock pack's arms have loaded.
+      rightArm.rig.visible = rightArm.upperRig.visible = !packArms;
+      leftArm.rig.visible = leftArm.upperRig.visible = !packArms && player.weapon !== 'machete';
+      // Only the hands' own meshes: the right hand carries the equipped weapon as its child.
+      for (const hand of [root.getObjectByName('Primary hand mesh'), leftHand.getObjectByName('Support hand mesh')]) {
+        hand?.traverse((part) => { if (part instanceof THREE.Mesh && !weaponParts.has(part)) part.visible = !packArms; });
+      }
 
       // The gun jolts up a little as the magazine is pushed home.
       const seat = glockHeld ? 0 : stage(0.64, 0.68) * (1 - stage(0.68, 0.74));
@@ -729,6 +739,14 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
           empty: player.ammo === 0 && !reloading,
         });
         glock.root.updateMatrixWorld(true);
+      } else if (packArms) {
+        // Each palm on the weapon's attach point: the trigger hand on the grip or handle, the other
+        // on the fore-end or the bat's lower grip. The machete is held in one hand.
+        const bat = player.weapon === 'bat';
+        glock.holdOther(
+          toolHeld ? (bat ? holds.bat.socket : holds.machete.socket) : holds.shotgun.socket,
+          toolHeld ? (bat ? holds.batSupport.socket : null) : holds.forend.socket,
+        );
       }
     },
 
