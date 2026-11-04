@@ -1,0 +1,32 @@
+<!doctype html><html><head><link rel="icon" href="/favicon.svg"><style>body{margin:0;background:#6b7178;overflow:hidden}canvas{display:block}</style></head><body><script type="module">
+// Co-op players as others see them, without a server: four made-up players standing, walking,
+// crouched, and aiming up. With the dev server running, open /tools/players.html
+import * as THREE from '/node_modules/.vite/deps/three.js';
+import { createRemotePlayers } from '/src/render/remotePlayers.ts';
+import { createGameState } from '/src/game/state.ts';
+import { level0 } from '/src/levels/level0.ts';
+const W = 1500, H = 900;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H); renderer.setPixelRatio(1); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#6b7178');
+scene.add(new THREE.HemisphereLight(0xdce6f5, 0x3a3c40, 1.5));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2); sun.position.set(-2, 4, 3); scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: '#555a60' }));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100);
+camera.position.set(1.2, 1.7, 6.5); camera.lookAt(0.9, 1, 0);
+const state = createGameState(level0);
+const players = [0, 1, 2, 3, 4].map((id) => ({ ...state.players[0], id, x: (id - 1) * 1.3, y: 0, z: 0, yaw: Math.PI - 0.4, pitch: 0, crouch: 0, lean: 0, health: 100 }));
+players[3].crouch = 1; players[4].pitch = 0.6; players[1].yaw = Math.PI / 2;
+const remote = createRemotePlayers(scene);
+window.__players = { ready: false };
+let frames = 0;
+renderer.setAnimationLoop(() => {
+  players[2].x += 0.06; if (players[2].x > 2.5) players[2].x = 0;
+  remote.update(players, 0);
+  renderer.render(scene, camera);
+  if (scene.getObjectByName('Player 1')) frames++;
+  if (frames > 20) window.__players.ready = true;
+});
+</script></body></html>

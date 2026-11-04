@@ -2,13 +2,15 @@ import * as THREE from 'three';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { loadModel } from './models';
 
-// The skinned zombie models, posed by the same joint angles that animate the drawn zombies.
-// Each one has a Mixamo skeleton in a T pose, built facing +z. The joints are a bare tree of
+// Skinned characters, posed by joint angles rather than animation files: the zombies, with the
+// same angles that animate the drawn zombies, and the other players in co-op. Each model has a
+// Mixamo skeleton in a T pose, built facing +z. The joints are a bare tree of
 // groups laid out like the drawn zombie's (hips, chest, head, arms, legs), facing -z, with the
 // arms hanging at rest. Every frame each bone takes the orientation of its joint, measured from
 // that rest, and the bones in between (neck, shoulders, toes) follow their parents.
 
 export const ZOMBIE_MODELS = ['/models/characters/zombie-a.glb', '/models/characters/zombie-b.glb'];
+export const SURVIVOR_MODEL = '/models/characters/survivor.glb';
 
 export interface Joints {
   hips: THREE.Object3D;
@@ -75,9 +77,33 @@ export function zombieModelsReady(): boolean {
   return templates !== null;
 }
 
+// A tree of joints laid out like the drawn zombie's, standing, to pose with rotations. It is
+// never drawn; a rigged body copies it.
+export function createJoints(): Joints {
+  const joint = (parent: THREE.Object3D, x: number, y: number, z: number) => {
+    const node = new THREE.Group(); node.position.set(x, y, z); parent.add(node); return node;
+  };
+  const frame = new THREE.Group();
+  const hips = joint(frame, 0, HIPS_HEIGHT, 0), torso = joint(hips, 0, 0, 0), head = joint(torso, 0, 0.56, 0);
+  const joints: Joints = { hips, torso, head, arms: [], elbows: [], wrists: [], legs: [], knees: [], ankles: [] };
+  for (const side of [-1, 1]) {
+    const arm = joint(torso, side * 0.2, 0.46, 0), elbow = joint(arm, 0, -0.3, 0);
+    joints.arms.push(arm); joints.elbows.push(elbow); joints.wrists.push(joint(elbow, 0, -0.27, 0));
+    const leg = joint(hips, side * 0.09, 0, 0), knee = joint(leg, 0, -0.42, 0);
+    joints.legs.push(leg); joints.knees.push(knee); joints.ankles.push(joint(knee, 0, -0.4, 0));
+  }
+  return joints;
+}
+
+// One of the zombie models, by variant. Only once they have loaded.
 export function riggedBody(variant: number): RiggedBody {
+  return rig(templates![variant % templates!.length]);
+}
+
+// Any loaded character model, ready to pose.
+export function rig(template: THREE.Object3D): RiggedBody {
   // Measured in the model's own space, so before it is put in its turned holder.
-  const model = clone(templates![variant % templates!.length]);
+  const model = clone(template);
   model.updateMatrixWorld(true);
   model.traverse((child) => {
     if (child instanceof THREE.SkinnedMesh) {

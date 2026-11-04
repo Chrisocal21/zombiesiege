@@ -4,7 +4,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { config } from '../config';
 import type { GameState, Zombie } from '../game/state';
 import { paintTexture } from './materials';
-import { riggedBody, whenZombieModelsLoad, zombieModelsReady, type RiggedBody } from './zombieRig';
+import { createJoints, riggedBody, whenZombieModelsLoad, zombieModelsReady, type RiggedBody } from './characterRig';
 
 const SHIRTS = ['#61544a', '#48565b', '#5b5c4c', '#704a42', '#53515b', '#4f5d53'];
 const PANTS = ['#343c43', '#49453c', '#343739', '#48433d'];
@@ -19,15 +19,15 @@ type Ring = [y: number, width: number, depth: number, centerZ?: number];
 interface Segment { group: THREE.Group; parts: THREE.BufferGeometry[]; }
 interface ZombieView {
   group: THREE.Group;
-  hips: THREE.Group;
-  torso: THREE.Group;
-  head: THREE.Group;
-  arms: THREE.Group[];
-  elbows: THREE.Group[];
-  wrists: THREE.Group[];
-  legs: THREE.Group[];
-  knees: THREE.Group[];
-  ankles: THREE.Group[];
+  hips: THREE.Object3D;
+  torso: THREE.Object3D;
+  head: THREE.Object3D;
+  arms: THREE.Object3D[];
+  elbows: THREE.Object3D[];
+  wrists: THREE.Object3D[];
+  legs: THREE.Object3D[];
+  knees: THREE.Object3D[];
+  ankles: THREE.Object3D[];
   // The drawn zombie's one material, or null for a skinned model, whose materials are shared.
   material: THREE.MeshStandardMaterial | null;
   geometries: THREE.BufferGeometry[];
@@ -139,23 +139,11 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
   function buildRigged(zombie: Zombie): ZombieView {
     const group = new THREE.Group(); group.name = `Infected ${zombie.id}`;
     group.rotation.order = 'YXZ';
-    const joint = (parent: THREE.Object3D, x: number, y: number, z: number) => {
-      const node = new THREE.Group(); node.position.set(x, y, z); parent.add(node); return node;
-    };
-    const frame = new THREE.Group();
-    const hips = joint(frame, 0, 0.94, 0), torso = joint(hips, 0, 0, 0), head = joint(torso, 0, 0.56, 0);
-    const arms: THREE.Group[] = [], elbows: THREE.Group[] = [], wrists: THREE.Group[] = [];
-    const legs: THREE.Group[] = [], knees: THREE.Group[] = [], ankles: THREE.Group[] = [];
-    for (const side of [-1, 1]) {
-      arms.push(joint(torso, side * 0.2, 0.46, 0)); elbows.push(joint(arms[arms.length - 1], 0, -0.3, 0));
-      wrists.push(joint(elbows[elbows.length - 1], 0, -0.27, 0));
-      legs.push(joint(hips, side * 0.09, 0, 0)); knees.push(joint(legs[legs.length - 1], 0, -0.42, 0));
-      ankles.push(joint(knees[knees.length - 1], 0, -0.4, 0));
-    }
+    const joints = createJoints();
     const rig = riggedBody(zombie.id);
     group.add(rig.object);
     scene.add(group);
-    return { group, hips, torso, head, arms, elbows, wrists, legs, knees, ankles, material: null, geometries: [], rig,
+    return { group, ...joints, material: null, geometries: [], rig,
       phase: zombie.id * 1.77, gait: 0, initialised: false };
   }
   function build(zombie: Zombie): ZombieView {
