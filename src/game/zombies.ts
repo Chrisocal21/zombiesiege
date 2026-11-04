@@ -2,6 +2,7 @@ import { config } from '../config';
 import type { Level, Vec3 } from '../levels/types';
 import { resolveCircle } from './collision';
 import { rayAabb } from './hitscan';
+import { dropSupply } from './items';
 import { nextStep } from './navigation';
 import type { GameState, Player, Zombie } from './state';
 
@@ -186,5 +187,6 @@ export function damageZombie(state: GameState, zombie: Zombie, damage: number): 
   if (zombie.health <= 0) {
     zombie.dead = true;
     zombie.deadLeft = config.zombie.deathSeconds;
+    dropSupply(state, zombie.x, zombie.z);
   }
 }

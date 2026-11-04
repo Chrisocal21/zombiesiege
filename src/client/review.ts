@@ -136,7 +136,7 @@ export function installReview(context: ReviewContext): void {
       for (let i = 0; i < ticks; i++) {
         step(state, [{ playerId: 0, moveForward: 0, moveRight: 0, lookYaw: 0, lookPitch: 0, fire: false, reload: false, aim: false, lean: 0, crouch: false, jump: false, toggleCover: false, use: false, swap: false, toggleFreeze: false, ...input }], 1 / config.ticksPerSecond);
         // A press is one tick long.
-        input = { ...input, use: false, swap: false, selectWeapon: undefined, toggleLight: false };
+        input = { ...input, use: false, swap: false, selectWeapon: undefined, useItem: undefined, toggleLight: false };
       }
       return { phase: state.waves.phase, wave: state.waves.number, floor: state.floor, done: state.objective.done, charge: state.objective.charge, zombies: state.zombies.filter((zombie) => !zombie.dead).length };
     },

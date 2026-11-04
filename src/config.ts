@@ -41,6 +41,10 @@ export const config = {
     // Health comes back after this many seconds without being hit.
     regenDelaySeconds: 5,
     regenPerSecond: 15,
+    // Natural regeneration stops here. Bandages and first aid kits heal past it.
+    regenCeiling: 60,
+    // Hydration lost each second, out of 100.
+    thirstPerSecond: 0.3,
 
     jumpSpeed: 5.4,
     gravity: 16,

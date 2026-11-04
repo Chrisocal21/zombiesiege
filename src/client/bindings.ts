@@ -17,6 +17,10 @@ export type Action =
   | 'weapon2'
   | 'weapon3'
   | 'weapon4'
+  | 'wheel'
+  | 'bandage'
+  | 'medkit'
+  | 'water'
   | 'leanLeft'
   | 'leanRight'
   | 'cover'
@@ -48,6 +52,10 @@ export const ACTIONS: ActionInfo[] = [
   { id: 'weapon2', label: 'Shotgun', group: 'Weapons' },
   { id: 'weapon3', label: 'Machete', group: 'Weapons' },
   { id: 'weapon4', label: 'Spiked bat', group: 'Weapons' },
+  { id: 'wheel', label: 'Weapon and item wheel (hold)', group: 'Weapons' },
+  { id: 'bandage', label: 'Use a bandage', group: 'Weapons' },
+  { id: 'medkit', label: 'Use a first aid kit', group: 'Weapons' },
+  { id: 'water', label: 'Drink water', group: 'Weapons' },
   { id: 'leanLeft', label: 'Lean left', group: 'Combat' },
   { id: 'leanRight', label: 'Lean right', group: 'Combat' },
   { id: 'cover', label: 'Take cover', group: 'Interaction' },
@@ -74,6 +82,10 @@ const DEFAULTS: Record<Action, string> = {
   weapon2: 'Digit2',
   weapon3: 'Digit3',
   weapon4: 'Digit4',
+  wheel: 'Tab',
+  bandage: 'Digit5',
+  medkit: 'Digit6',
+  water: 'Digit7',
   leanLeft: 'KeyQ',
   leanRight: 'KeyV',
   cover: 'KeyF',
@@ -98,7 +110,7 @@ export function loadBindings(): void {
     }
     // New combat shortcuts must not take a key the player already assigned elsewhere.
     let migrated = false;
-    for (const action of ['melee','weapon1','weapon2','weapon3','weapon4'] as Action[]) {
+    for (const action of ['melee','weapon1','weapon2','weapon3','weapon4','wheel','bandage','medkit','water'] as Action[]) {
       if (typeof parsed[action] === 'string') continue;
       const occupied = new Set((Object.keys(DEFAULTS) as Action[]).filter(id=>id!==action).map(id=>bindings[id]));
       if (!occupied.has(bindings[action])) continue;

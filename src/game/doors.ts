@@ -1,5 +1,6 @@
 import { config } from '../config';
 import type { Door, LevelBox } from '../levels/types';
+import { nearestSupply, takeSupply } from './items';
 import { objectiveTarget, useObjective, type ObjectiveTarget } from './objectives';
 import type { GameState, Player } from './state';
 import { giveShotgun, isMelee, owns, reserveOf, setReserve, weaponStats } from './weapons';
@@ -11,6 +12,7 @@ export type Interaction =
   | { kind: 'gate' }
   | { kind: 'station'; index: number }
   | { kind: 'lock'; index: number }
+  | { kind: 'supply'; index: number }
   | ObjectiveTarget
   | null;
 
@@ -33,6 +35,8 @@ export function interactionTarget(state: GameState, player: Player): Interaction
   if (phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'search' || phase === 'hold' || phase === 'evac') {
     // Hands full: only somewhere to put the case down.
     if (player.carrying >= 0) return objectiveTarget(state, player);
+    const supply = nearestSupply(state, player);
+    if (supply >= 0) return { kind: 'supply', index: supply };
     const locks = state.level.locks;
     for (let index = 0; index < locks.length; index++) {
       if (state.locks[index].open) continue;
@@ -110,6 +114,11 @@ export function useAction(state: GameState, player: Player): void {
 
   if (target.kind === 'station') {
     buy(state, player, target.index);
+    return;
+  }
+
+  if (target.kind === 'supply') {
+    takeSupply(state, player, target.index);
     return;
   }
 

@@ -1,5 +1,6 @@
 import type { InputMessage } from '../game/inputs';
 import type { GameState } from '../game/state';
+import { ITEM_IDS } from '../game/items';
 import { WEAPON_IDS } from '../game/weapons';
 import type { Level } from '../levels/types';
 
@@ -63,6 +64,7 @@ export function readClientMessage(data: unknown, playerId: number): ReadMessage 
   const raw = message.input;
   const flag = (key: string) => raw[key] === true;
   const weapon = WEAPON_IDS.find((id) => id === raw.selectWeapon);
+  const item = ITEM_IDS.find((id) => id === raw.useItem);
   return {
     type: 'input',
     seq: message.seq,
@@ -86,6 +88,7 @@ export function readClientMessage(data: unknown, playerId: number): ReadMessage 
       swapDirection: raw.swapDirection === -1 || raw.swapDirection === 1 ? raw.swapDirection : undefined,
       selectWeapon: weapon,
       melee: flag('melee'),
+      useItem: item,
       toggleFreeze: flag('toggleFreeze'),
       toggleLight: flag('toggleLight'),
     },

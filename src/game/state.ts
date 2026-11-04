@@ -1,5 +1,6 @@
 import { config } from '../config';
 import type { Elevator, Ladder, Level, LevelBox, Lock, Vec3 } from '../levels/types';
+import { startingItems, type ItemId, type Items, type Supply } from './items';
 import type { WeaponId, WeaponLoadout } from './weapons';
 
 // A pull-up onto a ledge, played out over a fixed time. Nothing else moves the player meanwhile.
@@ -96,6 +97,13 @@ export interface Player {
   carrying: number;
   // The light on the shoulder, for floors with the power out.
   flashlight: boolean;
+  // Bandages, first aid kits and water being carried.
+  items: Items;
+  // 0 to 100. Drives how fast health comes back on its own.
+  hydration: number;
+  // The item being used and the seconds left, or null and 0.
+  item: ItemId | null;
+  itemLeft: number;
 }
 
 export interface Zombie {
@@ -227,6 +235,9 @@ export interface GameState {
   locks: LockState[];
   objective: ObjectiveState;
   pickups: BarPickup[];
+  // Bandages, kits and water lying on the floor, left by zombies.
+  supplies: Supply[];
+  nextSupplyId: number;
   players: Player[];
   zombies: Zombie[];
   nextZombieId: number;
@@ -265,6 +276,7 @@ export function enterLevel(state: GameState, level: Level): void {
   state.locks = level.locks.map(() => ({ open: false, openedTick: -1 }));
   state.objective = freshObjective(level);
   state.pickups = level.barricadeBars.map((bar) => ({ x: bar.x, z: bar.z, taken: false }));
+  state.supplies = [];
   for (const player of state.players) {
     player.bars = 0;
     player.carrying = -1;
@@ -338,6 +350,10 @@ export function createPlayer(id: number, spawn: Vec3): Player {
     bars: 0,
     carrying: -1,
     flashlight: false,
+    items: startingItems(),
+    hydration: 50,
+    item: null,
+    itemLeft: 0,
   };
 }
 
@@ -357,6 +373,8 @@ export function createGameState(level: Level): GameState {
     locks: [],
     objective: { done: true, doneTick: -1, thrown: [], charge: 0, startedTick: -1, items: [] },
     pickups: [],
+    supplies: [],
+    nextSupplyId: 0,
     players,
     zombies: [],
     nextZombieId: 0,

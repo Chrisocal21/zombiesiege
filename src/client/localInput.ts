@@ -2,7 +2,9 @@ import { config } from '../config';
 import type { InputMessage } from '../game/inputs';
 import { type Action, bindings } from './bindings';
 import { settings } from './settings';
+import type { ItemId } from '../game/items';
 import { WEAPON_IDS, type WeaponId } from '../game/weapons';
+import { WHEEL_REACH, WHEEL_SEGMENTS, wheelSegment, type WheelState } from './wheel';
 
 export interface LocalInput {
   // Turns what the keyboard and mouse did since the last call into one message.
@@ -12,6 +14,8 @@ export interface LocalInput {
   pendingLook(): { yaw: number; pitch: number };
   // Scales mouse turning, so aiming feels the same at the zoomed-in view.
   setLookScale(scale: number): void;
+  // The weapon and item wheel, while its key is held.
+  wheel(): WheelState;
   isLocked(): boolean;
   // Captures the mouse. Has to be called from a click or key press.
   lock(): Promise<boolean>;
@@ -35,6 +39,9 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   // is released before then, so quick clicks are never dropped.
   let clickQueued = false;
   let selectedWeapon: WeaponId | undefined;
+  let selectedItem: ItemId | undefined;
+  let wheelX = 0;
+  let wheelY = 0;
   let wheelDirection: -1 | 1 = 1;
   const queued = new Set<Action>();
   let unlockCallback: () => void = () => {};
@@ -47,6 +54,8 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     down.add(code);
     for (const action of LATCHED) if (bindings[action] === code) queued.add(action);
     if (bindings.fire === code) clickQueued = true;
+    for (const item of ['bandage', 'medkit', 'water'] as const) if (bindings[item] === code) selectedItem = item;
+    if (bindings.wheel === code) { wheelX = 0; wheelY = 0; }
     WEAPON_IDS.forEach((weapon, index) => {
       if (bindings[`weapon${index + 1}` as Action] === code) selectedWeapon = weapon;
     });
@@ -65,7 +74,18 @@ export function createLocalInput(element: HTMLElement): LocalInput {
     if (!event.repeat) press(event.code);
     else down.add(event.code);
   });
-  window.addEventListener('keyup', (event) => down.delete(event.code));
+  // Letting go of the wheel key chooses what the mouse is pointing at.
+  function closeWheel(): void {
+    const segment = WHEEL_SEGMENTS[wheelSegment(wheelX, wheelY)];
+    if (segment?.kind === 'weapon') selectedWeapon = segment.id;
+    else if (segment) selectedItem = segment.id;
+    wheelX = 0;
+    wheelY = 0;
+  }
+  window.addEventListener('keyup', (event) => {
+    if (event.code === bindings.wheel && down.has(event.code)) closeWheel();
+    down.delete(event.code);
+  });
   window.addEventListener('blur', () => down.clear());
   window.addEventListener('contextmenu', (event) => event.preventDefault());
 
@@ -77,6 +97,14 @@ export function createLocalInput(element: HTMLElement): LocalInput {
 
   window.addEventListener('mousemove', (event) => {
     if (!isLocked()) return;
+    if (down.has(bindings.wheel)) {
+      // The mouse picks from the wheel instead of turning the view.
+      wheelX += event.movementX;
+      wheelY += event.movementY;
+      const length = Math.hypot(wheelX, wheelY);
+      if (length > WHEEL_REACH) { wheelX *= WHEEL_REACH / length; wheelY *= WHEEL_REACH / length; }
+      return;
+    }
     yaw -= event.movementX * config.player.lookSensitivity * settings.sensitivity * lookScale;
     pitch -= event.movementY * config.player.lookSensitivity * settings.sensitivity * lookScale;
   });
@@ -105,6 +133,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
 
   return {
     isLocked,
+    wheel: () => ({ open: down.has(bindings.wheel), x: wheelX, y: wheelY }),
     onUnlock(callback) {
       unlockCallback = callback;
     },
@@ -130,6 +159,9 @@ export function createLocalInput(element: HTMLElement): LocalInput {
       queued.clear();
       clickQueued = false;
       selectedWeapon = undefined;
+      selectedItem = undefined;
+      wheelX = 0;
+      wheelY = 0;
       yaw = 0;
       pitch = 0;
     },
@@ -145,7 +177,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         moveRight: (held('right') ? 1 : 0) - (held('left') ? 1 : 0),
         lookYaw: yaw,
         lookPitch: pitch,
-        fire: held('fire') || clickQueued,
+        fire: (held('fire') || clickQueued) && !held('wheel'),
         reload: held('reload'),
         aim: held('aim'),
         lean: (held('leanRight') ? 1 : 0) - (held('leanLeft') ? 1 : 0),
@@ -157,6 +189,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         swap: queued.has('swap'),
         swapDirection: wheelDirection,
         selectWeapon: selectedWeapon,
+        useItem: selectedItem,
         melee: queued.has('melee') || held('melee'),
         toggleFreeze: queued.has('freeze'),
         toggleLight: queued.has('light'),
@@ -165,6 +198,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
       pitch = 0;
       clickQueued = false;
       selectedWeapon = undefined;
+      selectedItem = undefined;
       wheelDirection = 1;
       queued.clear();
       return message;

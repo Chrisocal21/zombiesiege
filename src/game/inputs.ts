@@ -1,3 +1,4 @@
+import type { ItemId } from './items';
 import type { WeaponId } from './weapons';
 
 // What a player asked for during one tick. A networked player will send the same thing.
@@ -27,6 +28,8 @@ export interface InputMessage {
   swapDirection?: -1 | 1;
   selectWeapon?: WeaponId;
   melee?: boolean;
+  // The item to start using, from the wheel or its key.
+  useItem?: ItemId;
   // True when the freeze key was pressed since the last message. A testing aid.
   toggleFreeze: boolean;
   // True when the flashlight key was pressed since the last message.
@@ -56,6 +59,7 @@ export function mergeInputs(earlier: InputMessage, later: InputMessage): InputMe
     swapDirection: later.swapDirection ?? earlier.swapDirection,
     selectWeapon: later.selectWeapon ?? earlier.selectWeapon,
     melee: earlier.melee || later.melee,
+    useItem: later.useItem ?? earlier.useItem,
     toggleFreeze: earlier.toggleFreeze || later.toggleFreeze,
     toggleLight: earlier.toggleLight || later.toggleLight,
   };
@@ -67,6 +71,6 @@ export function heldPart(input: InputMessage): InputMessage {
   return {
     ...input,
     lookYaw: 0, lookPitch: 0, toggleCover: false, use: false, swap: false, swapDirection: undefined,
-    selectWeapon: undefined, toggleFreeze: false, toggleLight: false,
+    selectWeapon: undefined, useItem: undefined, toggleFreeze: false, toggleLight: false,
   };
 }

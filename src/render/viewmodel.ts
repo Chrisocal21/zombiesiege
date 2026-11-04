@@ -556,7 +556,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       // Footsteps only bob the gun while the feet are on the ground.
       const speed = player.onGround ? Math.hypot(player.vx, player.vz) : 0;
       // Both hands are busy climbing, so the gun drops out of the way.
-      lowered += ((player.ladder || player.mantle ? 1 : 0) - lowered) * Math.min(1, frameSeconds * 10);
+      lowered += ((player.ladder || player.mantle || player.itemLeft > 0 ? 1 : 0) - lowered) * Math.min(1, frameSeconds * 10);
       carry += ((player.carrying >= 0 && !preview ? 1 : 0) - carry) * Math.min(1, frameSeconds * 8);
       const walking = Math.min(1, speed / config.player.moveSpeed);
       bobPhase += speed * frameSeconds * 1.5;

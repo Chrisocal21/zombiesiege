@@ -1,6 +1,7 @@
 import { config } from '../config';
 import type { Level } from '../levels/types';
 import { useAction } from './doors';
+import { regenFactor, startItem, thirst, updateItem } from './items';
 import { raycastBoxes } from './hitscan';
 import type { InputMessage } from './inputs';
 import { moveBody } from './movement';
@@ -23,10 +24,11 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     if (input.toggleFreeze) state.frozen = !state.frozen;
     if (input.toggleLight) player.flashlight = !player.flashlight;
     if (input.use) useAction(state, player);
+    if (input.useItem) startItem(player, input.useItem);
     look(player, input);
     // You can't look down the sights mid-reload, while hanging off a ladder or a ledge, or with
     // both hands round a case.
-    player.aiming = input.aim && !isMelee(player.weapon) && player.meleeLeft === 0 && player.reloadLeft === 0 && !player.ladder && !player.mantle && player.carrying < 0;
+    player.aiming = input.aim && !isMelee(player.weapon) && player.meleeLeft === 0 && player.reloadLeft === 0 && player.itemLeft === 0 && !player.ladder && !player.mantle && player.carrying < 0;
     moveBody(player, input, dt, level);
     player.cameraStyle = input.cameraStyle === 'bodycam' ? 'bodycam' : 'standard';
     const targetDrop = player.cameraStyle === 'bodycam' && !player.aiming && !player.ladder && !player.mantle
@@ -43,7 +45,11 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     updateZombies(state, dt, level);
     updateWaves(state, dt, level);
   }
-  for (const player of state.players) regenerate(state, player, dt);
+  for (const player of state.players) {
+    updateItem(player, dt);
+    thirst(player, dt);
+    regenerate(state, player, dt);
+  }
   state.tick++;
 }
 
@@ -53,10 +59,11 @@ function look(player: Player, input: InputMessage): void {
 }
 
 function regenerate(state: GameState, player: Player, dt: number): void {
-  if (player.health <= 0 || player.health >= config.player.maxHealth) return;
+  // Healing past the ceiling takes a bandage or a kit.
+  if (player.health <= 0 || player.health >= config.player.regenCeiling) return;
   const quietSeconds = (state.tick - player.lastHurtTick) / config.ticksPerSecond;
   if (player.lastHurtTick >= 0 && quietSeconds < config.player.regenDelaySeconds) return;
-  player.health = Math.min(config.player.maxHealth, player.health + config.player.regenPerSecond * dt);
+  player.health = Math.min(config.player.maxHealth, player.health + config.player.regenPerSecond * regenFactor(player) * dt);
 }
 
 // A wall closer than this to the head stops the lean, so the view never goes inside it.
@@ -89,6 +96,8 @@ function weapon(
   level: Level,
 ): void {
   player.cooldown = Math.max(0, player.cooldown - dt);
+  // Busy with a bandage, a kit or a drink: the gun stays down until it is done.
+  if (player.itemLeft > 0) return;
   if (player.meleeLeft > 0) {
     player.meleeLeft = Math.max(0, player.meleeLeft - dt);
     const attack = weaponStats(player.weapon).melee;

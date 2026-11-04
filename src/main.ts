@@ -16,6 +16,8 @@ import { createMenu } from './render/menu';
 import { createRemotePlayers } from './render/remotePlayers';
 import { createView, syncCamera } from './render/view';
 import { createViewmodel } from './render/viewmodel';
+import type { WheelState } from './client/wheel';
+import { createSupplyViews } from './render/supplies';
 import { createZombieViews } from './render/zombies';
 
 document.body.style.margin = '0';
@@ -43,6 +45,7 @@ const input = createLocalInput(view.renderer.domElement);
 const viewmodel = createViewmodel(view.viewScene);
 const effects = createEffects(view.scene, view.camera, viewmodel);
 const zombieViews = createZombieViews(view.scene);
+const supplyViews = createSupplyViews(view.scene);
 const audio = createAudio();
 // The other players in a co-op game, drawn as boxes for now.
 const remotePlayers = coop ? createRemotePlayers(view.scene) : null;
@@ -216,10 +219,11 @@ view.renderer.setAnimationLoop((now) => {
   input.setLookScale(view.camera.fov / settings.fieldOfView);
   effects.update(player, paused ? 0 : frameSeconds, state.level);
   zombieViews.update(state, paused ? 0 : frameSeconds);
+  supplyViews.update(state, now / 1000);
   audio.update(state, player, paused || onTitle, frameSeconds);
   view.render(!onTitle);
   if (outfitPreview) view.renderOutfitPreview();
-  hud.draw(state, player, now / 1000);
+  hud.draw(state, player, now / 1000, paused ? undefined : (import.meta.env.DEV && (window as unknown as { __wheel?: WheelState }).__wheel) || input.wheel());
 });
 
 // Opt-in development review harness; excluded from production builds.

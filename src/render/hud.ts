@@ -3,6 +3,7 @@ import { bindings, keyLabel } from '../client/bindings';
 import { settings } from '../client/settings';
 import { config } from '../config';
 import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
+import { ITEMS } from '../game/items';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
@@ -12,13 +13,15 @@ import { objectiveMarkers } from '../game/objectives';
 import { clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
 import { aliveZombies } from '../game/zombies';
 import type { Menu } from './menu';
+import { drawItemBar, drawItemUse, drawWheel } from './itemsHud';
+import type { WheelState } from '../client/wheel';
 import { COLOR, clamp, keycap, measure, roundedRect, text } from './ui';
 
 const floorName = floorTitle;
 
 export interface Hud {
   toggleMap(): void;
-  draw(state: GameState, player: Player, time: number): void;
+  draw(state: GameState, player: Player, time: number, wheel?: WheelState): void;
 }
 
 interface Waypoint {
@@ -81,7 +84,7 @@ export function createHud(menu: Menu): Hud {
 
   return {
     toggleMap() { mapOpen = !mapOpen; },
-    draw(state, player, time) {
+    draw(state, player, time, wheel) {
       const dpr = window.devicePixelRatio || 1;
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -134,7 +137,7 @@ export function createHud(menu: Menu): Hud {
       }
       ghostHealth = Math.max(player.health, ghostHealth - 28 * frame);
 
-      if (!menu.onTitle()) drawGame(width, height, state, player, time);
+      if (!menu.onTitle()) drawGame(width, height, state, player, time, wheel);
       if (mapOpen && !menu.isOpen()) drawTacticalMap(context, width, height, state, player);
       menu.draw(context, width, height, time);
     },
@@ -173,7 +176,7 @@ export function createHud(menu: Menu): Hud {
     return points;
   }
 
-  function drawGame(width: number, height: number, state: GameState, player: Player, time: number): void {
+  function drawGame(width: number, height: number, state: GameState, player: Player, time: number, wheel?: WheelState): void {
     const unit = Math.min(height / 1080, width / 1500);
     const margin = 48 * unit;
     const points = waypoints(state, player);
@@ -196,7 +199,10 @@ export function createHud(menu: Menu): Hud {
       context.beginPath(); context.arc(rx + 6 * unit, margin + 196 * unit, 4 * unit, 0, Math.PI * 2); context.fill();
       text(context, `REC / BODY 01   ${timestamp}`, rx + 18 * unit, margin + 201 * unit, { size: 13 * unit, color: COLOR.dim, spacing: 1 * unit });
     }
+    drawItemBar(context, margin + 224 * unit + 120 * unit, height - margin + 6 * unit, unit, player);
+    drawItemUse(context, width, height, unit, player);
     drawPrompt(width, height, unit, state, player);
+    if (wheel) drawWheel(context, width, height, unit, player, wheel);
     drawBanner(width, height, unit, state, time);
 
     if (state.frozen) {
@@ -845,7 +851,7 @@ export function createHud(menu: Menu): Hud {
 
     // Reminders of the less obvious keys, faint along the bottom.
     const hintY = height - margin + 26 * unit;
-    const hints = [[bindings.map, 'MAP'], [bindings.melee, 'MELEE'], [bindings.swap, 'CYCLE'], [bindings.cover, 'COVER'], [bindings.light, 'LIGHT']];
+    const hints = [[bindings.map, 'MAP'], [bindings.melee, 'MELEE'], [bindings.swap, 'CYCLE'], [bindings.cover, 'COVER'], [bindings.light, 'LIGHT'], [bindings.wheel, 'ITEMS']];
     const hintSize = 20 * unit;
     const widths = hints.map(([key, label]) => Math.max(hintSize, measure(context, keyLabel(key), hintSize * 0.62, 700, 0.5) + hintSize * 0.7) + 6 * unit + measure(context, label, 11 * unit, 700, 2 * unit));
     const spacing = 26 * unit;
@@ -882,6 +888,7 @@ export function createHud(menu: Menu): Hud {
     } else if (interaction && objectivePrompt(state, interaction.kind)) prompt = { keys: [bindings.use], label: objectivePrompt(state, interaction.kind)! };
     else if (player.carrying >= 0) prompt = { keys: [bindings.fire], label: 'Put the case down' };
     else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
+    else if (interaction?.kind === 'supply') prompt = { keys: [bindings.use], label: `Pick up ${ITEMS[state.supplies[interaction.index].item].name.toLowerCase()}` };
     else if (interaction?.kind === 'pickup') prompt = { keys: [bindings.use], label: 'Pick up the boards' };
     else if (interaction?.kind === 'door') prompt = { keys: [bindings.use], label: 'Board up this door' };
     else if (player.ladder) prompt = { keys: [bindings.forward, bindings.back], label: 'Climb' };
