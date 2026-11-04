@@ -66,8 +66,18 @@ async function main() {
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
     }
     await delay(1500);
+    if (process.argv.includes('--street-check')) {
+      const result = await evaluate("import('/tools/check-street-buildings.js').then(module => module.checkStreetBuildings())");
+      console.log('PASS: street frontage, road clearance and garage approach ' + JSON.stringify(result));
+    }
     const viewsFile = process.argv.find(arg => arg.startsWith('--views='))?.slice(8);
     if (viewsFile) {
+      let loaded = false;
+      for (let i = 0; i < 120; i++) {
+        if (await evaluate('window.__siegeReview.inspect().streetBuildingsReady')) { loaded = true; break; }
+        await delay(500);
+      }
+      if (!loaded) throw new Error('Street building models did not finish loading');
       const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       for (const [name, pose] of Object.entries(views)) {
         await evaluate(`window.__siegeReview.place(${JSON.stringify(pose)})`);

@@ -68,3 +68,10 @@ is a scramble against zombies already coming through rather than a quiet beat be
 - `docs/` design notes, feature map and open questions
 
 Models, textures and sources are listed in `ASSET_LICENSES.md`.
+
+Street buildings use measured, uniformly scaled sections in `src/render/streetBuildings.ts`.
+The office fronts repeat to fill their blocks; the road-end buildings sit above the existing
+eight-metre tunnel clearance. Shopfronts and road signs attach to those sections.
+With the dev server running, `node tools/shot.cjs --street-check --views=tools/street-views.json`
+checks frontage continuity, road clearance, collision barriers and the garage approach, and
+saves seven street viewpoints to `artifacts/review/` for visual inspection.

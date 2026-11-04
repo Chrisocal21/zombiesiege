@@ -151,6 +151,8 @@ export const level0: Level = {
       { position: { x, y: STREET + 24, z: 41.75 }, size: { x: 14, y: 32, z: 12.5 }, color: BUILDING, surface: 'building', hidden: true },
       onStreet(x, 47.25, 14, 8, 1.5, BUILDING, 'wall'),
       onStreet(x < 0 ? -33.5 : 33.5, 41, 0.5, 2.2, 10, BARRIER, 'plain'),
+      // Shut security gate behind the road barrier, drawn by streetBuildings.
+      { ...onStreet(x < 0 ? -33.86 : 33.86, 41.75, 0.16, 8, 12.5, BUILDING, 'wall'), hidden: true },
     ]),
 
     { position: { x: 0, y: STREET + 20, z: 54 }, size: { x: 80, y: 40, z: 12 }, color: BUILDING, surface: 'building', hidden: true },

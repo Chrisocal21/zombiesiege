@@ -141,7 +141,8 @@ export function installReview(context: ReviewContext): void {
       return { phase: state.waves.phase, wave: state.waves.number, floor: state.floor, done: state.objective.done, charge: state.objective.charge, zombies: state.zombies.filter((zombie) => !zombie.dead).length };
     },
     inspect() {
-      return { scenario, calls: context.view.renderer.info.render.calls, triangles: context.view.renderer.info.render.triangles,
+      return { scenario, streetBuildingsReady: context.view.scene.getObjectByName('Street buildings')?.userData.ready === true,
+        calls: context.view.renderer.info.render.calls, triangles: context.view.renderer.info.render.triangles,
         geometries: context.view.renderer.info.memory.geometries, textures: context.view.renderer.info.memory.textures,
         menu: context.menu.screen(), cameraStyle: settings.cameraStyle, cameraFov: context.view.camera.fov, cameraDrop: context.state().players[0].cameraDrop,
         weapon: context.state().players[0].weapon, melee: context.state().players[0].meleeLeft,

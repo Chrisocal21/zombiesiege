@@ -72,7 +72,7 @@ function shopfront(parent: THREE.Object3D, width: number, name: string): void {
   const glass = new THREE.MeshStandardMaterial({ color: '#23353e', roughness: 0.28, metalness: 0.3 });
   const shutter = shutterMaterial();
   // Cover the imported blank pedestal with recessed bays, a door, transoms and a fascia.
-  block(parent, width, 4.15, 1.5, 0, 2.075, -0.76, stone);
+  block(parent, width, 4.15, 1.5, 0, 2.075, -0.96, stone);
   const bays = Math.max(3, Math.round(width / 3.2));
   const bayWidth = width / bays;
   for (let i = 0; i < bays; i++) {
@@ -119,6 +119,17 @@ function roadPortal(parent: THREE.Object3D, side: number, ground: number): void 
   parent.add(closure);
   block(closure, 9.8, 0.3, 0.04, 0, 1.9, 0, hazard);
   sign(closure, 'ROAD CLOSED', 'EMERGENCY ACCESS ONLY', 4.5, 1.15, 0.01);
+  // A shut security gate behind the concrete closure seals the view through the block.
+  // Without it the distant skyline appears inside the tunnel, with sky above the barrier.
+  const gate = faceGroup(front, side * 33.78, 41.75, ground);
+  parent.add(gate);
+  const gateMaterial = shutterMaterial();
+  if (gateMaterial.map) {
+    gateMaterial.map.wrapT = THREE.RepeatWrapping;
+    gateMaterial.map.repeat.y = 3;
+  }
+  block(gate, 12.5, 8, 0.16, 0, 4, -0.08, gateMaterial);
+  for (const x of [-6.15, -3.1, 0, 3.1, 6.15]) block(gate, 0.12, 8, 0.14, x, 4, 0, trim);
   // Ceiling strips reveal the depth without additional point lights.
   const light = new THREE.MeshBasicMaterial({ color: '#c4b78c' });
   for (const x of [-4.4, 3.5]) block(group, 0.12, 0.025, 5.5, x, 7.96, -3.8, light);
@@ -152,9 +163,11 @@ export async function buildStreetBuildings(scene: THREE.Object3D, level: Level):
       const along = frontage.from + width * (i + 0.5);
       const base = ground + (frontage.base ?? 0);
       model.position.y = base - bounds.min.y;
-      if (frontage.front === '-z') model.position.set(along - centre.x, model.position.y, frontage.plane - bounds.min.z);
-      else if (frontage.front === '+x') model.position.set(frontage.plane - bounds.max.x, model.position.y, along - centre.z);
-      else model.position.set(frontage.plane - bounds.min.x, model.position.y, along - centre.z);
+      // Leave a shallow recess for the shopfront cladding in front of the imported base.
+      const inset = frontage.shops ? 0.24 : 0;
+      if (frontage.front === '-z') model.position.set(along - centre.x, model.position.y, frontage.plane + inset - bounds.min.z);
+      else if (frontage.front === '+x') model.position.set(frontage.plane - inset - bounds.max.x, model.position.y, along - centre.z);
+      else model.position.set(frontage.plane + inset - bounds.min.x, model.position.y, along - centre.z);
       model.name = `${frontage.model} ${frontage.front} ${i} ${frontage.from}`;
       model.userData.streetFrontage = { ...frontage, from: along - width / 2, to: along + width / 2, base };
       model.traverse(object => { if (object instanceof THREE.Mesh) object.receiveShadow = true; });
@@ -182,4 +195,5 @@ export async function buildStreetBuildings(scene: THREE.Object3D, level: Level):
     model.name = `Skyline ${tower.model}`;
     group.add(model);
   }));
+  group.userData.ready = true;
 }
