@@ -266,6 +266,14 @@ Not written yet. See **Places** for what's next.
 
 ---
 
+## Proposed
+
+- **Why the crew is on foot at the hospital:** their ground ambulance ran out of fuel 9 miles out. They had to fight the rest of the way in on foot, and that is why they end up at the hospital's parking garage at all. It sits under the Act 1 line about the crew driving in and being overrun, and replaces "drove in" with "drove most of the way, then fought in".
+- **A bonus level for it:** "The Approach", the run from the dead ambulance to the hospital. It is a move level, built when the street is mapped in more detail, and it is the place to set up fights: choke points, cars, shopfronts and rooftops to fight from. It leads straight into the garage, so Level 0 stays the first hold. Not built yet.
+- **Where it shows now:** the opening scene outside the garage currently reads "The crew drove in to bring survivors out." If this is accepted, that line becomes something like "The ambulance died 9 miles out. They fought the rest of the way."
+
+---
+
 ## Parked
 
 - Is the first aid slot the same item as the rare first aid kit that revives a teammate, or a different one? (The adrenaline syringe overlaps with this too.)
@@ -280,3 +288,4 @@ Not written yet. See **Places** for what's next.
 
 - **Nov 2, 2026:** First riff: hospital extraction → stairwell descent in a second building → pharmacy vault rescue → street run to the next extraction. Fleshed out into four acts, with the office tower, the underground route, the scientist on the radio, the sample, places and pickups.
 - **Nov 3, 2026:** Went through the question list on the Claude website. Decided the cause, the scientist, the sample, the crew, the zone, the reasons for every act, zombies, tone, structure and the loadout. The question list was replaced by these decisions.
+- **Nov 3, 2026:** Proposed that the crew's ambulance ran out of fuel 9 miles out, which is why they are on foot at the hospital, with the run in as a bonus level once the street is mapped.

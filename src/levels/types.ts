@@ -70,7 +70,7 @@ export interface LevelBox {
   hidden?: boolean;
   // Ramp backing for shots/solids; feet follow Level.ramp's continuous surface instead.
   rampStep?: boolean;
-  vehicleRole?: 'ambulance';
+  vehicleRole?: 'ambulance' | 'elCajon';
 }
 
 // A ladder runs up the face of a box. The player climbs it from the side the normal points to.

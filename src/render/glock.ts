@@ -142,6 +142,8 @@ export function loadGlock(parent: THREE.Object3D): Glock {
   const hands: Partial<Record<Side, PackHand>> = {};
   const gun: THREE.Object3D[] = [];
   let loaded = false;
+  // A point on the pistol where the trigger hand's palm rests, which follows the gun through its animations.
+  let gripSocket: THREE.Object3D | null = null;
 
   // The skin the arm extensions are made of, matched to the arm's own texture once it has loaded.
   const skin = new THREE.MeshStandardMaterial({ color: '#d9ad99', roughness: 0.75 });
@@ -203,6 +205,15 @@ export function loadGlock(parent: THREE.Object3D): Glock {
       tube.frustumCulled = joint.frustumCulled = false;
       tube.visible = joint.visible = false;
       root.add(tube, joint);
+      const gunNode = gltf.scene.getObjectByName('Main_Glock_D_0');
+      if (side === 'right' && gunNode) {
+        // The palm's place on the gun at rest, kept so the hand can be put back on it after the clip.
+        gunNode.updateWorldMatrix(true, false);
+        gripSocket = new THREE.Object3D();
+        gripSocket.matrixAutoUpdate = false;
+        gripSocket.matrix.copy(gunNode.matrixWorld).invert().multiply(palm);
+        gunNode.add(gripSocket);
+      }
       hands[side] = {
         forearm, fromPalm: palm.invert().multiply(forearm.matrixWorld),
         rest: { position: forearm.position.clone(), quaternion: forearm.quaternion.clone(), scale: forearm.scale.clone() },
@@ -249,6 +260,8 @@ export function loadGlock(parent: THREE.Object3D): Glock {
       action.time = clip === name ? time : 0;
     }
     mixer.update(0);
+    // The clips swing the trigger arm away from the gun during a reload; the hand stays on the grip.
+    if (state.reload !== null && gripSocket) place('right', gripSocket);
   }
 
   const target = new THREE.Matrix4();

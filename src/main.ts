@@ -2,6 +2,7 @@ import { loadBindings } from './client/bindings';
 import { createAudio } from './client/audio';
 import { joinRoom } from './client/coop';
 import { createLocalInput } from './client/localInput';
+import { createIntroOverlay, INTRO_SECONDS, introPose, introWalker, WALKER_COUNT, type IntroOverlay, type IntroPose } from './client/intro';
 import { createLocalSession, createRemoteSession } from './client/session';
 import { loadSettings, settings } from './client/settings';
 import { config } from './config';
@@ -50,6 +51,41 @@ const audio = createAudio();
 // The other players in a co-op game, drawn as boxes for now.
 const remotePlayers = coop ? createRemotePlayers(view.scene) : null;
 
+// The opening scene outside the garage, while it plays: when it began, the zombies in it, and whether
+// the player has asked to skip.
+let intro: { start: number; ids: Set<number>; overlay: IntroOverlay; skip: boolean } | null = null;
+
+function startIntro(now: number): void {
+  const state = session.state;
+  const ids = new Set<number>();
+  for (let i = 0; i < WALKER_COUNT; i++) {
+    const at = introWalker(i, 0, state.level);
+    spawnZombie(state, at.x, at.z, null);
+    ids.add(state.zombies[state.zombies.length - 1].id);
+  }
+  intro = { start: now, ids, overlay: createIntroOverlay(), skip: false };
+}
+
+function endIntro(now: number): void {
+  if (!intro) return;
+  const ids = intro.ids;
+  session.state.zombies = session.state.zombies.filter((zombie) => !ids.has(zombie.id));
+  intro.overlay.remove();
+  intro = null;
+  input.reset();
+  lastTime = now;
+}
+
+// Space, Enter or a click skips the scene once it has had a moment to show.
+for (const type of ['keydown', 'mousedown'] as const) {
+  window.addEventListener(type, (event) => {
+    if (!intro || performance.now() - intro.start < 600) return;
+    if (type === 'keydown' && !['Space', 'Enter'].includes((event as KeyboardEvent).code)) return;
+    intro.skip = true;
+  });
+}
+
+const introAt = import.meta.env.DEV ? new URLSearchParams(location.search).get('introAt') : null;
 let reviewing = false;
 let lastTime = performance.now();
 let gaitPhase = 0;
@@ -79,7 +115,7 @@ export function releaseTitle(): void {
 }
 
 // The title screen and the pause menu both end by capturing the mouse and going back to the game.
-async function enterGame(): Promise<void> {
+async function enterGame(withIntro = false): Promise<void> {
   input.reset();
   if (!(await input.lock())) {
     menu.showError('Mouse capture failed. Click RESUME or DEPLOY to try again.');
@@ -87,6 +123,7 @@ async function enterGame(): Promise<void> {
   }
   menu.close();
   lastTime = performance.now();
+  if (withIntro && !coop) startIntro(lastTime);
 }
 
 const menu = createMenu({
@@ -97,7 +134,7 @@ const menu = createMenu({
       session.state.tick = 0;
       dressed = false;
     }
-    enterGame();
+    enterGame(true);
   },
   sound: (kind) => audio.ui(kind),
   playFloor(floor) {
@@ -111,7 +148,7 @@ const menu = createMenu({
     if (floor > 0) startOnFloor(next, floor);
     dressed = false;
     session.replace(next);
-    enterGame();
+    enterGame(floor === 0);
   },
   resume: enterGame,
   gameState: () => session.state,
@@ -145,7 +182,7 @@ view.renderer.setAnimationLoop((now) => {
   lastTime = now;
   const paused = menu.isOpen();
 
-  if (!paused && !reviewing) session.advance(frameSeconds, input.poll);
+  if (!paused && !reviewing && !intro) session.advance(frameSeconds, input.poll);
   else session.hold();
   const state = session.state;
   // The run is over: show the victory screen and let go of the mouse.
@@ -178,6 +215,24 @@ view.renderer.setAnimationLoop((now) => {
     roll: -(player.leanOffset / config.player.leanDistance) * config.view.leanRoll,
   };
   const onTitle = menu.onTitle();
+  if (intro) {
+    // A paused scene waits where it is.
+    if (paused) intro.start += frameSeconds * 1000;
+    if (introAt !== null) intro.start = now - Number(introAt) * 1000;
+    const t = (now - intro.start) / 1000;
+    if (intro.skip || t >= INTRO_SECONDS) endIntro(now);
+    else {
+      intro.overlay.hide(paused);
+      intro.overlay.update(t);
+      let index = 0;
+      for (const zombie of session.state.zombies) {
+        if (!intro.ids.has(zombie.id)) continue;
+        Object.assign(zombie, introWalker(index++, t, session.state.level));
+      }
+      pose = introPose(t, pose as IntroPose);
+    }
+  }
+  const cinematic = intro !== null;
   if (onTitle) {
     // Behind the title, a slow handheld drift in the garage, looking out at the gate.
     const t = now / 1000;
@@ -200,7 +255,7 @@ view.renderer.setAnimationLoop((now) => {
   visualRecoil *= Math.exp(-frameSeconds * 16);
   const motion = settings.cameraMotion && !paused ? 1 : 0;
   const gait = Math.min(1, speed / config.player.moveSpeed) * (player.aiming ? 0.3 : 1) * motion;
-  const chest = settings.cameraStyle === 'bodycam' && !onTitle;
+  const chest = settings.cameraStyle === 'bodycam' && !onTitle && !cinematic;
   const yawChange = bodycamLastYaw === null ? 0 : Math.atan2(Math.sin(pose.yaw - bodycamLastYaw), Math.cos(pose.yaw - bodycamLastYaw));
   bodycamLastYaw = pose.yaw;
   const rollTarget = chest && motion ? Math.max(-0.035, Math.min(0.035, -yawChange * 0.4)) : 0;
@@ -211,20 +266,28 @@ view.renderer.setAnimationLoop((now) => {
     roll: pose.roll + Math.sin(gaitPhase) * (chest ? 0.008 : 0.002) * gait + bodycamRoll,
   });
   const outfitPreview = menu.screen() === 'character';
-  if (!onTitle || outfitPreview) viewmodel.update(player, pose, paused ? 0 : frameSeconds, outfitPreview);
-  view.setAim(onTitle ? 0 : viewmodel.aimAmount());
-  view.setFlashlight(!onTitle && player.flashlight && player.health > 0);
+  if ((!onTitle && !cinematic) || outfitPreview) viewmodel.update(player, pose, paused ? 0 : frameSeconds, outfitPreview);
+  view.setAim(onTitle || cinematic ? 0 : viewmodel.aimAmount());
+  view.setFlashlight(!onTitle && !cinematic && player.flashlight && player.health > 0);
   remotePlayers?.update(state.players, session.playerId);
   view.animate(now / 1000, state);
   input.setLookScale(view.camera.fov / settings.fieldOfView);
   effects.update(player, paused ? 0 : frameSeconds, state.level);
   zombieViews.update(state, paused ? 0 : frameSeconds);
   supplyViews.update(state, now / 1000);
-  audio.update(state, player, paused || onTitle, frameSeconds);
-  view.render(!onTitle);
+  audio.update(state, player, paused || onTitle || cinematic, frameSeconds);
+  view.render(!onTitle && !cinematic);
   if (outfitPreview) view.renderOutfitPreview();
-  hud.draw(state, player, now / 1000, paused ? undefined : (import.meta.env.DEV && (window as unknown as { __wheel?: WheelState }).__wheel) || input.wheel());
+  if (cinematic) hud.clear();
+  else hud.draw(state, player, now / 1000, paused ? undefined : (import.meta.env.DEV && (window as unknown as { __wheel?: WheelState }).__wheel) || input.wheel());
 });
+
+// Development only: ?introAt=SECONDS holds the opening scene at that moment, for looking at its shots.
+if (introAt !== null) {
+  menu.close();
+  if (dressed) { session.state.zombies = []; dressed = false; }
+  startIntro(performance.now());
+}
 
 // Opt-in development review harness; excluded from production builds.
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('review')) {

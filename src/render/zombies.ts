@@ -37,6 +37,15 @@ interface ZombieView {
   gait: number;
   initialised: boolean;
 }
+// The height of the ground a zombie stands on: the garage floor, the slope of the ramp, or the street.
+function surfaceHeight(level: GameState['level'], x: number, z: number): number {
+  const ramp = level.ramp;
+  if (!ramp || z < ramp.zBottom) return 0;
+  if (z > ramp.zTop) return ramp.rise;
+  if (Math.abs(x - ramp.x) > ramp.width / 2) return 0;
+  return ramp.rise * (z - ramp.zBottom) / (ramp.zTop - ramp.zBottom);
+}
+
 export interface ZombieViews { update(state: GameState, frameSeconds: number): void; }
 
 // A single surface atlas gives cloth grain and skin pores their own UV space. It is shared by
@@ -331,6 +340,9 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         }
         const dx = zombie.x - view.group.position.x, dz = zombie.z - view.group.position.z;
         view.group.position.x += dx * smoothing; view.group.position.z += dz * smoothing;
+        // On the garage ramp, and out on the street above it, the ground is higher.
+        const base = surfaceHeight(state.level, view.group.position.x, view.group.position.z);
+        view.group.position.y = base;
         const turn = Math.atan2(Math.sin(zombie.yaw - view.group.rotation.y), Math.cos(zombie.yaw - view.group.rotation.y));
         view.group.rotation.y += turn * (1 - Math.exp(-dt * 9));
         const speed = dt > 0 ? Math.hypot(dx, dz) * smoothing / dt : 0;
@@ -368,7 +380,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         const flinch = zombie.lastHitTick >= 0 && hitAge < 0.22 ? Math.sin(hitAge / 0.22 * Math.PI) : 0;
         view.torso.rotation.x += flinch * 0.2; view.head.rotation.x -= flinch * 0.18;
         if (view.material) view.material.emissiveIntensity = flinch * 0.025;
-        if (zombie.dead) collapse(view, zombie.id, config.zombie.deathSeconds - zombie.deadLeft, zombie.deadLeft);
+        if (zombie.dead) { collapse(view, zombie.id, config.zombie.deathSeconds - zombie.deadLeft, zombie.deadLeft); view.group.position.y += base; }
         view.rig?.pose(view);
       }
       for (const [id, view] of views) if (!live.has(id)) { dispose(view); views.delete(id); }

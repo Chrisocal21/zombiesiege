@@ -170,7 +170,8 @@ export const level0: Level = {
     { ...onStreet(19.5, 21.35, 4.9, 2.35, 1.98, '#d6ddd7', 'van'), vehicleRole: 'ambulance' },
     onStreet(19.5, 24.35, 4.6, 1.48, 1.86, '#7f8588', 'car'),
     onStreet(19.5, 27.35, 4.65, 1.65, 1.9, '#374e49', 'car'),
-    // East bay E05 (x=19.5, z=30.35) stays empty for the user's later special vehicle.
+    // East bay E05: the El Cajon, a parked 1960s coupe utility, nose toward the aisle.
+    { ...onStreet(19.5, 30.35, 4.5, 1.5, 1.8, '#243e55', 'car'), vehicleRole: 'elCajon' },
 
     // Shipping container against the north wall. The roof is at 2.6 m.
     inGarage(0, -8.78, 6.1, 2.6, 2.44, CONTAINER, 'container'),

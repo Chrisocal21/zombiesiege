@@ -22,6 +22,8 @@ const floorName = floorTitle;
 export interface Hud {
   toggleMap(): void;
   draw(state: GameState, player: Player, time: number, wheel?: WheelState): void;
+  // Wipes the overlay, for the opening scene, where none of the game's display shows.
+  clear(): void;
 }
 
 interface Waypoint {
@@ -84,6 +86,7 @@ export function createHud(menu: Menu): Hud {
 
   return {
     toggleMap() { mapOpen = !mapOpen; },
+    clear() { context.setTransform(1, 0, 0, 1, 0, 0); context.clearRect(0, 0, canvas.width, canvas.height); },
     draw(state, player, time, wheel) {
       const dpr = window.devicePixelRatio || 1;
       const width = window.innerWidth;
