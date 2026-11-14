@@ -45,8 +45,29 @@ console.log('ok', LAST_FLOOR);
   t.objective.done = true; t.waves.phase = 'evac';
   Object.assign(t.players[0], { x: t.level.objective.pad.x, z: t.level.objective.pad.z });
   step(t, [idleInput(0)], 1 / 120);
+  assert.equal(t.waves.phase, 'cross', 'the view goes dark first');
+  assert.equal(t.floor, 5);
+  for (let i = 0; i < 120 && t.floor === 5; i++) step(t, [idleInput(0)], 1 / 120);
   assert.equal(t.floor, 6);
+  assert.ok(t.waves.fadeTick >= 0, 'and comes up from black');
   assert.equal(t.level.name, 'Tower roof');
   assert.notEqual(t.waves.phase, 'won');
   console.log('roof hands on to', t.level.name, 'phase', t.waves.phase);
+}
+
+// Out of the prologue into the garage: the crew arrives out on the street, the gate still open, and runs
+// down the ramp; it is not put inside with the gate already shut.
+{
+  const t = createGameState(level0);
+  startOnFloor(t, -1);
+  t.zombies = []; t.objective.done = true; t.waves.phase = 'lift'; t.lift.open = true;
+  const e = t.level.elevator;
+  Object.assign(t.players[0], { x: e.position.x - e.normal.x * 1.7, z: e.position.z - e.normal.z * 1.7, health: 100 });
+  for (let i = 0; i < 400 && t.floor === -1; i++) step(t, [idleInput(0)], 1 / 120);
+  assert.equal(t.floor, 0, 'in the garage level');
+  assert.equal(t.waves.phase, 'entry');
+  assert.equal(t.gate.closed, false, 'the gate is open');
+  const spot = t.level.streetSpawns[0];
+  assert.ok(Math.hypot(t.players[0].x - spot.x, t.players[0].z - spot.z) < 0.5, 'out on the street');
+  console.log('garage entry ok');
 }

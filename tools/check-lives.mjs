@@ -172,12 +172,38 @@ const fell = (p) => { p.health = 0; };
 }
 console.log('ok');
 
-// ---- Wave sizes: Act 1 as it was, the later acts only a little past the hospital roof ------------
+// ---- Wave sizes: grow with depth, crew and time; the later acts only a little past the hospital roof --
 {
-  const { waveSize } = await import('../src/game/tower.ts');
-  assert.deepEqual([waveSize(0, 1), waveSize(0, 5), waveSize(5, 2)], [3, 12, 36], 'Act 1 is unchanged');
-  const { wavesOnFloor } = await import("../src/game/tower.ts");
-  for (const floor of [10, 12, 16, 20]) { const last = waveSize(floor, wavesOnFloor(floor)); assert.ok(last <= 50, `floor ${floor} tops out near 50 (${last})`); }
-  assert.ok(waveSize(16, 5, 4) > waveSize(16, 5, 1), 'more players, more of them');
+  const { waveSize, wavesOnFloor, maxAlive } = await import('../src/game/tower.ts');
+  assert.deepEqual([waveSize(0, 1), waveSize(0, 5)], [4, 17], 'the garage is the base table');
+  for (const floor of [10, 12, 16, 20]) { const last = waveSize(floor, wavesOnFloor(floor)); assert.ok(last <= 62, `floor ${floor} tops out near 60 (${last})`); }
+  assert.ok(waveSize(16, 5, 4) > 2.5 * waveSize(16, 5, 1), 'four players face well over double');
+  assert.ok(maxAlive(4) > maxAlive(1), 'a fuller room holds more of them at once');
   console.log('wave sizes ok');
 }
+
+// ---- Waiting around brings more ---------------------------------------------------------------------
+{
+  const s = game(1);
+  s.waves.phase = 'active';
+  s.waves.toSpawn = 0;
+  s.zombies = [];
+  const { spawnZombie } = await import('../src/game/zombies.ts');
+  spawnZombie(s, s.players[0].x + 40, s.players[0].z, null);
+  s.zombies[0].dormant = true;
+  s.frozen = false;
+  const before = s.waves.toSpawn;
+  run(s, config.waves.lingerSeconds + 1);
+  assert.ok(s.waves.lingered >= 1 && s.waves.toSpawn + s.zombies.length > before + 1, 'a group came in after the wave dragged on');
+  console.log('linger ok');
+}
+
+// ---- Heads: two shots for a walker, not one ----------------------------------------------------------
+{
+  const { headDamage } = await import('../src/game/zombies.ts');
+  const walker = { kind: 'walker', health: config.zombie.maxHealth };
+  assert.ok(headDamage(walker, config.pistol.damage) < walker.health, 'one pistol head shot does not kill a walker');
+  assert.ok(2 * headDamage(walker, config.pistol.damage) >= walker.health, 'two do');
+  console.log('heads ok');
+}
+console.log('ok');

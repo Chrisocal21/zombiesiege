@@ -20,7 +20,7 @@ export const MAX_PITCH = Math.PI / 2 - 0.05;
 export function step(state: GameState, inputs: InputMessage[], dt: number): void {
   const level = state.level;
   // While a scene plays, nobody moves and nothing attacks: the camera has the floor.
-  const scene = state.scene !== null || state.waves.phase === 'flight';
+  const scene = state.scene !== null || state.waves.phase === 'flight' || state.waves.phase === 'cross';
   // Who moved or fired this tick, which stops a revive they are giving.
   const moved = new Set<number>();
   for (const input of inputs) {
@@ -232,7 +232,7 @@ function weapon(
     const hit = raycastZombies(state, origin, aim, wall ?? pistol.range);
     if (pellet === 0) { wallDistance = wall; zombieHit = hit; }
     if (!hit) continue;
-    // A shot to the head kills most kinds whatever their health.
+    // A shot to the head does a multiple of the damage.
     damageZombie(state, hit.zombie, hit.head ? headDamage(hit.zombie, pistol.damage) : pistol.damage, { from: player, leg: hit.leg, head: hit.head });
     struck.set(hit.zombie, (struck.get(hit.zombie) ?? false) || hit.head);
   }

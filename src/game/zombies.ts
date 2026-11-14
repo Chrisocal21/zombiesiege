@@ -395,7 +395,7 @@ export function raycastZombies(
     const radius = zombieRadius(zombie);
     const { height, headHeight } = zombieHeights(zombie);
     const body = radius * 0.8;
-    const head = radius * 0.55;
+    const head = radius * config.zombie.headWidth;
     const limit = nearest ? nearest.distance : maxDistance;
     // The body and the head are separate boxes, which gives a head hit its own place to land.
     const parts = [
@@ -414,10 +414,10 @@ export function raycastZombies(
   return nearest;
 }
 
-// What a head shot does. Most kinds die to it outright; a brute's skull takes a lot more than a body
-// shot, but not everything.
+// What a head shot does: a multiple of the shot's damage, less for a brute's thick skull. A walker
+// takes two pistol head shots, not one, so aim has to be good for both.
 export function headDamage(zombie: Zombie, damage: number): number {
-  return zombie.kind === 'brute' ? damage * 3 : zombie.health;
+  return damage * (zombie.kind === 'brute' ? config.zombie.bruteHeadMultiplier : config.zombie.headMultiplier);
 }
 
 // Where a hit came from and what it hit, so the zombie can be knocked about.

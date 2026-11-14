@@ -10,7 +10,7 @@ import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import { flowOf, stepsOf, type GameState, type Player } from '../game/state';
 import { floorTitle, goesDown, isDescent, stopAt, stops, wavesOnFloor } from '../game/tower';
-import { zombiesInWave } from '../game/waves';
+import { CROSS_SECONDS, zombiesInWave } from '../game/waves';
 import { objectiveMarkers } from '../game/objectives';
 import { arrivalDetail, clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
 import { aliveZombies } from '../game/zombies';
@@ -43,6 +43,8 @@ interface DamageMark {
 }
 
 const BANNER_SECONDS = 3.2;
+// How long a new floor takes to come up from black.
+const FADE_IN_SECONDS = 1.4;
 const HIT_MARKER_SECONDS = 0.22;
 const KILL_MARKER_SECONDS = 0.4;
 const DAMAGE_MARK_SECONDS = 1.4;
@@ -224,6 +226,7 @@ export function createHud(menu: Menu): Hud {
     drawFeed(width, unit, state, time);
     drawCard(width, height, unit, state, player);
     drawBoss(width, unit, state);
+    drawFade(width, height, state);
 
     if (state.frozen) {
       // A pill under the compass.
@@ -432,7 +435,7 @@ export function createHud(menu: Menu): Hud {
         if (boss) { title = boss.title; detail = boss.detail; break; }
         title = `Survive wave ${waves.number}`;
         const progress = objectiveProgress(state);
-        detail = `${waves.toSpawn + aliveZombies(state)} zombies left${progress ? `   ·   ${progress}` : ''}`;
+        detail = `${waves.toSpawn + waves.reinforce + aliveZombies(state)} zombies left${progress ? `   ·   ${progress}` : ''}`;
         break;
       }
       case 'cleared':
@@ -957,6 +960,18 @@ export function createHud(menu: Menu): Hud {
       text(context, costText, cursor + 11 * unit, y + 6 * unit, { size: 17 * unit, weight: 800, color: tone, spacing: 1 * unit, shadow: false });
       text(context, ' PTS', cursor + 11 * unit + amountWidth, y + 6 * unit, { size: 12 * unit, weight: 700, color: tone, spacing: 2 * unit, shadow: false });
     }
+  }
+
+  // Black over the view while the crew passes through to the next floor, then clearing from black as it
+  // starts: so a new floor comes up out of the dark instead of arriving all at once.
+  function drawFade(width: number, height: number, state: GameState): void {
+    const waves = state.waves;
+    let dark = 0;
+    if (waves.phase === 'cross') dark = 1 - Math.max(0, waves.timer) / CROSS_SECONDS;
+    else if (waves.fadeTick >= 0) dark = 1 - (state.tick - waves.fadeTick) / config.ticksPerSecond / FADE_IN_SECONDS;
+    if (dark <= 0) return;
+    context.fillStyle = `rgba(0,0,0,${Math.min(1, dark)})`;
+    context.fillRect(0, 0, width, height);
   }
 
   // Down, out, or a revive going on: a word in the middle of the view, a line under it, and a bar.

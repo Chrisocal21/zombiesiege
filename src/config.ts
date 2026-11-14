@@ -105,7 +105,7 @@ export const config = {
     // Earned for every bullet that hits a zombie, and for the bullet that kills it.
     perHit: 10,
     perKill: 60,
-    // A headshot kills outright and pays more than any other kill.
+    // A headshot pays more than any other kill.
     perHeadshot: 150,
   },
 
@@ -222,7 +222,7 @@ export const config = {
     arriveSeconds: 1.6,
     // Each step of depth (see tower.ts depth) adds this fraction to every wave's zombie count and to
     // their speed. Speed stops growing at speedDepthCap, so they never outpace a walking player.
-    extraZombiesPerFloor: 0.4,
+    extraZombiesPerFloor: 0.3,
     speedPerFloor: 0.08,
     speedDepthCap: 6,
   },
@@ -234,7 +234,12 @@ export const config = {
     speedPerWave: 0.06,
     radius: 0.4,
     height: 1.85,
-    headHeight: 1.45,
+    // Where the head box starts, and how wide it is as a share of the body's radius: a head is small.
+    headHeight: 1.5,
+    headWidth: 0.4,
+    // A head shot does this many times the damage, and a brute's thick skull this many. Not instant.
+    headMultiplier: 2.2,
+    bruteHeadMultiplier: 1.4,
     attackDamage: 10,
     attackRange: 1.3,
     secondsBetweenAttacks: 1,
@@ -308,13 +313,24 @@ export const config = {
   },
 
   waves: {
-    zombiesPerWave: [3, 5, 7, 9, 12],
+    // The size of each wave on a floor, spread over the floor's waves, for one player on the easy
+    // end of the difficulty. See tower.ts waveSize for how depth, crew and difficulty scale it.
+    zombiesPerWave: [4, 7, 10, 13, 17],
+    // A whole-game dial on every wave's size: 1 as designed, 1.25 for a harder game.
+    difficulty: 1,
+    // Each extra player adds this fraction of a solo wave on top. Four players face 2.8 times one.
+    extraPerPlayer: 0.6,
+    // Waiting around brings more: once a wave is all out and still not cleared, every this many
+    // seconds a share of it (lingerShare, times the crew) comes through the doors, up to lingerMax times.
+    lingerSeconds: 30,
+    lingerShare: 0.12,
+    lingerMax: 4,
     // Past the hospital roof, each floor counts as this much of a floor for depth.
-    laterFloorStep: 0.2,
-    // Each player past the first adds this fraction to every wave.
-    extraPerPlayer: 0.25,
-    // A wave stops coming through the doors while this many are up, and carries on as they fall.
-    maxAlive: 32,
+    laterFloorStep: 0.1,
+    // A wave stops coming through the doors while this many are up, and carries on as they fall. More
+    // for each extra player.
+    maxAlive: 28,
+    maxAlivePerPlayer: 10,
     secondsBetweenSpawns: 1.5,
     // The rest between waves, long enough for buying weapons once there is something to buy.
     breakSeconds: 25,

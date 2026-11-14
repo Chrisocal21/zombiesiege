@@ -173,7 +173,7 @@ export interface Zombie {
 // 'flight' is the last helicopter carrying the crew out, a short film before 'won'.
 // 'lost' is the end of a run where nobody was left standing: the run starts again from the prologue.
 // 'evac' is the helicopter down on the roof, waiting for everyone to get aboard.
-export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'hold' | 'evac' | 'lift' | 'ride' | 'arrive' | 'flight' | 'won' | 'lost';
+export type WavePhase = 'cross' | 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'hold' | 'evac' | 'lift' | 'ride' | 'arrive' | 'flight' | 'won' | 'lost';
 
 export interface Waves {
   // The wave being fought, or the one coming up during a break. Starts at 1.
@@ -192,6 +192,12 @@ export interface Waves {
   diedTick: number;
   // Tick the players last stepped out of the elevator onto a new floor, or -1.
   arrivedTick: number;
+  // Waiting around: seconds the wave has been all out and still not cleared, and how many extra
+  // groups that has already brought.
+  linger: number;
+  lingered: number;
+  // Tick the crew last came through to a new floor by gate or air ambulance, for the fade in, or -1.
+  fadeTick: number;
   // On a sweep floor: the tick of the last loud moment that brought more of them, or -1, and how
   // many loud moments there have been.
   loudTick: number;
@@ -530,6 +536,9 @@ export function createGameState(level: Level): GameState {
       startedTick: -1,
       diedTick: -1,
       arrivedTick: -1,
+      linger: 0,
+      lingered: 0,
+      fadeTick: -1,
       loudTick: -1,
       alarms: 0,
       trailX: 0,

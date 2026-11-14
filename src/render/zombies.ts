@@ -693,9 +693,11 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         view.arms.forEach((arm, side) => {
           const asymmetry = side === 0 ? 1 : -1;
           // The skinned zombies reach further out in front, the arms of the drawn ones being shorter.
-          arm.rotation.x = (view.rig ? 0.85 : 0.45) + 0.15 * Math.sin(phase * 0.7 + side) + attack * (view.rig ? 0.55 : 0.83) + strain * (0.2 + 0.18 * Math.sin(phase * 1.3 + side * 2));
+          // Held behind a cage or a wall, both arms reach out in front and claw at it, one after the other.
+          const claw = strain * (0.5 + 0.25 * Math.sin(phase * 2.1 + side * Math.PI));
+          arm.rotation.x = (view.rig ? 0.85 : 0.45) + 0.15 * Math.sin(phase * 0.7 + side) + attack * (view.rig ? 0.55 : 0.83) + claw;
           arm.rotation.z = asymmetry * (0.08 + Math.sin(phase * 0.5) * 0.025);
-          view.elbows[side].rotation.x = 0.58 + Math.sin(phase * 0.8 + side) * 0.1 - attack * 0.38;
+          view.elbows[side].rotation.x = 0.58 + Math.sin(phase * 0.8 + side) * 0.1 - attack * 0.38 - strain * (0.32 + 0.12 * Math.sin(phase * 2.1 + side * Math.PI));
           view.wrists[side].rotation.x = -0.12 - attack * 0.15;
           view.wrists[side].rotation.z = asymmetry * 0.11;
         });

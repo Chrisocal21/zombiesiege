@@ -6,7 +6,7 @@ import { beginPrep, closeGate, doorwaySpawn } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, completeStep, dropCase, everyoneAboard, inArea, lastStep } from './objectives';
 import { createPlayer, enterLevel, flowOf, spawnPoint, type GameState, type Player } from './state';
-import { FIRST_FLOOR, LAST_FLOOR, ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower';
+import { FIRST_FLOOR, LAST_FLOOR, ROOF, maxAlive, storeysToNext, waveSize, wavesOnFloor } from './tower';
 import type { ZombieKind } from './state';
 import { guaranteeAmmo } from './weapons';
 import { raycastBoxes } from './hitscan';
@@ -180,6 +180,17 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     if (waves.timer <= 0) waves.phase = 'won';
     return;
   }
+  // Going through a gate or onto the air ambulance: the view goes dark, then the next floor starts.
+  if (waves.phase === 'cross') {
+    waves.timer -= dt;
+    if (waves.timer <= 0) {
+      state.floor++;
+      startFloor(state, true);
+      state.waves.arrivedTick = state.tick;
+      state.waves.fadeTick = state.tick;
+    }
+    return;
+  }
   const siege = flowOf(level).kind === 'siege';
 
   // On a siege floor nothing attacks once the waves are cleared, so going down there cannot happen.
@@ -278,8 +289,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
         return;
       }
       // The air ambulance takes the crew on to the office tower: Act 2 begins on its roof.
-      state.floor++;
-      startFloor(state, true);
+      startCross(state);
       return;
     }
     trickle(state, dt, level);
@@ -292,9 +302,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
       closeLift(state);
       // In the prologue the way on is a gate, not a lift: everyone goes straight through to the next floor.
       if (level.exitGate) {
-        state.floor++;
-        startFloor(state, true);
-        state.waves.arrivedTick = state.tick;
+        startCross(state);
         return;
       }
       // The last floor built so far: the run ends here until the next one exists.
@@ -332,12 +340,22 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     if (waves.spawnTimer <= 0) {
       // Zombies only come through the doors that are still open. The first of the wave leads it.
       // Held back while the room is full, so a big wave comes in as the first of it fall.
-      if (aliveZombies(state) >= config.waves.maxAlive) return;
+      if (aliveZombies(state) >= maxAlive(state.players.length)) return;
       spawnAtDoor(state, level, waves.toSpawn === zombiesInWave(state));
       waves.toSpawn--;
       waves.spawnTimer = config.waves.secondsBetweenSpawns;
     }
     return;
+  }
+
+  // Taking too long brings more: the wave is all out and still standing, so a group comes in.
+  if (aliveZombies(state) > 0 && waves.phase === 'active') {
+    waves.linger += dt;
+    if (waves.linger >= config.waves.lingerSeconds && waves.lingered < config.waves.lingerMax) {
+      waves.linger = 0;
+      waves.lingered++;
+      waves.toSpawn += Math.max(2, Math.round(zombiesInWave(state) * config.waves.lingerShare));
+    }
   }
 
   if (aliveZombies(state) === 0) {
@@ -356,6 +374,14 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   }
 }
 
+// How long the view takes to go dark when the crew passes through to the next floor.
+export const CROSS_SECONDS = 0.9;
+
+function startCross(state: GameState): void {
+  state.waves.phase = 'cross';
+  state.waves.timer = CROSS_SECONDS;
+}
+
 // The doors open on the next floor. Same layout for now, with the boards gone, every player at
 // full health outside the elevator, and a fresh countdown to board up doors before wave 1.
 function arriveOnNextFloor(state: GameState): void {
@@ -364,6 +390,7 @@ function arriveOnNextFloor(state: GameState): void {
   if (levelForFloor(state.floor).exitGate) {
     startFloor(state, true);
     state.waves.arrivedTick = state.tick;
+    state.waves.fadeTick = state.tick;
     return;
   }
   // Everyone stays in the cab, and the doors open a moment later to let them out.
@@ -404,9 +431,10 @@ function cabSpot(level: Level, index: number, count: number): { x: number; z: nu
 }
 
 // A player back at full health at the spawn, with or without the weapons and rounds they had.
-function respawn(old: Player, level: Level, keepGuns: boolean, cab: { x: number; z: number; yaw: number } | null = null): Player {
-  const player = createPlayer(old.id, cab ? { x: cab.x, y: 0, z: cab.z } : spawnPoint(level.playerSpawns, old.id, level.spawnYaw));
-  player.yaw = cab ? cab.yaw : level.spawnYaw ?? 0;
+function respawn(old: Player, level: Level, keepGuns: boolean, cab: { x: number; z: number; yaw: number } | null = null, street = false): Player {
+  const spawn = street ? spawnPoint(level.streetSpawns, old.id, 0) : spawnPoint(level.playerSpawns, old.id, level.spawnYaw);
+  const player = createPlayer(old.id, cab ? { x: cab.x, y: 0, z: cab.z } : spawn);
+  player.yaw = cab ? cab.yaw : street ? 0 : level.spawnYaw ?? 0;
   player.flashlight = old.flashlight;
   // Lives stay with the player. Anyone out of them stays out, watching.
   player.lives = old.lives;
@@ -443,7 +471,10 @@ function startFloor(state: GameState, keepGuns: boolean, inCab = false): void {
   enterLevel(state, level);
   state.zombies = [];
   placeResidents(state, level);
-  state.players = state.players.map((old, i) => respawn(old, level, keepGuns, inCab ? cabSpot(level, i, state.players.length) : null));
+  // The garage is entered from the street: the crew arrives out on the road and runs down the ramp,
+  // with the gate still open, as on a new game, not inside it with the gate already shut.
+  const street = !inCab && Boolean(level.gate) && level.streetSpawns.length > 0;
+  state.players = state.players.map((old, i) => respawn(old, level, keepGuns, inCab ? cabSpot(level, i, state.players.length) : null, street));
   // The scientist, after the vault, comes along: in the cab with the crew, or beside where they start.
   const count = state.players.length;
   const beside = besideCrew(level);
@@ -454,7 +485,8 @@ function startFloor(state: GameState, keepGuns: boolean, inCab = false): void {
   waves.reinforce = 0;
   waves.loudTick = -1;
   waves.alarms = 0;
-  if (!inCab) beginFloor(state, level);
+  if (street) waves.phase = 'entry';
+  else if (!inCab) beginFloor(state, level);
 }
 
 // Only the garage has a street gate, and it stays shut, so it goes straight down with no
@@ -479,6 +511,8 @@ function startWave(state: GameState): void {
   waves.toSpawn = zombiesInWave(state);
   waves.spawnTimer = 0;
   waves.startedTick = state.tick;
+  waves.linger = 0;
+  waves.lingered = 0;
   for (const player of state.players) guaranteeAmmo(player);
 }
 

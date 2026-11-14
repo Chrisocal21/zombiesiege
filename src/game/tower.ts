@@ -116,11 +116,22 @@ export function depth(floor: number): number {
   return ROOF + (floor - ROOF) * config.waves.laterFloorStep;
 }
 
-// Zombies in a wave: the floor's share of the table, grown with depth, and more for each extra player.
+// How much bigger a wave is for this many players: each one past the first adds a share of a solo wave.
+export function crewFactor(players: number): number {
+  return 1 + config.waves.extraPerPlayer * Math.max(0, players - 1);
+}
+
+// Zombies in a wave: the floor's share of the table, grown with depth, scaled by the crew and by the
+// difficulty dial. Time adds more on top while a wave drags on (see waves.ts).
 export function waveSize(floor: number, wave: number, players = 1): number {
   const table = config.waves.zombiesPerWave;
   const count = wavesOnFloor(floor);
   const index = count <= 1 ? table.length - 1 : Math.round(((wave - 1) * (table.length - 1)) / (count - 1));
-  const crew = 1 + config.waves.extraPerPlayer * Math.max(0, players - 1);
-  return Math.round(table[index] * (1 + config.elevator.extraZombiesPerFloor * depth(floor)) * crew);
+  const size = table[index] * (1 + config.elevator.extraZombiesPerFloor * depth(floor)) * crewFactor(players) * config.waves.difficulty;
+  return Math.max(1, Math.round(size));
+}
+
+// The most that may be up at once: a room can hold more of them with more players in it.
+export function maxAlive(players: number): number {
+  return config.waves.maxAlive + config.waves.maxAlivePerPlayer * Math.max(0, players - 1);
 }
