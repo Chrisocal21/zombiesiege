@@ -4,7 +4,37 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { config } from '../config';
 import type { GameState, Zombie } from '../game/state';
 import { paintTexture } from './materials';
+import { eyeGlow, gradedBody } from './zombieSkin';
 import { createJoints, riggedBody, whenZombieModelsLoad, zombieModelsReady, type RiggedBody } from './characterRig';
+
+// How each kind of infected is built: its body scale (width, height, depth) and a tint on its skin and
+// clothes. The brute is broad and dark, the runner lean, the screamer pale.
+const KIND_LOOK = {
+  walker: { scale: [1, 1, 1], tint: '#ffffff' },
+  runner: { scale: [0.9, 0.98, 0.9], tint: '#ffd8d0' },
+  brute: { scale: [1.38, 1.26, 1.34], tint: '#c8b4a6' },
+  screamer: { scale: [0.94, 1.04, 0.94], tint: '#e4ecf4' },
+} as const;
+
+// Who the infected were, from the place they are in. A tint pulls the clothes toward the uniform, and
+// gear sits on the head. A palette gives each shopper their own colour.
+// `top` is the garment on the torso (the models are bare-chested): its colours, how long it is, and
+// whether it has a hem that hangs open like a coat or gown.
+interface Look { tint: string; strength: number; palette?: string[]; gear?: 'hardhat' | 'helmet' | 'cap' | 'police' | 'scrubs'; top?: { colors: string[]; length: number; coat?: boolean } }
+const LOOKS: Record<string, Look> = {
+  patient: { tint: '#b9cfe8', strength: 0.5, top: { colors: ['#a9c3df', '#b8cde0'], length: 0.62, coat: true } },
+  nurse: { tint: '#8fd0b2', strength: 0.4, gear: 'scrubs', top: { colors: ['#5fbf9f', '#7fcfb4'], length: 0.52 } },
+  surgeon: { tint: '#5fb0a6', strength: 0.4, gear: 'scrubs', top: { colors: ['#3f9a92', '#4aa89f'], length: 0.52 } },
+  visitor: { tint: '#ffffff', strength: 0.3, top: { colors: ['#8a9ab0', '#a89a86', '#7a8a7a', '#b0a8a0', '#6e7a96'], length: 0.52 } },
+  guard: { tint: '#56648a', strength: 0.5, gear: 'cap', top: { colors: ['#38456d', '#2f3a5c'], length: 0.54 } },
+  worker: { tint: '#d8d2c6', strength: 0.3, top: { colors: ['#e2e2e6', '#9bb0cc', '#c9b79a', '#8fa59f'], length: 0.52 } },
+  exec: { tint: '#5d6372', strength: 0.4, top: { colors: ['#2a2e3a', '#33363e', '#3a3a44'], length: 0.58, coat: true } },
+  utility: { tint: '#e8c24a', strength: 0.35, gear: 'hardhat', top: { colors: ['#e6b422', '#f0c02a'], length: 0.54 } },
+  shopper: { tint: '#ffffff', strength: 0.25, top: { colors: ['#c75a4a', '#4a7ac7', '#5ac78a', '#c7b04a', '#9a6ac7', '#d8d8d8', '#e08a4a'], length: 0.5 } },
+  scientist: { tint: '#eef4f6', strength: 0.4, top: { colors: ['#eef2f4', '#e4eaee'], length: 0.86, coat: true } },
+  soldier: { tint: '#76865c', strength: 0.5, gear: 'helmet', top: { colors: ['#59683f', '#4f5d3a'], length: 0.6 } },
+  police: { tint: '#3d4c78', strength: 0.5, gear: 'police', top: { colors: ['#27345c', '#2f3b66'], length: 0.58 } },
+};
 
 const SHIRTS = ['#61544a', '#48565b', '#5b5c4c', '#704a42', '#53515b', '#4f5d53'];
 const PANTS = ['#343c43', '#49453c', '#343739', '#48433d'];
@@ -36,6 +66,9 @@ interface ZombieView {
   phase: number;
   gait: number;
   initialised: boolean;
+  // How far into a crawl it is, and how far into a stagger, from 0 to 1, eased so they don't snap.
+  crawl: number;
+  stagger: number;
 }
 // The height of the ground a zombie stands on: the garage floor, the slope of the ramp, or the street.
 function surfaceHeight(level: GameState['level'], x: number, z: number): number {
@@ -137,23 +170,160 @@ function wedge(points: number[]): THREE.BufferGeometry {
   geometry.computeVertexNormals(); return geometry;
 }
 
+// A pool of blood that spreads under a body: dark red with a wet edge, drawn once and shared.
+function bloodPoolTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.translate(size / 2, size / 2);
+  ctx.fillStyle = '#5a0f0e';
+  ctx.beginPath();
+  for (let i = 0; i <= 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    const r = size * 0.4 * (0.82 + 0.18 * Math.sin(a * 3 + 1) + 0.1 * Math.sin(a * 7)) ;
+    ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const shine = ctx.createRadialGradient(size * 0.42, size * 0.4, 4, size * 0.42, size * 0.4, size * 0.25);
+  shine.addColorStop(0, 'rgba(160,40,36,0.55)');
+  shine.addColorStop(1, 'rgba(160,40,36,0)');
+  ctx.fillStyle = shine;
+  ctx.fillRect(0, 0, size, size);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 export function createZombieViews(scene: THREE.Scene): ZombieViews {
   const atlas = surfaceAtlas();
   const views = new Map<number, ZombieView>();
+  // Blood spreads under every body that falls, stays a good while, then dries away.
+  const poolGeometry = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  const poolMap = bloodPoolTexture();
+  const pools = new Map<number, { mesh: THREE.Mesh; born: number; level: string; size: number }>();
   // Once the skinned models arrive, the drawn zombies are rebuilt as models.
   whenZombieModelsLoad(() => {
     for (const [id, view] of views) { dispose(view); views.delete(id); }
   });
   // A skinned zombie: the same tree of joints as the drawn one, without its meshes, posing a model.
+  // The clothes and skin of a skinned zombie: the body texture repainted for its kind and a seed of its
+  // own, trousers dyed for what it was, and eyes that glow.
+  const tinted = new Map<string, THREE.Material>();
+  function dress(rig: RiggedBody, zombie: Zombie): void {
+    const look = LOOKS[zombie.look] ?? LOOKS.visitor;
+    const base = new THREE.Color(look.palette ? look.palette[zombie.id % look.palette.length] : look.tint);
+    const lookColor = new THREE.Color(1, 1, 1).lerp(base, look.strength);
+    const model = zombie.id % 2;
+    const seed = Math.floor(zombie.id * 0.618 * 3) % 3;
+    rig.object.traverse((object) => {
+      if (!(object instanceof THREE.SkinnedMesh) || Array.isArray(object.material)) return;
+      const source = object.material as THREE.MeshStandardMaterial;
+      const name = source.name;
+      const skin = name.startsWith('Body');
+      if (!skin && !name.startsWith('Bottom')) return;
+      const id = `${source.uuid}|${skin ? `${zombie.kind}|${seed}` : lookColor.getHexString()}`;
+      let material = tinted.get(id);
+      if (!material) {
+        const copy = source.clone();
+        if (skin && source.map) {
+          const graded = gradedBody(source.map, model, zombie.kind, seed);
+          if (graded) {
+            copy.map = graded.map;
+            copy.emissiveMap = graded.emissive;
+            copy.emissive = new THREE.Color(1, 1, 1);
+            copy.emissiveIntensity = eyeGlow(zombie.kind);
+          }
+          copy.roughness = 0.78;
+        } else if (!skin) {
+          copy.color.multiply(lookColor);
+        }
+        material = copy;
+        tinted.set(id, material);
+      }
+      object.material = material;
+    });
+    if (look.gear) rig.attach('Head', gear(look.gear, zombie.id));
+    if (look.top) rig.attach('Spine1', garment(look.top, zombie.id));
+  }
+  // A shirt, gown or coat torn to rags: open down one side, a ragged hem, holes, stained and dark with
+  // blood and grime toward the bottom.
+  function garment(top: NonNullable<Look['top']>, id: number): THREE.Object3D {
+    const group = new THREE.Group();
+    const rows = 9, columns = 22;
+    const arc = Math.PI * 2 * (0.78 + 0.08 * ((id * 0.37) % 1));
+    const start = (id % 2 ? 1 : -1) * 0.6 + Math.PI * (id % 2 ? 0.1 : -0.1);
+    const geometry = new THREE.CylinderGeometry(0.158, top.coat ? 0.19 : 0.152, top.length, columns, rows, true, start, arc);
+    const positions = geometry.attributes.position;
+    const colors = new Float32Array(positions.count * 3);
+    const base = new THREE.Color(top.colors[id % top.colors.length]);
+    const blood = new THREE.Color('#4a120e');
+    const noise = (x: number, y: number, seed: number) => (Math.sin(x * 12.9898 + y * 78.233 + seed * 37.719) * 43758.5453) % 1;
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
+      const low = (top.length / 2 - y) / top.length; // 0 at the shoulder, 1 at the hem
+      let nx = x, ny = y, nz = z;
+      // The hem is ragged: each column hangs a different length, and the cloth hangs loose.
+      if (low > 0.85) ny += (Math.abs(noise(x, 0, id)) * 0.9 + 0.15) * 0.14 * (1 + Math.abs(noise(z, 1, id)));
+      const loose = 1 + 0.12 * low * Math.abs(noise(x, z, id + 3));
+      nx *= loose; nz *= loose;
+      positions.setXYZ(i, nx, ny, nz);
+      // Grime and blood gather low and around a wound or two.
+      const grime = Math.min(1, low * 0.9 + Math.abs(noise(x, y, id + 9)) * 0.25);
+      const wound = Math.max(0, 1 - Math.hypot(x - 0.06 * (id % 3 - 1), y - 0.02 - 0.06 * (id % 2)) / 0.13);
+      const color = base.clone().multiplyScalar(1 - grime * 0.5).lerp(blood, Math.min(0.85, wound * 0.9 + low * low * 0.25));
+      colors.set([color.r, color.g, color.b], i * 3);
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
+    const shell = new THREE.Mesh(geometry, material);
+    // Wider than it is deep, hanging from the shoulders.
+    shell.scale.z = 0.68;
+    shell.position.set(0, 0.26 - top.length / 2, 0.01);
+    shell.castShadow = true;
+    group.add(shell);
+    return group;
+  }
+  // A hat, helmet or cap, a few metres of simple shapes sitting on the head bone.
+  function gear(kind: NonNullable<Look['gear']>, id: number): THREE.Object3D {
+    const group = new THREE.Group();
+    const paint = (color: string) => new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
+    const add = (geometry: THREE.BufferGeometry, color: string, y: number, z = 0) => {
+      const mesh = new THREE.Mesh(geometry, paint(color));
+      mesh.position.set(0, y, z); mesh.castShadow = true; group.add(mesh); return mesh;
+    };
+    if (kind === 'hardhat') {
+      add(new THREE.SphereGeometry(0.135, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), '#e6b422', 0.1);
+      add(new THREE.CylinderGeometry(0.17, 0.17, 0.018, 20), '#e6b422', 0.1, 0.02);
+    } else if (kind === 'helmet') {
+      add(new THREE.SphereGeometry(0.145, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2 + 0.25), '#4f5a3a', 0.1);
+    } else if (kind === 'police') {
+      add(new THREE.CylinderGeometry(0.125, 0.14, 0.07, 18), '#1f2a46', 0.2);
+      add(new THREE.CylinderGeometry(0.15, 0.15, 0.012, 18), '#111827', 0.17, 0.05);
+    } else if (kind === 'scrubs') {
+      add(new THREE.SphereGeometry(0.128, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), id % 2 ? '#4fa89a' : '#7fc6b0', 0.1);
+    } else {
+      add(new THREE.CylinderGeometry(0.12, 0.13, 0.06, 18), '#2a3350', 0.2);
+    }
+    return group;
+  }
   function buildRigged(zombie: Zombie): ZombieView {
     const group = new THREE.Group(); group.name = `Infected ${zombie.id}`;
     group.rotation.order = 'YXZ';
     const joints = createJoints();
     const rig = riggedBody(zombie.id);
     group.add(rig.object);
+    dress(rig, zombie);
+    // Each kind has its own build, and no two are quite the same height.
+    const [sx, sy, sz] = KIND_LOOK[zombie.kind].scale;
+    const height = 0.95 + 0.1 * ((zombie.id * 0.381966) % 1);
+    group.scale.set(sx * height, sy * height, sz * height);
     scene.add(group);
     return { group, ...joints, material: null, geometries: [], rig,
-      phase: zombie.id * 1.77, gait: 0, initialised: false };
+      phase: zombie.id * 1.77, gait: 0, initialised: false, crawl: 0, stagger: 0 };
   }
   function build(zombie: Zombie): ZombieView {
     if (zombieModelsReady()) return buildRigged(zombie);
@@ -285,7 +455,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     }
     scene.add(group);
     return { group, hips: body.group, torso: chest.group, head: head.group, arms, elbows, wrists, legs, knees, ankles,
-      material, geometries, rig: null, phase: zombie.id * 1.77, gait: 0, initialised: false };
+      material, geometries, rig: null, phase: zombie.id * 1.77, gait: 0, initialised: false, crawl: 0, stagger: 0 };
   }
   // A body going down: the knees give first and the hips drop, then it topples, gathering speed,
   // and lands with a small bounce, limp, arms flung out and head turned aside. Most fall on their
@@ -324,6 +494,132 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
       view.wrists[i].rotation.x = -0.12 * (1 - limp) + 0.3 * limp;
     });
   }
+  // What sets each kind apart on top of the walking pose: the runner's lean and arm pump, the brute's
+  // wide swagger, the scream and the roar, the charge, a stagger or a trip, the crawl and the lunge.
+  function applyKind(view: ZombieView, zombie: Zombie, tick: number, dt: number, attack: number, swing: number, walk: number, phase: number): void {
+    const ticksPerSecond = config.ticksPerSecond;
+    const dead = zombie.dead;
+    // Eased states, so a change of state is a movement and not a jump.
+    view.crawl += ((zombie.crawling && !dead ? 1 : 0) - view.crawl) * Math.min(1, dt * 6);
+    const staggered = !dead && tick < zombie.staggerUntil ? 1 : 0;
+    view.stagger += (staggered - view.stagger) * Math.min(1, dt * 10);
+    const cryAge = zombie.cryTick >= 0 ? (tick - zombie.cryTick) / ticksPerSecond : 99;
+    const cryLength = zombie.kind === 'screamer' ? config.zombie.screamSeconds : 0.7;
+    const crying = !dead && (zombie.kind === 'screamer' || zombie.kind === 'brute') && cryAge < cryLength
+      ? Math.min(1, Math.sin(cryAge / cryLength * Math.PI) * 2) : 0;
+    const charging = !dead && zombie.kind === 'brute' && tick < zombie.chargeUntil;
+    const out = (side: number) => (side === 0 ? -1 : 1);
+    const blend = (current: number, to: number, amount: number) => current + (to - current) * amount;
+    const alive = !dead;
+
+    // What is wrong with each one. Every walker and screamer has something of its own: a hunch, a lolling
+    // head, a dragging leg or a dead arm, and the odd spasm, so no two shamble alike.
+    if (alive && (zombie.kind === 'walker' || zombie.kind === 'screamer') && view.crawl < 0.5) {
+      const time = tick / ticksPerSecond;
+      const trait = zombie.id % 7;
+      const sign = zombie.id % 2 ? 1 : -1;
+      view.head.rotation.x += 0.16 + 0.1 * Math.sin(time * 1.7 + zombie.id);
+      if (trait === 1 || trait === 4) view.torso.rotation.x -= 0.26;
+      if (trait === 0 || trait === 5) { view.head.rotation.z += sign * 0.36; view.torso.rotation.z += sign * 0.07; }
+      if (trait === 2 || trait === 6) {
+        const arm = zombie.id % 2;
+        view.arms[arm].rotation.x = 0.04 + 0.14 * Math.sin(phase * 0.9);
+        view.arms[arm].rotation.z = out(arm) * 0.1;
+        view.elbows[arm].rotation.x = 0.1;
+        view.wrists[arm].rotation.x = 0.25 * Math.sin(phase * 1.3);
+      }
+      if (trait === 3) {
+        view.legs[1].rotation.x *= 0.3;
+        view.knees[1].rotation.x = -0.05;
+        view.ankles[1].rotation.x = -0.4;
+        view.hips.rotation.z += sign * 0.08 * walk;
+        view.hips.position.y -= 0.03;
+      }
+      // A spasm: the head snaps round and the shoulders jerk.
+      const spasm = Math.max(0, Math.sin(time * 1.1 + zombie.id * 2.7) - 0.9) * 10;
+      if (spasm > 0) {
+        view.head.rotation.y += sign * spasm * 0.65;
+        view.torso.rotation.z += sign * spasm * 0.12;
+        view.arms.forEach((arm) => { arm.rotation.x += spasm * 0.3; });
+      }
+      // Standing, it still sways.
+      if (walk < 0.25) {
+        view.torso.rotation.z += Math.sin(time * 0.8 + zombie.id) * 0.05;
+        view.hips.rotation.y += Math.sin(time * 0.6 + zombie.id * 2) * 0.05;
+      }
+    }
+
+    if (alive && zombie.kind === 'runner') {
+      view.torso.rotation.x -= 0.32 * (1 - view.crawl);
+      view.head.rotation.x -= 0.14;
+      const pump = Math.max(0.4, walk);
+      view.arms.forEach((arm, side) => {
+        const sign = side === 0 ? 1 : -1;
+        arm.rotation.x = blend(0.15 + sign * swing * 0.95 * pump + attack * 0.9, arm.rotation.x, view.crawl);
+        arm.rotation.z = blend(out(side) * -0.1, arm.rotation.z, view.crawl);
+        view.elbows[side].rotation.x = blend(1.25 - sign * swing * 0.3 * pump, view.elbows[side].rotation.x, view.crawl);
+      });
+      view.legs[0].rotation.x *= 1.55; view.legs[1].rotation.x *= 1.55;
+      view.knees[0].rotation.x *= 1.4; view.knees[1].rotation.x *= 1.4;
+    }
+    if (alive && zombie.kind === 'brute') {
+      view.hips.rotation.z += swing * 0.07 * walk;
+      view.hips.position.y += 0.03 * Math.abs(swing) * walk;
+      view.torso.rotation.x += 0.1;
+      view.arms.forEach((arm, side) => {
+        arm.rotation.z = out(side) * (0.4 + 0.06 * Math.sin(phase * 0.9 + side)) + 0;
+        arm.rotation.x = 0.5 + attack * 1.1;
+        view.elbows[side].rotation.x = 0.35 - attack * 0.25;
+      });
+    }
+    if (charging) {
+      view.torso.rotation.x -= 0.4;
+      view.head.rotation.x -= 0.15;
+      view.arms.forEach((arm) => { arm.rotation.x = -0.5; });
+    }
+    if (crying > 0) {
+      const brute = zombie.kind === 'brute';
+      view.torso.rotation.x += crying * (brute ? 0.5 : 0.75);
+      view.head.rotation.x += crying * (brute ? 0.55 : 0.95);
+      view.hips.rotation.y += Math.sin(view.phase * 11) * 0.05 * crying;
+      view.head.rotation.z += Math.sin(view.phase * 17) * 0.07 * crying;
+      view.arms.forEach((arm, side) => {
+        arm.rotation.z = blend(arm.rotation.z, out(side) * (brute ? 0.8 : 1.25), crying);
+        arm.rotation.x = blend(arm.rotation.x, brute ? 0.3 : 0.05, crying);
+        view.elbows[side].rotation.x = blend(view.elbows[side].rotation.x, 0.3, crying);
+      });
+    }
+    if (view.stagger > 0.01) {
+      view.torso.rotation.x += 0.45 * view.stagger;
+      view.head.rotation.x += 0.4 * view.stagger;
+      view.arms.forEach((arm, side) => {
+        arm.rotation.z += out(side) * 0.55 * view.stagger;
+        arm.rotation.x -= 0.5 * view.stagger;
+      });
+    }
+    if (view.crawl > 0.01) {
+      // Face down on the ground, dragging itself forward on its arms with its legs trailing.
+      const crawl = view.crawl;
+      view.group.rotation.x = -1.32 * crawl;
+      view.group.position.y += 0.2 * crawl;
+      view.head.rotation.x = blend(view.head.rotation.x, 1.05, crawl);
+      view.arms.forEach((arm, side) => {
+        const reach = Math.sin(view.phase * 1.3 + side * Math.PI);
+        arm.rotation.x = blend(arm.rotation.x, 2.75 + reach * 0.55, crawl);
+        arm.rotation.z = blend(arm.rotation.z, out(side) * 0.18, crawl);
+        view.elbows[side].rotation.x = blend(view.elbows[side].rotation.x, 0.35 + Math.max(0, reach) * 0.5, crawl);
+      });
+      view.legs.forEach((leg, side) => {
+        leg.rotation.x = blend(leg.rotation.x, 0.1 + 0.18 * Math.sin(view.phase * 1.3 + side * Math.PI + 1), crawl);
+        view.knees[side].rotation.x = blend(view.knees[side].rotation.x, -0.15, crawl);
+      });
+    } else if (!dead) {
+      view.group.rotation.x = 0;
+    }
+    // A swing carries the body forward, and a walker's lean goes with it.
+    if (view.rig) view.rig.object.position.z = -0.24 * attack * (zombie.kind === 'brute' ? 1.4 : 1);
+    if (attack > 0 && alive) view.torso.rotation.x -= attack * 0.28;
+  }
   function dispose(view: ZombieView): void {
     scene.remove(view.group); view.material?.dispose(); view.geometries.forEach(g => g.dispose());
   }
@@ -350,7 +646,9 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         const strain = zombie.pushing && !zombie.dead ? 1 : 0;
         const walking = Math.min(1, Math.max(speed / 1.4, strain * 0.6));
         view.gait += (walking - view.gait) * Math.min(1, dt * 7);
-        view.phase += Math.min(Math.max(speed, strain * 1.1), 3.5) * dt * 3.1 + dt * 0.18;
+        // A shamble lurches: the stride speeds and drags in time with a limp rhythm of its own.
+        const lurch = zombie.kind === 'runner' || zombie.kind === 'brute' ? 1 : 1 + 0.4 * Math.sin(state.tick / config.ticksPerSecond * 5.3 + zombie.id * 1.9);
+        view.phase += Math.min(Math.max(speed, strain * 1.1), 3.5) * dt * 3.1 * lurch + dt * 0.18;
         const phase = view.phase, swing = Math.sin(phase), walk = view.gait;
         const limp = zombie.id % 3 === 0 ? 0.62 : 1;
         view.hips.position.y = 0.94 + Math.abs(Math.sin(phase)) * 0.019 * walk;
@@ -378,14 +676,37 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
           view.wrists[side].rotation.x = -0.12 - attack * 0.15;
           view.wrists[side].rotation.z = asymmetry * 0.11;
         });
+        applyKind(view, zombie, state.tick, dt, attack, swing, walk, phase);
         const hitAge = (state.tick - zombie.lastHitTick) / config.ticksPerSecond;
         const flinch = zombie.lastHitTick >= 0 && hitAge < 0.22 ? Math.sin(hitAge / 0.22 * Math.PI) : 0;
         view.torso.rotation.x += flinch * 0.2; view.head.rotation.x -= flinch * 0.18;
         if (view.material) view.material.emissiveIntensity = flinch * 0.025;
-        if (zombie.dead) { collapse(view, zombie.id, config.zombie.deathSeconds - zombie.deadLeft, zombie.deadLeft); view.group.position.y += base; }
+        if (zombie.dead) { view.group.rotation.x = 0; collapse(view, zombie.id, config.zombie.deathSeconds - zombie.deadLeft, zombie.deadLeft); view.group.position.y += base; }
         view.rig?.pose(view);
       }
       for (const [id, view] of views) if (!live.has(id)) { dispose(view); views.delete(id); }
+
+      // Pools of blood under the dead.
+      const now = state.tick / config.ticksPerSecond;
+      for (const zombie of state.zombies) {
+        if (!zombie.dead || pools.has(zombie.id)) continue;
+        const material = new THREE.MeshStandardMaterial({ map: poolMap, transparent: true, roughness: 0.18, metalness: 0.05, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 });
+        const mesh = new THREE.Mesh(poolGeometry, material);
+        mesh.position.set(zombie.x, surfaceHeight(state.level, zombie.x, zombie.z) + 0.014, zombie.z);
+        mesh.rotation.y = zombie.id * 1.3;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+        pools.set(zombie.id, { mesh, born: now, level: state.level.name, size: 0.7 + 0.5 * config.zombie.kinds[zombie.kind].size * (zombie.kind === 'brute' ? 1.3 : 1) });
+      }
+      for (const [id, pool] of pools) {
+        const age = now - pool.born;
+        const grow = 1 - Math.exp(-age * 1.3);
+        pool.mesh.scale.setScalar(pool.size * (0.15 + 0.95 * grow) * 2);
+        const fade = Math.max(0, Math.min(1, (45 - age) / 8));
+        (pool.mesh.material as THREE.MeshStandardMaterial).opacity = 0.85 * fade;
+        pool.mesh.visible = pool.level === state.level.name && fade > 0;
+        if (fade <= 0 || age < 0) { scene.remove(pool.mesh); (pool.mesh.material as THREE.Material).dispose(); pools.delete(id); }
+      }
     },
   };
 }

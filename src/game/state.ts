@@ -106,8 +106,27 @@ export interface Player {
   itemLeft: number;
 }
 
+// The infected come in kinds. The runner is fast and fragile, the brute slow and heavy, and the screamer
+// calls the rest. Their numbers are in config.zombie.kinds.
+export type ZombieKind = 'walker' | 'runner' | 'brute' | 'screamer';
+
 export interface Zombie {
   id: number;
+  kind: ZombieKind;
+  // What it was before it was infected, from the place it is in: 'patient', 'nurse', 'worker', 'soldier'.
+  look: string;
+  // Leg damage taken, and whether that has put it on the floor, crawling.
+  legDamage: number;
+  crawling: boolean;
+  // Ticks. Alerted by noise or a scream until alertUntil, frenzied until enragedUntil, knocked about or
+  // tripped until staggerUntil, charging until chargeUntil. cryTick is when it last screamed or roared,
+  // and nextCryTick when it may again (the brute's next charge, the screamer's next scream).
+  alertUntil: number;
+  enragedUntil: number;
+  staggerUntil: number;
+  chargeUntil: number;
+  cryTick: number;
+  nextCryTick: number;
   x: number;
   z: number;
   yaw: number;
@@ -146,6 +165,8 @@ export interface Waves {
   timer: number;
   // Zombies of this wave not yet spawned.
   toSpawn: number;
+  // Zombies a screamer has called in, still to come through the doors.
+  reinforce: number;
   spawnTimer: number;
   spawnIndex: number;
   // Tick the wave last began, and the tick the player last died, for messages on screen.
@@ -385,6 +406,7 @@ export function createGameState(level: Level): GameState {
       phase: 'entry',
       timer: 0,
       toSpawn: 0,
+      reinforce: 0,
       spawnTimer: 0,
       spawnIndex: 0,
       startedTick: -1,

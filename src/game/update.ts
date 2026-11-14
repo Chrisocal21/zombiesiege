@@ -10,7 +10,7 @@ import { eyeY, type GameState, type Player, type Zombie } from './state';
 import { equipWeapon, isMelee, swapWeapon, weaponStats } from './weapons';
 import { resolveMelee, startMelee } from './melee';
 import { updateWaves } from './waves';
-import { damageZombie, raycastZombies, updateZombies } from './zombies';
+import { damageZombie, headDamage, kindOf, raycastZombies, updateZombies } from './zombies';
 
 export const MAX_PITCH = Math.PI / 2 - 0.05;
 
@@ -196,15 +196,16 @@ function weapon(
     const hit = raycastZombies(state, origin, aim, wall ?? pistol.range);
     if (pellet === 0) { wallDistance = wall; zombieHit = hit; }
     if (!hit) continue;
-    // A shot to the head kills whatever its health.
-    damageZombie(state, hit.zombie, hit.head ? hit.zombie.health : pistol.damage);
+    // A shot to the head kills most kinds whatever their health.
+    damageZombie(state, hit.zombie, hit.head ? headDamage(hit.zombie, pistol.damage) : pistol.damage, { from: player, leg: hit.leg });
     struck.set(hit.zombie, (struck.get(hit.zombie) ?? false) || hit.head);
   }
   // Points once per zombie hit, however many pellets landed.
   let anyKill = false;
   let anyHead = false;
   for (const [zombie, head] of struck) {
-    const earned = head ? config.points.perHeadshot : zombie.dead ? config.points.perKill : config.points.perHit;
+    const worth = kindOf(zombie).points;
+    const earned = head ? config.points.perHeadshot * worth : zombie.dead ? config.points.perKill * worth : config.points.perHit;
     state.points[player.id] = Math.min(Number.MAX_SAFE_INTEGER, state.points[player.id] + earned);
     if (zombie.dead) anyKill = true;
     if (head) anyHead = true;

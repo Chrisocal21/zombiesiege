@@ -4,7 +4,7 @@ import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } 
 import { config } from '../config';
 import { changePoints, spawnAmmo, spawnWeapon, type AdminResult } from '../game/admin';
 import type { GameState } from '../game/state';
-import { LAST_DESCENT, LAST_FLOOR, LAST_VAULT, ROOF, stopAt, storeyLabel } from '../game/tower';
+import { FIRST_FLOOR, LAST_DESCENT, LAST_FLOOR, LAST_VAULT, ROOF, floorTitle, stopAt, storeyLabel } from '../game/tower';
 import { WEAPON_IDS, isMelee, owns, weaponStats, type WeaponId } from '../game/weapons';
 import { outfitTexture } from './gearTextures';
 import { COLOR, FONT, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
@@ -12,6 +12,7 @@ import { COLOR, FONT, clamp, keycap, measure, outfitPreviewRect, panel, roundedR
 // 'title' is the press-any-key screen the game opens on; 'main' is the menu behind it.
 // The acts on the level select page: a tab each, with the floors in the order they are played.
 const ACTS = [
+  { kicker: 'PROLOGUE', name: 'THE ROAD IN', blurb: 'The ambulance dies nine miles out. Fight in on foot.', floors: Array.from({ length: -FIRST_FLOOR }, (_, k) => FIRST_FLOOR + k) },
   { kicker: 'OPERATION 001', name: 'THE TOWER', blurb: 'Fight up a hospital tower to the helicopter.', floors: Array.from({ length: ROOF + 1 }, (_, k) => k) },
   { kicker: 'OPERATION 002', name: 'THE DESCENT', blurb: 'Fight down an office tower by freight lift.', floors: Array.from({ length: LAST_DESCENT - ROOF }, (_, k) => ROOF + 1 + k) },
   { kicker: 'OPERATION 003', name: 'THE VAULT', blurb: 'Down the tunnel, through the pharmacy, to the vault.', floors: Array.from({ length: LAST_VAULT - LAST_DESCENT }, (_, k) => LAST_DESCENT + 1 + k) },
@@ -749,10 +750,11 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         context.fillRect(0, 0, width, height);
         drawVignette(context, width, height, 0.7);
         drawGrain(context, width, height, time);
-        const panelWidth = Math.min(width * 0.84, 1180 * unit);
-        const panelHeight = height * 0.74;
+        const wide = current === 'floors';
+        const panelWidth = wide ? Math.min(width * 0.94, 1500 * unit) : Math.min(width * 0.84, 1180 * unit);
+        const panelHeight = wide ? height * 0.9 : height * 0.74;
         const px = (width - panelWidth) / 2;
-        const py = height * 0.11;
+        const py = wide ? height * 0.05 : height * 0.11;
         panel(context, px, py, panelWidth, panelHeight, COLOR.panelSolid, 4 * unit);
         context.fillStyle = COLOR.accent;
         context.fillRect(px, py, panelWidth, 3 * unit);
@@ -765,54 +767,86 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         if (current === 'floors') {
           const x0 = px + 44 * unit;
           const inner = panelWidth - 88 * unit;
+          const actColor = ['#d98a6a', '#e8b866', '#7db4e6', '#80d0b0', '#ff9a52'];
           // One tab for each act.
           ACTS.forEach((act, i) => {
-            const tabW = Math.min(330 * unit, (inner - 14 * unit * (ACTS.length - 1)) / ACTS.length), tabH = 52 * unit;
-            const tx = x0 + i * (tabW + 14 * unit), ty = py + 112 * unit;
+            const tabW = Math.min(360 * unit, (inner - 14 * unit * (ACTS.length - 1)) / ACTS.length), tabH = 64 * unit;
+            const tx = x0 + i * (tabW + 14 * unit), ty = py + 118 * unit;
             const on = i === floorAct;
             const hover = inside(tx, ty, tabW, tabH);
             if (hover) hovering = true;
             roundedRect(context, tx, ty, tabW, tabH, 4 * unit);
-            context.fillStyle = on ? 'rgba(232,184,102,0.2)' : hover ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)';
+            context.fillStyle = on ? 'rgba(255,255,255,0.1)' : hover ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)';
             context.fill();
-            context.strokeStyle = on ? COLOR.accent : COLOR.border;
-            context.lineWidth = 1;
+            context.strokeStyle = on ? actColor[i] : COLOR.border;
+            context.lineWidth = on ? 2 : 1;
             context.stroke();
-            text(context, act.kicker, tx + 16 * unit, ty + 20 * unit, { size: 11 * unit, weight: 700, spacing: 3 * unit, color: on ? COLOR.accent : COLOR.faint, shadow: false });
-            text(context, act.name, tx + 16 * unit, ty + 43 * unit, { size: 20 * unit, weight: 800, spacing: 2 * unit, color: on ? COLOR.text : COLOR.dim, shadow: false });
+            if (on) { context.fillStyle = actColor[i]; context.fillRect(tx, ty + tabH - 4 * unit, tabW, 4 * unit); }
+            text(context, act.kicker, tx + 18 * unit, ty + 24 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: on ? actColor[i] : COLOR.dim, shadow: false });
+            text(context, act.name, tx + 18 * unit, ty + 50 * unit, { size: 24 * unit, weight: 800, spacing: 2 * unit, color: on ? COLOR.text : COLOR.dim, shadow: false });
             if (hover && mouse.clicked && !on) { floorAct = i; sound('move'); }
           });
           const act = ACTS[floorAct];
-          text(context, act.blurb, x0, py + 200 * unit, { size: 17 * unit, color: COLOR.dim, shadow: false });
+          const accent = actColor[floorAct];
           const waves = act.floors.reduce((sum, floor) => sum + stopAt(floor).waves, 0);
-          text(context, `${act.floors.length} FLOORS  ·  ${waves} WAVES`, x0 + inner, py + 200 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, align: 'right', shadow: false });
-          // The floors, in the order they are played, in two columns, or three when there are many.
-          const cols = act.floors.length > 8 ? 3 : 2;
-          const gap = 12 * unit;
+          text(context, act.blurb, x0, py + 224 * unit, { size: 20 * unit, weight: 600, color: COLOR.text, shadow: false });
+          text(context, `${act.floors.length} FLOORS  ·  ${waves} WAVES`, x0 + inner, py + 224 * unit, { size: 15 * unit, weight: 800, spacing: 3 * unit, color: accent, align: 'right', shadow: false });
+          // The floors as big cards, in the order they are played.
+          const cols = act.floors.length > 6 ? 4 : act.floors.length > 4 ? 3 : 2;
+          const gap = 18 * unit;
           const tileW = (inner - gap * (cols - 1)) / cols;
-          const top = py + 226 * unit;
-          const roomH = buttonY - top - 18 * unit;
+          const top = py + 250 * unit;
+          const roomH = buttonY - top - 20 * unit;
           const rowsNeeded = Math.ceil(act.floors.length / cols);
-          const tileH = Math.min(64 * unit, (roomH - gap * (rowsNeeded - 1)) / rowsNeeded);
+          const tileH = Math.min(340 * unit, (roomH - gap * (rowsNeeded - 1)) / rowsNeeded);
           act.floors.forEach((floor, i) => {
             const tx = x0 + (i % cols) * (tileW + gap), ty = top + Math.floor(i / cols) * (tileH + gap);
             const hover = inside(tx, ty, tileW, tileH);
             const roof = floor === ROOF;
             if (hover) hovering = true;
-            roundedRect(context, tx, ty, tileW, tileH, 4 * unit);
-            context.fillStyle = hover ? 'rgba(232,184,102,0.2)' : 'rgba(255,255,255,0.05)';
-            context.fill();
-            context.strokeStyle = hover || roof ? COLOR.accent : COLOR.border;
-            context.lineWidth = 1;
-            context.stroke();
+            const stop = stopAt(floor);
             const label = storeyLabel(floor);
-            roundedRect(context, tx + 14 * unit, ty + tileH / 2 - 15 * unit, 58 * unit, 30 * unit, 3 * unit);
-            context.fillStyle = roof ? 'rgba(232,184,102,0.2)' : 'rgba(255,255,255,0.08)';
-            context.fill();
-            text(context, label, tx + 43 * unit, ty + tileH / 2 + 6 * unit, { size: 16 * unit, weight: 800, align: 'center', color: roof ? COLOR.accent : COLOR.text, shadow: false });
-            text(context, roof ? 'Helipad' : stopAt(floor).name, tx + 88 * unit, ty + tileH / 2 + 7 * unit, { size: 20 * unit, weight: 600, color: roof ? COLOR.accent : COLOR.text, shadow: false });
-            const tag = hover ? 'START HERE  ▶' : roof ? 'EXTRACT' : `${stopAt(floor).waves} WAVES`;
-            text(context, tag, tx + tileW - 16 * unit, ty + tileH / 2 + 5 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: hover || roof ? COLOR.accent : COLOR.faint, align: 'right', shadow: false });
+            context.save();
+            roundedRect(context, tx, ty, tileW, tileH, 6 * unit);
+            context.clip();
+            const fill = context.createLinearGradient(tx, ty, tx + tileW * 0.4, ty + tileH);
+            fill.addColorStop(0, hover ? 'rgba(44,52,60,1)' : 'rgba(26,34,42,1)');
+            fill.addColorStop(1, hover ? 'rgba(20,26,32,1)' : 'rgba(12,18,24,1)');
+            context.fillStyle = fill;
+            context.fillRect(tx, ty, tileW, tileH);
+            // A huge storey number behind everything.
+            text(context, label, tx + tileW - 12 * unit, ty + tileH * 0.94, { size: tileH * (label.length > 2 ? 0.62 : 0.9), weight: 900, align: 'right', color: accent, alpha: hover ? 0.34 : 0.2, shadow: false });
+            // The act's colour as a glow from the bottom edge, and a bar down the left.
+            const glow = context.createLinearGradient(0, ty + tileH * 0.55, 0, ty + tileH);
+            glow.addColorStop(0, 'rgba(0,0,0,0)');
+            glow.addColorStop(1, 'rgba(0,0,0,0.55)');
+            context.fillStyle = glow;
+            context.fillRect(tx, ty, tileW, tileH);
+            context.fillStyle = accent;
+            context.fillRect(tx, ty, 6 * unit, tileH);
+            if (hover) { context.fillStyle = accent; context.fillRect(tx, ty + tileH - 5 * unit, tileW, 5 * unit); }
+            context.restore();
+            roundedRect(context, tx, ty, tileW, tileH, 6 * unit);
+            context.strokeStyle = hover ? accent : 'rgba(255,255,255,0.18)';
+            context.lineWidth = hover ? 2.5 : 1;
+            context.stroke();
+
+            const pad = 28 * unit;
+            const number = String(i + 1).padStart(2, '0');
+            text(context, `${number}  /  ${roof ? 'EXTRACTION' : floorTitle(floor).toUpperCase()}`, tx + pad, ty + 38 * unit, { size: 14 * unit, weight: 800, spacing: 3 * unit, color: accent, shadow: false });
+            text(context, roof ? 'Helipad' : stop.name, tx + pad, ty + 38 * unit + Math.min(52 * unit, tileH * 0.26), { size: Math.min(36 * unit, tileW / 11), weight: 800, color: COLOR.text, shadow: false });
+            // The waves as pips, and what is to be done.
+            const pipY = ty + tileH - 44 * unit;
+            if (roof) {
+              text(context, 'REACH THE HELICOPTER', tx + pad, pipY + 12 * unit, { size: 15 * unit, weight: 800, spacing: 3 * unit, color: COLOR.text, shadow: false });
+            } else {
+              for (let w = 0; w < stop.waves; w++) {
+                context.fillStyle = hover ? accent : 'rgba(255,255,255,0.55)';
+                context.fillRect(tx + pad + w * 20 * unit, pipY, 14 * unit, 6 * unit);
+              }
+              text(context, `${stop.waves} WAVES`, tx + pad, pipY + 32 * unit, { size: 15 * unit, weight: 800, spacing: 3 * unit, color: COLOR.dim, shadow: false });
+            }
+            if (hover) text(context, 'DEPLOY  ▶', tx + tileW - pad, ty + tileH - 18 * unit, { size: 16 * unit, weight: 800, spacing: 3 * unit, color: accent, align: 'right', shadow: false });
             if (hover && mouse.clicked) {
               sound('select');
               callbacks.playFloor(floor);

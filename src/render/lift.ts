@@ -8,8 +8,9 @@ import type { Level } from '../levels/types';
 
 const FRAME = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.35, metalness: 0.85 });
 const DOOR = new THREE.MeshStandardMaterial({ color: 0xa9aeb4, roughness: 0.3, metalness: 0.9 });
+const GATE_LEAF = new THREE.MeshStandardMaterial({ color: 0x3c4249, roughness: 0.7, metalness: 0.6 });
 
-function displayTexture(): { texture: THREE.CanvasTexture; draw: (label: string, open: boolean, arrow?: string) => void } {
+function displayTexture(gate: boolean): { texture: THREE.CanvasTexture; draw: (label: string, open: boolean, arrow?: string) => void } {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 160;
@@ -27,10 +28,10 @@ function displayTexture(): { texture: THREE.CanvasTexture; draw: (label: string,
       context.textAlign = 'center';
       context.fillStyle = '#ffffff';
       context.font = '700 54px Bahnschrift, Arial Narrow, sans-serif';
-      context.fillText('ELEVATOR', 256, 70);
+      context.fillText(gate ? 'GATE' : 'ELEVATOR', 256, 70);
       context.fillStyle = open ? '#38e070' : '#ffd24a';
       context.font = '700 46px Bahnschrift, Arial Narrow, sans-serif';
-      context.fillText(label === 'ROOF' ? '▲  ROOF' : `${arrow}  FLOOR ${label}`, 256, 130);
+      context.fillText(gate ? (open ? 'OPEN  ▶' : 'LOCKED') : label === 'ROOF' ? '▲  ROOF' : `${arrow}  FLOOR ${label}`, 256, 130);
       texture.needsUpdate = true;
     },
   };
@@ -59,14 +60,14 @@ export function buildLift(scene: THREE.Object3D, level: Level, glowMap: THREE.Te
   // Two leaves that slide apart into the wall on either side.
   const leafWidth = lift.width / 2;
   const leaves = [-1, 1].map((side) => {
-    const leaf = new THREE.Mesh(new RoundedBoxGeometry(leafWidth, lift.height, 0.06, 2, 0.01), DOOR);
+    const leaf = new THREE.Mesh(new RoundedBoxGeometry(leafWidth, lift.height, 0.06, 2, 0.01), level.exitGate ? GATE_LEAF : DOOR);
     leaf.castShadow = leaf.receiveShadow = true;
     leaf.position.set(side * leafWidth / 2, lift.height / 2, -0.2);
     group.add(leaf);
     return { leaf, side };
   });
 
-  const display = displayTexture();
+  const display = displayTexture(Boolean(level.exitGate));
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.53), new THREE.MeshBasicMaterial({ map: display.texture }));
   sign.position.set(0, lift.height + 0.55, 0.22);
   group.add(sign);

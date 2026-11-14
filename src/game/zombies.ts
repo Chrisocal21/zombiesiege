@@ -4,22 +4,55 @@ import { resolveCircle } from './collision';
 import { rayAabb } from './hitscan';
 import { dropSupply } from './items';
 import { nextStep, routeOf } from './navigation';
-import type { GameState, Player, Zombie } from './state';
+import type { GameState, Player, Zombie, ZombieKind } from './state';
+import { crowdAt } from './tower';
+
+const ticks = (seconds: number): number => Math.round(seconds * config.ticksPerSecond);
+
+// The numbers for a zombie's kind.
+export function kindOf(zombie: Pick<Zombie, 'kind'>): (typeof config.zombie.kinds)[ZombieKind] {
+  return config.zombie.kinds[zombie.kind];
+}
+
+export function zombieRadius(zombie: Pick<Zombie, 'kind'>): number {
+  return kindOf(zombie).radius;
+}
+
+// How tall it stands, and where its head begins. A crawler is low to the floor.
+export function zombieHeights(zombie: Pick<Zombie, 'kind' | 'crawling'>): { height: number; headHeight: number } {
+  const size = kindOf(zombie).size;
+  const low = zombie.crawling ? config.zombie.crawlHeight : 1;
+  return { height: config.zombie.height * size * low * (zombie.crawling ? 0.6 : 1), headHeight: config.zombie.headHeight * size * low * (zombie.crawling ? 0.5 : 1) };
+}
 
 export function spawnZombie(
   state: GameState,
   x: number,
   z: number,
   entry: { x: number; z: number } | null,
+  kind: ZombieKind = 'walker',
 ): void {
   const id = state.nextZombieId++;
+  const crowd = crowdAt(state.floor);
+  const stats = config.zombie.kinds[kind];
   state.zombies.push({
     id,
+    kind,
+    look: crowd[Math.floor(((id * 0.7548776662) % 1) * crowd.length)],
+    legDamage: 0,
+    crawling: false,
+    // Fresh from the doors they know where the players are, for a while.
+    alertUntil: state.tick + ticks(config.zombie.alertSeconds),
+    enragedUntil: -1,
+    staggerUntil: -1,
+    chargeUntil: -1,
+    cryTick: -1,
+    nextCryTick: kind === 'brute' ? state.tick + ticks(3) : -1,
     x,
     z,
     yaw: 0,
-    health: config.zombie.maxHealth,
-    attackCooldown: config.zombie.firstAttackDelay,
+    health: stats.health,
+    attackCooldown: stats.firstDelay,
     // A repeating pattern is enough to keep a crowd from walking in lockstep.
     speedFactor: 0.85 + 0.3 * ((id * 0.618) % 1),
     lastAttackTick: -1,
@@ -34,6 +67,12 @@ export function spawnZombie(
 export function aliveZombies(state: GameState): number {
   let count = 0;
   for (const zombie of state.zombies) if (!zombie.dead) count++;
+  return count;
+}
+
+export function aliveOfKind(state: GameState, kind: ZombieKind): number {
+  let count = 0;
+  for (const zombie of state.zombies) if (!zombie.dead && zombie.kind === kind) count++;
   return count;
 }
 
@@ -56,16 +95,52 @@ function nearestPlayer(state: GameState, zombie: Zombie): Player | null {
 const FLANK_END = 3.5;
 const FLANK_RATE = 0.6;
 const FLANK_MAX = 7;
+// The golden angle, so each zombie's spot on the ring round a player is spread from the last.
+const GOLDEN = 2.399963;
+
+// Gunfire and the clatter of a swing wake every zombie within earshot.
+function hearNoises(state: GameState): void {
+  for (const player of state.players) {
+    if (player.health <= 0) continue;
+    const shot = player.lastShotTick >= 0 && state.tick - player.lastShotTick <= 2;
+    const swung = player.lastMeleeHitTick >= 0 && state.tick - player.lastMeleeHitTick <= 2;
+    if (!shot && !swung) continue;
+    const range = shot ? config.zombie.noiseRange : config.zombie.meleeNoiseRange;
+    for (const zombie of state.zombies) {
+      if (zombie.dead || Math.hypot(zombie.x - player.x, zombie.z - player.z) > range) continue;
+      zombie.alertUntil = Math.max(zombie.alertUntil, state.tick + ticks(config.zombie.alertSeconds));
+    }
+  }
+}
+
+// The screamer's call: every zombie in earshot is alerted and frenzied for a while, and more come in
+// at the doors.
+function scream(state: GameState, screamer: Zombie): void {
+  const zombieConfig = config.zombie;
+  screamer.cryTick = state.tick;
+  screamer.nextCryTick = state.tick + ticks(zombieConfig.screamCooldown);
+  for (const other of state.zombies) {
+    if (other.dead || Math.hypot(other.x - screamer.x, other.z - screamer.z) > zombieConfig.screamCallRadius) continue;
+    other.alertUntil = Math.max(other.alertUntil, state.tick + ticks(zombieConfig.alertSeconds));
+    if (other.kind !== 'brute') other.enragedUntil = Math.max(other.enragedUntil, state.tick + ticks(zombieConfig.enrageSeconds));
+  }
+  const phase = state.waves.phase;
+  if (phase === 'active' || phase === 'hold' || phase === 'evac') state.waves.reinforce += zombieConfig.screamReinforce;
+}
 
 // Chasing, swinging, and falling over, for every zombie, once per tick.
 export function updateZombies(state: GameState, dt: number, level: Level): void {
   const zombieConfig = config.zombie;
+  hearNoises(state);
 
   for (const zombie of state.zombies) {
     if (zombie.dead) {
       zombie.deadLeft -= dt;
       continue;
     }
+    const kind = kindOf(zombie);
+    const radius = kind.radius;
+    const { height } = zombieHeights(zombie);
     zombie.attackCooldown = Math.max(0, zombie.attackCooldown - dt);
 
     // Coming in through a doorway, a zombie walks to the spot just inside it first.
@@ -78,18 +153,44 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     const dx = goal.x - zombie.x;
     const dz = goal.z - zombie.z;
     const distance = Math.hypot(dx, dz);
-    // On a floor with rooms it walks round the walls toward a point on the way, or stays put if
-    // every way to the players is shut.
+    const free = zombie.entry === null;
+
+    // The screamer stops where it stands and screams, once it sees someone.
+    const screaming = zombie.kind === 'screamer' && zombie.cryTick >= 0 && state.tick - zombie.cryTick < ticks(zombieConfig.screamSeconds);
+    if (zombie.kind === 'screamer' && free && !screaming && state.tick >= zombie.nextCryTick && distance < zombieConfig.screamRange && !zombie.crawling) {
+      scream(state, zombie);
+    }
+    // The brute roars and charges at a player a little way off.
+    if (zombie.kind === 'brute' && free && state.tick >= zombie.nextCryTick && distance > zombieConfig.chargeMin && distance < zombieConfig.chargeMax) {
+      zombie.cryTick = state.tick;
+      zombie.chargeUntil = state.tick + ticks(zombieConfig.chargeSeconds);
+      zombie.nextCryTick = state.tick + ticks(zombieConfig.chargeCooldown);
+    }
+    // Now and then a walker trips over its own feet.
+    if (zombie.kind === 'walker' && free && !zombie.crawling && zombie.id % 3 === 1 && distance > 3 && distance < 14) {
+      const phase = (state.tick / config.ticksPerSecond + zombie.id * 2.3) % zombieConfig.stumbleEvery;
+      if (phase < zombieConfig.stumbleSeconds && state.tick >= zombie.staggerUntil) zombie.staggerUntil = state.tick + ticks(zombieConfig.stumbleSeconds);
+    }
+
+    // On a floor with rooms it walks round the walls toward a point on the way, or presses on toward
+    // the player if every way is shut, against the cage or wall in the way.
     let heading = { x: dx, z: dz };
     let blocked = false;
-    if (zombie.entry === null && level.navBounds) {
+    if (free && level.navBounds) {
       const step = nextStep(state, zombie, target);
       if (step === undefined) blocked = true;
       else if (step) heading = { x: step.x - zombie.x, z: step.z - zombie.z };
     }
+    // Close in, each aims for its own spot on a ring round the player, so a crowd spreads out and
+    // comes at the player from every side instead of queueing.
+    if (free && !blocked && distance < zombieConfig.surroundRange && distance > kind.range && heading.x === dx && heading.z === dz) {
+      const ring = Math.min(2.5, Math.max(0, (distance - kind.range) * 0.55));
+      const angle = zombie.id * GOLDEN;
+      heading = { x: dx + Math.cos(angle) * ring, z: dz + Math.sin(angle) * ring };
+    }
     // Walking at the player in the open, the side routes swing wide, left or right, and close in
     // once near, so a crowd comes at the player from several directions.
-    if (zombie.entry === null && !blocked && distance > FLANK_END) {
+    if (free && !blocked && distance > FLANK_END) {
       const route = routeOf(zombie);
       if (route !== 0 && heading.x === dx && heading.z === dz) {
         const side = route === 1 ? 1 : -1;
@@ -98,43 +199,49 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
       }
     }
     // Yaw 0 faces -z, the same as the player.
-    zombie.yaw = Math.atan2(-heading.x, -heading.z);
+    zombie.yaw = Math.atan2(-(blocked ? dx : heading.x), -(blocked ? dz : heading.z));
 
     const inReach =
-      zombie.entry === null && distance <= zombieConfig.attackRange && target.y < zombieConfig.reachHeight
-      && !caged(level, zombie, target);
+      free && distance <= (zombie.crawling ? 1.0 : kind.range) && target.y < zombieConfig.reachHeight * kind.size
+      && !caged(level, zombie, target) && !screaming;
     if (inReach) {
       if (zombie.attackCooldown === 0) {
-        zombie.attackCooldown = zombieConfig.secondsBetweenAttacks;
+        zombie.attackCooldown = kind.interval;
         zombie.lastAttackTick = state.tick;
-        hurtPlayer(state, target, zombieConfig.attackDamage);
+        hurtPlayer(state, target, kind.damage);
         target.lastHurtX = zombie.x;
         target.lastHurtZ = zombie.z;
       }
     } else {
       // A zombie that has only just arrived winds up before its first swing.
-      zombie.attackCooldown = Math.max(zombie.attackCooldown, zombieConfig.firstAttackDelay);
+      zombie.attackCooldown = Math.max(zombie.attackCooldown, kind.firstDelay);
     }
 
-    // It stops a little short of its reach, so it stays on you without walking into you.
-    // With every way shut, it still presses toward the player, against the cage or wall in the way.
+    // With every way shut, it still presses toward the player.
     zombie.pushing = false;
     if (blocked) heading = { x: dx, z: dz };
-    if (zombie.entry || distance > zombieConfig.attackRange * 0.75) {
+    // It stops a little short of its reach, so it stays on you without walking into you.
+    if (!screaming && (zombie.entry || distance > kind.range * 0.75)) {
       const headingLength = Math.hypot(heading.x, heading.z) || 1;
-      const speed =
-        zombieConfig.moveSpeed *
-        zombie.speedFactor *
-        (1 + zombieConfig.speedPerWave * (state.waves.number - 1) + config.elevator.speedPerFloor * state.floor);
+      // Far from every player, and not alerted by noise or a scream, a zombie only shambles.
+      const sight = target.flashlight ? zombieConfig.flashlightSightRange : zombieConfig.sightRange;
+      const aware = distance <= sight || state.tick < zombie.alertUntil;
+      let pace = zombieConfig.moveSpeed * kind.speed * zombie.speedFactor
+        * (1 + zombieConfig.speedPerWave * (state.waves.number - 1) + config.elevator.speedPerFloor * state.floor);
+      if (!aware && !zombie.entry) pace *= zombieConfig.unawareSpeed;
+      if (zombie.crawling) pace *= zombieConfig.crawlSpeed;
+      if (state.tick < zombie.staggerUntil) pace *= 0.18;
+      if (state.tick < zombie.enragedUntil) pace *= zombieConfig.enrageSpeed;
+      if (state.tick < zombie.chargeUntil) pace *= zombieConfig.chargeSpeed;
       const moved = resolveCircle(
         level,
-        zombie.x + (heading.x / headingLength) * speed * dt,
-        zombie.z + (heading.z / headingLength) * speed * dt,
-        zombieConfig.radius,
+        zombie.x + (heading.x / headingLength) * pace * dt,
+        zombie.z + (heading.z / headingLength) * pace * dt,
+        radius,
         0,
-        zombieConfig.height,
+        height,
       );
-      const intended = speed * dt;
+      const intended = pace * dt;
       zombie.pushing = blocked || Math.hypot(moved.x - zombie.x, moved.z - zombie.z) < intended * 0.35;
       zombie.x = moved.x;
       zombie.z = moved.z;
@@ -167,7 +274,6 @@ function caged(level: Level, zombie: Zombie, target: { x: number; z: number }): 
 // Keeps zombies from standing inside each other.
 function separate(state: GameState): void {
   const zombies = state.zombies;
-  const minimum = config.zombie.radius * 1.8;
   for (let i = 0; i < zombies.length; i++) {
     const a = zombies[i];
     if (a.dead) continue;
@@ -177,12 +283,15 @@ function separate(state: GameState): void {
       const dx = b.x - a.x;
       const dz = b.z - a.z;
       const distance = Math.hypot(dx, dz);
+      const minimum = (zombieRadius(a) + zombieRadius(b)) * 0.9;
       if (distance >= minimum || distance === 0) continue;
-      const push = (minimum - distance) / 2 / distance;
-      a.x -= dx * push;
-      a.z -= dz * push;
-      b.x += dx * push;
-      b.z += dz * push;
+      // A heavier body shoves the lighter one more.
+      const share = kindOf(a).size / (kindOf(a).size + kindOf(b).size);
+      const push = (minimum - distance) / distance;
+      a.x -= dx * push * (1 - share);
+      a.z -= dz * push * (1 - share);
+      b.x += dx * push * share;
+      b.z += dz * push * share;
     }
   }
 }
@@ -192,20 +301,22 @@ export function hurtPlayer(state: GameState, player: Player, damage: number): vo
   player.lastHurtTick = state.tick;
 }
 
-// The nearest living zombie along a ray, if it is closer than maxDistance.
+// The nearest living zombie along a ray, if it is closer than maxDistance. `leg` says the bullet
+// went in below the knee.
 export function raycastZombies(
   state: GameState,
   origin: Vec3,
   direction: Vec3,
   maxDistance: number,
-): { zombie: Zombie; distance: number; head: boolean } | null {
-  const { radius, height, headHeight } = config.zombie;
-  const body = radius * 0.8;
-  const head = radius * 0.55;
-  let nearest: { zombie: Zombie; distance: number; head: boolean } | null = null;
+): { zombie: Zombie; distance: number; head: boolean; leg: boolean } | null {
+  let nearest: { zombie: Zombie; distance: number; head: boolean; leg: boolean } | null = null;
 
   for (const zombie of state.zombies) {
     if (zombie.dead) continue;
+    const radius = zombieRadius(zombie);
+    const { height, headHeight } = zombieHeights(zombie);
+    const body = radius * 0.8;
+    const head = radius * 0.55;
     const limit = nearest ? nearest.distance : maxDistance;
     // The body and the head are separate boxes, which gives a head hit its own place to land.
     const parts = [
@@ -216,19 +327,51 @@ export function raycastZombies(
       const part = parts[index];
       const hit = rayAabb(origin, direction, part.min, part.max, limit);
       if (hit && (nearest === null || hit.distance < nearest.distance)) {
-        nearest = { zombie, distance: hit.distance, head: index === 1 };
+        const y = origin.y + direction.y * hit.distance;
+        nearest = { zombie, distance: hit.distance, head: index === 1, leg: index === 0 && !zombie.crawling && y < headHeight * 0.38 };
       }
     }
   }
   return nearest;
 }
 
-export function damageZombie(state: GameState, zombie: Zombie, damage: number): void {
+// What a head shot does. Most kinds die to it outright; a brute's skull takes a lot more than a body
+// shot, but not everything.
+export function headDamage(zombie: Zombie, damage: number): number {
+  return zombie.kind === 'brute' ? damage * 3 : zombie.health;
+}
+
+// Where a hit came from and what it hit, so the zombie can be knocked about.
+export interface HitInfo {
+  from?: { x: number; z: number };
+  leg?: boolean;
+}
+
+export function damageZombie(state: GameState, zombie: Zombie, damage: number, hit: HitInfo = {}): void {
   zombie.health -= damage;
   zombie.lastHitTick = state.tick;
+  // Being shot wakes it up, wherever it was.
+  zombie.alertUntil = Math.max(zombie.alertUntil, state.tick + ticks(config.zombie.alertSeconds));
   if (zombie.health <= 0) {
     zombie.dead = true;
     zombie.deadLeft = config.zombie.deathSeconds;
     dropSupply(state, zombie.x, zombie.z);
+    return;
+  }
+  if (hit.leg && zombie.kind !== 'brute') {
+    zombie.legDamage += damage;
+    if (zombie.legDamage >= config.zombie.legDamageToCrawl) zombie.crawling = true;
+  }
+  // A solid hit rocks it back. A brute only notices a very heavy one.
+  const heavy = zombie.kind === 'brute' ? damage >= 40 : damage >= 15;
+  if (heavy && hit.from && state.tick >= zombie.staggerUntil) {
+    zombie.staggerUntil = state.tick + ticks(Math.min(0.7, damage / 60));
+    const dx = zombie.x - hit.from.x, dz = zombie.z - hit.from.z;
+    const length = Math.hypot(dx, dz) || 1;
+    const push = Math.min(0.55, damage / 70) / (zombie.kind === 'brute' ? 3 : 1);
+    const { height } = zombieHeights(zombie);
+    const moved = resolveCircle(state.level, zombie.x + (dx / length) * push, zombie.z + (dz / length) * push, zombieRadius(zombie), 0, height);
+    zombie.x = moved.x;
+    zombie.z = moved.z;
   }
 }

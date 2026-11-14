@@ -244,4 +244,6 @@ export interface Level {
   streetLamps: Vec3[];
   checkpoint: Vec3;
   kit?: Vec3;
+  // The way on is a steel gate on foot, as in the prologue, and not a lift.
+  exitGate?: boolean;
 }

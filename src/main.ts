@@ -145,7 +145,7 @@ const menu = createMenu({
     }
     const next = createGameState(level);
     // The garage starts out in the street as usual; the floors start just out of the elevator.
-    if (floor > 0) startOnFloor(next, floor);
+    if (floor !== 0) startOnFloor(next, floor);
     dressed = false;
     session.replace(next);
     enterGame(floor === 0);

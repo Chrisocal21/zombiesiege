@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { loadModel } from './models';
 
 // Skinned characters, posed by joint angles rather than animation files: the zombies, with the
@@ -28,6 +29,9 @@ export interface RiggedBody {
   // Add this to the zombie's group. It turns the model round to face -z like the joints.
   readonly object: THREE.Object3D;
   pose(joints: Joints): void;
+  // Fix something to a bone, such as a hard hat on the head. Its size and position are in metres from
+  // the bone, whatever the model's own scale.
+  attach(bone: string, thing: THREE.Object3D): void;
 }
 
 // The joints' hip height standing, where the hips bone sits in its bind pose.
@@ -63,7 +67,33 @@ interface BoneInfo {
 }
 
 let templates: THREE.Object3D[] | null = null;
-const loading = Promise.all(ZOMBIE_MODELS.map(loadModel)).then((models) => {
+
+// The zombie files carry a normal map for every texture, but the materials were exported without them.
+// This finds each (the image just before the diffuse one) and puts it back, so skin and cloth have grain.
+async function addNormalMaps(model: GLTF): Promise<void> {
+  const definitions = (model.parser.json.materials ?? []) as { name?: string; pbrMetallicRoughness?: { baseColorTexture?: { index: number } } }[];
+  const normalFor = new Map<string, number>();
+  for (const definition of definitions) {
+    const diffuse = definition.pbrMetallicRoughness?.baseColorTexture?.index;
+    if (definition.name && diffuse !== undefined && diffuse > 0) normalFor.set(definition.name, diffuse - 1);
+  }
+  const jobs: Promise<void>[] = [];
+  model.scene.traverse((object) => {
+    if (!(object instanceof THREE.SkinnedMesh) || Array.isArray(object.material)) return;
+    const material = object.material as THREE.MeshStandardMaterial;
+    const index = normalFor.get(material.name);
+    if (index === undefined || material.normalMap) return;
+    jobs.push(model.parser.getDependency('texture', index).then((texture: THREE.Texture) => {
+      material.normalMap = texture;
+      material.normalScale.set(1, 1);
+      material.needsUpdate = true;
+    }));
+  });
+  await Promise.all(jobs);
+}
+
+const loading = Promise.all(ZOMBIE_MODELS.map(loadModel)).then(async (models) => {
+  await Promise.all(models.map((model) => addNormalMaps(model).catch(() => undefined)));
   templates = models.map((model) => model.scene);
   return templates;
 });
@@ -139,12 +169,23 @@ export function rig(template: THREE.Object3D): RiggedBody {
   object.rotation.y = Math.PI;
   object.add(model);
 
+  const attach = (name: string, thing: THREE.Object3D): void => {
+    const info = bones.find((each) => boneName(each.bone.name) === name);
+    if (!info) return;
+    // The bone's size in the world as the model is built, so the thing keeps its true size.
+    const scale = info.bone.getWorldScale(new THREE.Vector3());
+    const holder = new THREE.Group();
+    holder.scale.set(1 / scale.x, 1 / scale.y, 1 / scale.z);
+    holder.add(thing);
+    info.bone.add(holder);
+  };
   const orientation = bones.map(() => new THREE.Quaternion());
   const joint = new THREE.Quaternion();
   const inverse = new THREE.Quaternion();
   const lift = new THREE.Vector3();
   return {
     object,
+    attach,
     pose(joints) {
       joints.hips.parent?.updateMatrixWorld(true);
       const root = joints.hips.parent;

@@ -3,7 +3,7 @@ import { resolveCircle } from './collision';
 import { raycastBoxes } from './hitscan';
 import { eyeY, type GameState, type Player } from './state';
 import { weaponStats } from './weapons';
-import { damageZombie } from './zombies';
+import { damageZombie, zombieHeights, zombieRadius } from './zombies';
 
 export function startMelee(state: GameState, player: Player): void {
   player.meleeLeft = weaponStats(player.weapon).melee.seconds;
@@ -27,10 +27,11 @@ export function resolveMelee(state: GameState, player: Player): void {
     const dx = zombie.x - origin.x, dz = zombie.z - origin.z;
     const horizontal = Math.hypot(dx, dz);
     const aimY = origin.y + Math.tan(player.pitch) * horizontal;
-    const y = Math.max(.15, Math.min(config.zombie.height - .15, aimY));
-    const distance = Math.hypot(Math.max(0, horizontal - config.zombie.radius), y - origin.y);
-    return { zombie, dx, dz, horizontal, y, aimY, distance };
-  }).filter(hit => hit.distance <= stats.range && hit.aimY >= -.15 && hit.aimY <= config.zombie.height + .15 &&
+    const tall = zombieHeights(zombie).height;
+    const y = Math.max(.15, Math.min(tall - .15, aimY));
+    const distance = Math.hypot(Math.max(0, horizontal - zombieRadius(zombie)), y - origin.y);
+    return { zombie, dx, dz, horizontal, y, aimY, distance, tall };
+  }).filter(hit => hit.distance <= stats.range && hit.aimY >= -.15 && hit.aimY <= hit.tall + .15 &&
     (hit.horizontal < .01 || (hit.dx * forward.x + hit.dz * forward.z) / hit.horizontal >= Math.cos(stats.arc)))
     .sort((a, b) => a.distance - b.distance);
 
@@ -41,12 +42,13 @@ export function resolveMelee(state: GameState, player: Player): void {
   for (const hit of candidates) {
     const dy = hit.y - origin.y, distance = Math.hypot(hit.dx, dy, hit.dz) || .001;
     const direction = { x: hit.dx / distance, y: dy / distance, z: hit.dz / distance };
-    if (raycastBoxes(state.level, origin, direction, Math.max(0, distance - config.zombie.radius * .5)) !== null) continue;
-    damageZombie(state, hit.zombie, stats.damage);
+    if (raycastBoxes(state.level, origin, direction, Math.max(0, distance - zombieRadius(hit.zombie) * .5)) !== null) continue;
+    damageZombie(state, hit.zombie, stats.damage, { from: player, leg: hit.aimY < hit.tall * 0.35 });
     hit.zombie.attackCooldown = Math.max(hit.zombie.attackCooldown, player.weapon === 'bat' ? .65 : .3);
     if (hit.horizontal > .01) {
-      const pushed = resolveCircle(state.level, hit.zombie.x + hit.dx / hit.horizontal * stats.push,
-        hit.zombie.z + hit.dz / hit.horizontal * stats.push, config.zombie.radius, 0, config.zombie.height);
+      const brute = hit.zombie.kind === 'brute' ? 0.3 : 1;
+      const pushed = resolveCircle(state.level, hit.zombie.x + hit.dx / hit.horizontal * stats.push * brute,
+        hit.zombie.z + hit.dz / hit.horizontal * stats.push * brute, zombieRadius(hit.zombie), 0, hit.tall);
       hit.zombie.x = pushed.x; hit.zombie.z = pushed.z;
     }
     state.points[player.id] = Math.min(Number.MAX_SAFE_INTEGER, state.points[player.id] +

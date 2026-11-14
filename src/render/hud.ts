@@ -7,7 +7,7 @@ import { ITEMS } from '../game/items';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
-import { floorTitle, goesDown, isDescent, stopAt, stops, wavesOnFloor } from '../game/tower';
+import { floorTitle, goesDown, isDescent, onFoot, stopAt, stops, wavesOnFloor } from '../game/tower';
 import { zombiesInWave } from '../game/waves';
 import { objectiveMarkers } from '../game/objectives';
 import { clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
@@ -953,9 +953,9 @@ export function createHud(menu: Menu): Hud {
       age = 0.5;
     } else if (waves.phase === 'lift') {
       const down = goesDown(state.floor, state.floor + 1);
-      eyebrow = down ? 'THE WAY DOWN' : 'THE WAY UP';
-      title = isDescent(state.floor) ? 'FREIGHT LIFT READY' : 'ELEVATOR READY';
-      detail = down ? 'Step inside to go down' : 'Step inside to go up';
+      eyebrow = onFoot(state.floor) ? 'ON FOOT' : down ? 'THE WAY DOWN' : 'THE WAY UP';
+      title = onFoot(state.floor) ? 'THE WAY ON' : isDescent(state.floor) ? 'FREIGHT LIFT READY' : 'ELEVATOR READY';
+      detail = onFoot(state.floor) ? 'Everyone through the gate to go on' : down ? 'Step inside to go down' : 'Step inside to go up';
       color = COLOR.good;
       age = 0.5;
     } else if (waves.phase === 'ride') {

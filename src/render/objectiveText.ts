@@ -1,7 +1,10 @@
 import { bindings, keyLabel } from '../client/bindings';
 import { charging, inArea } from '../game/objectives';
 import type { GameState, Player } from '../game/state';
-import { actOf, isDescent, ROOF } from '../game/tower';
+import { actOf, isDescent, onFoot, ROOF } from '../game/tower';
+
+// What the way on is called: a gate in the prologue, a lift after.
+const exit = (state: GameState) => (onFoot(state.floor) ? 'the gate' : 'the elevator');
 
 // The words the HUD uses for the floor's objective.
 
@@ -19,7 +22,7 @@ export function objectiveProgress(state: GameState): string | null {
   const objective = state.level.objective;
   if (!objective || state.objective.done) return null;
   if (objective.kind === 'breakers') return `Breakers ${state.objective.thrown.filter((tick) => tick >= 0).length} of ${objective.panels.length}`;
-  if (objective.kind === 'carry') return `Lamp cases ${state.objective.items.filter((item) => item.delivered).length} of ${objective.items.length}`;
+  if (objective.kind === 'carry') return `${objective.label}s ${state.objective.items.filter((item) => item.delivered).length} of ${objective.items.length}`;
   return null;
 }
 
@@ -37,6 +40,7 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
     const left = objective.seconds - state.objective.charge;
     if (objective.kind === 'signal') return { title: 'Hold out for the helicopter', detail: 'Lights on. It is on its way', timer: left, total: objective.seconds };
     const inside = state.players.some((each) => each.health > 0 && inArea(each, objective.room));
+    if (onFoot(state.floor)) return { title: `Hold ${objective.roomName.toLowerCase()}`, detail: inside ? 'The van is warming. Cover the survivors' : 'Get back to the forecourt', timer: left, total: objective.seconds };
     return {
       title: `Hold ${objective.roomName.toLowerCase()}`,
       detail: charging(state) ? (inArea(player, objective.room) ? 'Charging. Stay in the room' : 'Charging while someone holds the room') : inside ? 'Charging' : 'Charging paused. Get back in the room',
@@ -48,16 +52,18 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
   switch (objective.kind) {
     case 'keycard': {
       const shut = state.locks.filter((lock) => !lock.open).length;
-      return { title: `Find the ${objective.label.toLowerCase()}`, detail: shut > 0 ? 'Locked doors open for points' : 'Check the offices' };
+      return { title: `Find the ${objective.label.toLowerCase()}`, detail: onFoot(state.floor) ? 'Search the street' : shut > 0 ? 'Locked doors open for points' : 'Check the offices' };
     }
     case 'breakers':
-      return { title: 'Throw the breakers', detail: `${objectiveProgress(state) ?? ''}   ·   The elevator has no power` };
+      return { title: `Throw the ${objective.label.toLowerCase()}`, detail: `${objectiveProgress(state) ?? ''}   ·   ${onFoot(state.floor) ? 'The barrier is down' : 'The elevator has no power'}` };
     case 'charge':
-      return { title: `Start the charger in ${objective.roomName.toLowerCase()}`, detail: 'They will come while it charges' };
+      return onFoot(state.floor)
+        ? { title: 'Start the delivery van', detail: 'They will come while it warms up' }
+        : { title: `Start the charger in ${objective.roomName.toLowerCase()}`, detail: 'They will come while it charges' };
     case 'carry':
       return player.carrying >= 0
-        ? { title: 'Load the case at the elevator', detail: `${keyLabel(bindings.fire)} puts it down and brings the gun up` }
-        : { title: 'Bring the lamp cases to the elevator', detail: objectiveProgress(state) ?? '' };
+        ? { title: `Load the ${objective.label.toLowerCase()} at ${exit(state)}`, detail: `${keyLabel(bindings.fire)} puts it down and brings the gun up` }
+        : { title: `Bring the ${objective.label.toLowerCase()}s to ${exit(state)}`, detail: objectiveProgress(state) ?? '' };
     case 'signal':
       return objective.style === 'flares'
         ? { title: 'Throw the signal flares', detail: 'The flare box is on the groundskeeper\'s shed' }
@@ -71,9 +77,9 @@ export function objectivePrompt(state: GameState, kind: string): string | null {
   switch (kind) {
     case 'objective': return `Take the ${objective?.label.toLowerCase() ?? 'item'}`;
     case 'breaker': return 'Throw the breaker';
-    case 'device': return objective?.kind === 'signal' ? (objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights') : 'Start the charger';
-    case 'case': return 'Pick up the lamp case';
-    case 'deliver': return 'Load the lamp case';
+    case 'device': return objective?.kind === 'signal' ? (objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights') : onFoot(state.floor) ? 'Start the delivery van' : 'Start the charger';
+    case 'case': return `Pick up the ${objective?.label.toLowerCase() ?? 'case'}`;
+    case 'deliver': return `Load the ${objective?.label.toLowerCase() ?? 'case'}`;
     default: return null;
   }
 }
@@ -81,12 +87,12 @@ export function objectivePrompt(state: GameState, kind: string): string | null {
 // The cleared banner's line under the title.
 export function clearedDetail(state: GameState): string {
   const objective = state.level.objective;
-  if (state.objective.done || !objective) return 'The elevator is opening';
+  if (state.objective.done || !objective) return `${onFoot(state.floor) ? 'The gate is' : 'The elevator is'} opening`;
   switch (objective.kind) {
     case 'keycard': return 'Find the keycard to wake the elevator';
-    case 'breakers': return 'Throw the breakers to power the elevator';
+    case 'breakers': return `Throw the ${objective.label.toLowerCase()} to power ${exit(state)}`;
     case 'charge': return `Start the charger in ${objective.roomName.toLowerCase()}`;
-    case 'carry': return 'Bring the lamp cases to the elevator';
+    case 'carry': return `Bring the ${objective.label.toLowerCase()}s to ${exit(state)}`;
     case 'signal': return objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights';
   }
 }
@@ -99,6 +105,9 @@ export function partBanner(state: GameState): { eyebrow: string; title: string; 
     return objective.style === 'flares'
       ? { eyebrow: 'DAYBREAK', title: 'AIR AMBULANCE DOWN', detail: 'Everyone into the smoke' }
       : { eyebrow: 'THE ROOF', title: 'HELICOPTER DOWN', detail: 'Everyone onto the helipad' };
+  }
+  if (onFoot(state.floor)) {
+    return { eyebrow: 'THE ROAD IN', title: objective.part.toUpperCase(), detail: 'The gate opens once the street is clear' };
   }
   if (isDescent(state.floor)) {
     return { eyebrow: actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail: 'The freight lift opens once the floor is clear' };

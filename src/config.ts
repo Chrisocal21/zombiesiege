@@ -149,6 +149,15 @@ export const config = {
     // The roof, above the last stop: its storey number for the elevator ride, and its waves before
     // the helipad lights can be switched on.
     roof: { number: 14, name: 'Helipad', waves: 2 },
+    // The prologue, before the hospital: the floors with negative indexes, -2 then -1. The ambulance dies
+    // nine miles out and the crew fights in on foot, P01 to P05, a couple of miles at a time. `number` is unused out of doors, `mile` is how far out it is.
+    prelude: [
+      { number: 0, name: 'Breakdown', waves: 2, mile: 9 },
+      { number: 0, name: 'Roadside Station', waves: 3, mile: 7 },
+      { number: 0, name: 'Checkpoint', waves: 3, mile: 5 },
+      { number: 0, name: 'Commercial District', waves: 3, mile: 3 },
+      { number: 0, name: 'Final Push', waves: 4, mile: 1 },
+    ],
     // Act 2, the office tower: the floors after the roof in the run, reached going down by freight lift.
     descent: [
       { number: 44, name: 'Tower roof', waves: 2 },
@@ -220,6 +229,51 @@ export const config = {
     reachHeight: 1.0,
     // How long a body stays down before it is removed. Dead zombies block nothing.
     deathSeconds: 4,
+
+    // The kinds of infected. Each changes the plain walker's numbers. `size` scales the body and its
+    // hit boxes, `speed` multiplies the walking pace, `interval` is the seconds between swings, `range`
+    // how far a swing reaches, and `points` multiplies what a kill pays.
+    kinds: {
+      walker: { health: 75, speed: 1, damage: 10, size: 1, radius: 0.4, interval: 1, range: 1.3, firstDelay: 0.4, points: 1 },
+      runner: { health: 38, speed: 2, damage: 7, size: 0.96, radius: 0.36, interval: 0.7, range: 1.2, firstDelay: 0.25, points: 1.4 },
+      brute: { health: 340, speed: 0.62, damage: 30, size: 1.25, radius: 0.55, interval: 1.7, range: 1.8, firstDelay: 0.6, points: 4 },
+      screamer: { health: 55, speed: 0.95, damage: 8, size: 1, radius: 0.4, interval: 1, range: 1.3, firstDelay: 0.4, points: 2.5 },
+    },
+    // Shot in the legs for this much damage, a zombie goes down and crawls, slowly, with a low body.
+    legDamageToCrawl: 40,
+    crawlSpeed: 0.33,
+    crawlHeight: 0.7,
+    // A zombie further than sightRange from every player (flashlightSightRange if theirs is on) and not
+    // alerted by noise walks at unawareSpeed. A gunshot alerts every zombie within noiseRange for alertSeconds.
+    sightRange: 22,
+    flashlightSightRange: 34,
+    unawareSpeed: 0.75,
+    noiseRange: 32,
+    meleeNoiseRange: 8,
+    alertSeconds: 8,
+    // Within surroundRange of its target a zombie aims for its own spot on a ring round the player, so a
+    // crowd spreads out instead of queueing.
+    surroundRange: 4.5,
+    // A screamer that sees a player within screamRange stops and screams for screamSeconds. Every zombie
+    // within screamCallRadius is alerted and, for enrageSeconds, moves enrageSpeed times as fast, and
+    // reinforcements come in at the doors. It screams again after screamCooldown.
+    screamRange: 16,
+    screamSeconds: 1.6,
+    screamCallRadius: 32,
+    enrageSeconds: 7,
+    enrageSpeed: 1.45,
+    screamCooldown: 22,
+    screamReinforce: 2,
+    // A brute roars and charges at a player between chargeMin and chargeMax metres off, at chargeSpeed
+    // times its pace, for chargeSeconds, then not again for chargeCooldown.
+    chargeMin: 4,
+    chargeMax: 11,
+    chargeSpeed: 2.7,
+    chargeSeconds: 1.2,
+    chargeCooldown: 9,
+    // Ordinary walkers trip now and then: every stumbleEvery seconds one in three loses stumbleSeconds.
+    stumbleEvery: 11,
+    stumbleSeconds: 0.7,
   },
 
   waves: {

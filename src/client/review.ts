@@ -1,4 +1,4 @@
-import { createGameState, type GameState, type WavePhase } from '../game/state';
+import { createGameState, type GameState, type WavePhase, type ZombieKind } from '../game/state';
 import { boardBox, closeGate } from '../game/doors';
 import { spawnZombie } from '../game/zombies';
 import { enterLevel } from '../game/state';
@@ -74,7 +74,7 @@ export function installReview(context: ReviewContext): void {
     place(options: {
       x: number; y?: number; z: number; yaw: number; pitch?: number; aim?: boolean; weapon?: WeaponId;
       gate?: boolean; boarded?: number[]; phase?: 'entry' | 'prep' | 'active'; wave?: number; timer?: number;
-      zombies?: [number, number, number?][]; health?: number; ammo?: number; fire?: boolean; lunge?: boolean; floor?: number; shotgun?: boolean; points?: number; banner?: boolean; reload?: number; menu?: 'character' | 'settings' | 'controls' | 'main';
+      zombies?: [number, number, number?, string?, string?, number?][]; health?: number; ammo?: number; fire?: boolean; lunge?: boolean; floor?: number; shotgun?: boolean; points?: number; banner?: boolean; reload?: number; menu?: 'character' | 'settings' | 'controls' | 'main';
       // Objective dressing: breakers thrown, charge filled (seconds), a case in hand, cases delivered, the light.
       thrown?: number; charge?: number; carrying?: number; delivered?: number; flashlight?: boolean; stage?: WavePhase;
     }) {
@@ -102,9 +102,15 @@ export function installReview(context: ReviewContext): void {
       if (state.waves.phase === 'prep') state.waves.timer = options.timer ?? 18;
       if (state.waves.phase === 'active') { state.waves.toSpawn = 6; state.waves.startedTick = state.tick - (options.banner ? 70 : 6000); }
       if (options.reload !== undefined) player.reloadLeft = options.reload;
-      for (const [x, z, yaw] of options.zombies ?? []) {
-        spawnZombie(state, x, z, null);
+      for (const [x, z, yaw, kind, look, flags] of options.zombies ?? []) {
+        spawnZombie(state, x, z, null, (kind ?? 'walker') as ZombieKind);
         const zombie = state.zombies[state.zombies.length - 1];
+        if (look) zombie.look = look;
+        // 1 crawling, 2 mid-scream or roar, 4 staggered.
+        if (flags && flags & 1) zombie.crawling = true;
+        if (flags && flags & 2) zombie.cryTick = state.tick - 40;
+        if (flags && flags & 4) zombie.staggerUntil = state.tick + 60;
+        if (flags && flags & 8) { zombie.dead = true; zombie.deadLeft = 3.2; zombie.health = 0; }
         zombie.yaw = yaw ?? Math.atan2(x - player.x, z - player.z);
         // Frozen mid-swing, so the arms are out in front of it.
         if (options.lunge) zombie.lastAttackTick = state.tick - 33;
@@ -128,7 +134,7 @@ export function installReview(context: ReviewContext): void {
     // ticks run with one held input.
     start(floor: number) {
       const state = createGameState(context.level);
-      if (floor > 0) startOnFloor(state, floor);
+      if (floor !== 0) startOnFloor(state, floor);
       context.menu.close();
       context.replace(state);
     },

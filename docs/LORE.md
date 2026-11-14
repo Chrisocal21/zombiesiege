@@ -85,6 +85,23 @@ How to work with Chris:
 
 The acts switch between **hold** (stay in one spot and fight off waves) and **move** (fight from A to B). That stops every act being "survive in a room." Nightfall climbs and holds, Descent moves, The Vault holds, and Daybreak moves and then holds. New places should keep the switch going.
 
+### Prologue — The Road to Northline (five levels before the hospital) · levels built
+
+From the master campaign handoff (Nov 14). The crew's ground ambulance runs out of fuel after the day's earlier rescues, **nine miles from Northline General**, and they fight in on foot, about two miles a level. It ends on the **Operation 001: Nightfall** title.
+
+| Level | Mile | What it is | Objective | Waves |
+|---|---|---|---|---|
+| P01 Breakdown | 9 | Country road. Quiet at first: look round for a radio. The hospital's call comes through, then the dead come from the farm tracks | Find the police radio | 2 |
+| P02 Roadside Station | 7 | A petrol station with no fuel. The alarm draws the dead. Survivors are trapped, and a delivery van is their way out | Hold the forecourt while the van warms up (45 s) | 3 |
+| P03 Checkpoint | 5 | The army's evacuation screening point. The infected turned inside the tents | Throw three gate controls | 3 |
+| P04 Commercial District | 3 | Shops and restaurants, with a row of buildings down the middle so there are a north lane and a south lane. No clock | Find the kitchen's service key in the back alley | 3 |
+| P05 Final Push | 1 | The last mile of old town, cars choking the road | Switch three cabinets to raise the hospital access barrier | 4 |
+
+- Built as floors -5 to -1, so the hospital keeps its numbers. The way on is a steel gate on foot, with no lift ride. P05's gate goes down to the hospital garage.
+- **In the build (Nov 14):** all five are playable from Level Select (Prologue tab). A new game still starts at the hospital garage with the opening scene. **Not built from the handoff:** the optional restaurant rescue, the survivors' van escaping on screen, branching story outcomes, the radio and broadcast lines, the evacuation map.
+- The levels reuse the street kit, so they look alike. The five objectives are the build's own stand-ins for the handoff's beats.
+- The hand-off's doc and the build still disagree on: Acts 2 to 4 (built as lift floors, not a stairwell descent), where Brutes and Screamers first appear, and a full-team wipe restarting the whole run (the build restarts the floor).
+
 ### Act 1 — Nightfall (the hospital) · built
 
 - The crew drives a ground ambulance in to rescue survivors and is overrun in the parking garage.
@@ -530,6 +547,7 @@ Real-world things worth looking up to ground the story. None of this is decided.
 ## Proposed
 
 - **Why the crew is on foot at the hospital:** their ground ambulance ran out of fuel 9 miles out. They had to fight the rest of the way in on foot, and that is why they end up at the hospital's parking garage at all. It sits under the Act 1 line about the crew driving in and being overrun, and replaces "drove in" with "drove most of the way, then fought in".
+- **Built (Nov 14):** accepted and built as the Prologue, two levels, Dead Stop and The Approach. The text below is the original proposal.
 - **A bonus level for it:** "The Approach", the run from the dead ambulance to the hospital. It is a move level, built when the street is mapped in more detail, and it is the place to set up fights: choke points, cars, shopfronts and rooftops to fight from. It leads straight into the garage, so Level 0 stays the first hold. Not built yet.
 - **Where it shows now:** the opening scene outside the garage currently reads "The crew drove in to bring survivors out." If this is accepted, that line becomes something like "The ambulance died 9 miles out. They fought the rest of the way."
 
@@ -559,3 +577,4 @@ Real-world things worth looking up to ground the story. None of this is decided.
 - **Nov 3, 2026:** Proposed that the crew's ambulance ran out of fuel 9 miles out, which is why they are on foot at the hospital, with the run in as a bonus level once the street is mapped.
 - **Nov 10, 2026:** Went through the build and wrote down every piece of story it shows: the opening captions, title and menu words, every sign on every floor, the street, the shops, the vehicles and the gear. Brought the Act 1 table in line with the real floors (Admissions, Pharmacy and laboratories, Surgery, Intensive care, the roof at level 14) and the loadout in line with what's built. Listed where the build and the story disagree, new questions the build raises, and research leads, ready for a research pass before more levels.
 - **Nov 13, 2026:** Built the rest of the campaign as levels, ahead of the story: the tower roof and six office floors (Act 2), the tunnel, pharmacy, lab and vault (Act 3), and four outdoor blocks ending at the park (Act 4). Floors, names and objectives here are the build's own and are listed above as in the build. The park extraction is red flares and smoke in place of a pad. Added questions 11 to 13 (stairs or lift, what links the street blocks, the scientist at the vault). Nothing in Acts 2 to 4 has any story delivered yet: no radio, notes or scientist.
+- **Nov 14, 2026:** Received the master campaign handoff (12 acts, five-level prologue). Built the prologue as five levels, P01 to P05, Breakdown, Roadside Station, Checkpoint, Commercial District and Final Push. Acts 5 to 12 are working expansion only and not built.

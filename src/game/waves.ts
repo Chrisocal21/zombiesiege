@@ -7,23 +7,56 @@ import { levelForFloor } from '../levels';
 import { charging, dropCase, everyoneAboard } from './objectives';
 import { createPlayer, enterLevel, spawnPoint, type GameState, type Player } from './state';
 import { LAST_FLOOR, ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower';
+import type { ZombieKind } from './state';
 import { guaranteeAmmo } from './weapons';
-import { aliveZombies, spawnZombie } from './zombies';
+import { aliveOfKind, aliveZombies, spawnZombie } from './zombies';
 
 export function isTopFloor(state: GameState): boolean {
   return state.floor >= ROOF;
 }
 
+// A repeatable stand-in for chance, so the server and a browser agree on who comes through the door.
+function chance(seed: number): number {
+  return (Math.sin(seed * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5;
+}
+
+// What kind comes next. Runners join from the second wave, the occasional brute and screamer from
+// the later floors, and the last wave of a floor is led by a brute or a screamer.
+function kindForSpawn(state: GameState, leader: boolean): ZombieKind {
+  const waves = state.waves;
+  const floor = state.floor;
+  if (floor <= 0) return waves.number >= 4 && chance(state.nextZombieId) < 0.12 ? 'runner' : 'walker';
+  const last = waves.number >= wavesOnFloor(floor);
+  if (leader && last && floor >= 2) {
+    if (floor % 2 === 0 && aliveOfKind(state, 'brute') === 0) return 'brute';
+    if (aliveOfKind(state, 'screamer') === 0) return 'screamer';
+  }
+  const roll = chance(state.nextZombieId * 1.7 + floor);
+  if (waves.number >= 3 && floor >= 3 && roll < 0.05 && aliveOfKind(state, 'brute') === 0) return 'brute';
+  if (waves.number >= 2 && floor >= 2 && roll > 0.955 && aliveOfKind(state, 'screamer') === 0) return 'screamer';
+  const runners = Math.min(0.34, 0.08 + 0.05 * (waves.number - 1) + 0.02 * floor);
+  return chance(state.nextZombieId * 0.37 + 5) < runners ? 'runner' : 'walker';
+}
+
 // One zombie in through the next open door, if any door is open.
-function spawnAtDoor(state: GameState, level: Level): void {
+function spawnAtDoor(state: GameState, level: Level, leader = false, kind?: ZombieKind): void {
   const waves = state.waves;
   // Caged doors still get their share: the zombies come down the passage and are held at the cage.
   if (level.doors.length > 0) {
     const door = level.doors[waves.spawnIndex % level.doors.length];
     const spawn = doorwaySpawn(door, (waves.spawnIndex * 0.381966) % 1);
-    spawnZombie(state, spawn.x, spawn.z, spawn.entry);
+    spawnZombie(state, spawn.x, spawn.z, spawn.entry, kind ?? kindForSpawn(state, leader));
   }
   waves.spawnIndex++;
+}
+
+// Zombies a screamer called in come through the doors, one every so often.
+function callReinforcements(state: GameState, level: Level): void {
+  const waves = state.waves;
+  if (waves.reinforce <= 0 || state.tick % 40 !== 0) return;
+  if (waves.phase !== 'active' && waves.phase !== 'hold' && waves.phase !== 'evac') { waves.reinforce = 0; return; }
+  waves.reinforce--;
+  if (aliveZombies(state) < 28) spawnAtDoor(state, level, false, 'walker');
 }
 
 // While holding out, they keep coming, a few at a time.
@@ -51,6 +84,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
 
   // Nothing happens until the players are in and the gate is closed, and nothing after the end.
   if (waves.phase === 'entry' || waves.phase === 'won') return;
+  callReinforcements(state, level);
 
   // Arriving on a new floor, the elevator doors close again behind the players.
   if (state.lift.open && waves.phase !== 'lift' && (state.tick - state.lift.changedTick) / config.ticksPerSecond > config.elevator.arrivalOpenSeconds) {
@@ -128,6 +162,12 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.phase === 'lift') {
     if (everyoneInCab(state)) {
       closeLift(state);
+      // In the prologue the way on is a gate, not a lift: everyone goes straight through to the next floor.
+      if (state.floor < 0) {
+        state.floor++;
+        startFloor(state, true);
+        return;
+      }
       // The last floor built so far: the run ends here until the next one exists.
       if (state.floor >= LAST_FLOOR) {
         waves.phase = 'won';
@@ -159,8 +199,8 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.toSpawn > 0) {
     waves.spawnTimer -= dt;
     if (waves.spawnTimer <= 0) {
-      // Zombies only come through the doors that are still open.
-      spawnAtDoor(state, level);
+      // Zombies only come through the doors that are still open. The first of the wave leads it.
+      spawnAtDoor(state, level, waves.toSpawn === zombiesInWave(state.floor, waves.number));
       waves.toSpawn--;
       waves.spawnTimer = config.waves.secondsBetweenSpawns;
     }

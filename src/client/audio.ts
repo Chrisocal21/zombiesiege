@@ -11,6 +11,8 @@ import { settings } from './settings';
 interface ZombieMemory {
   attackTick: number;
   groanIn: number;
+  // The last scream or roar heard from it.
+  cryTick: number;
 }
 
 export interface Audio {
@@ -232,11 +234,15 @@ export function createAudio(): Audio {
     if (kill) burst(out, t + 0.05, 0.3, 'lowpass', 500, 90, 0.5);
   }
 
-  function groan(pan: number, gain: number): void {
+  // Each kind has its own voice: the runner's is short and high, the brute's long and low.
+  const VOICE = { walker: { pitch: 1, length: 1 }, runner: { pitch: 1.7, length: 0.55 }, brute: { pitch: 0.52, length: 1.5 }, screamer: { pitch: 1.25, length: 0.9 } };
+
+  function groan(pan: number, gain: number, kind: 'walker' | 'runner' | 'brute' | 'screamer' = 'walker'): void {
     const ctx = context!;
     const t = ctx.currentTime;
-    const length = 0.9 + Math.random() * 0.7;
-    const pitch = 62 + Math.random() * 38;
+    const voice = VOICE[kind];
+    const length = (0.9 + Math.random() * 0.7) * voice.length;
+    const pitch = (62 + Math.random() * 38) * voice.pitch;
     const out = output(pan, gain);
 
     const osc = ctx.createOscillator();
@@ -272,6 +278,25 @@ export function createAudio(): Audio {
     wobble.stop(t + length + 0.05);
     // Breath over the top.
     burst(out, t, length, 'bandpass', 900, 500, 0.12, 1.5);
+  }
+
+  // The screamer's call: a long, rising shriek that carries across the whole floor.
+  function shriek(pan: number, gain: number): void {
+    const t = context!.currentTime;
+    const out = output(pan, gain);
+    tone(out, t, 1.55, 'sawtooth', 560, 1500, 0.5, 0.06);
+    tone(out, t, 1.55, 'square', 840, 2250, 0.16, 0.09);
+    tone(out, t + 0.05, 1.4, 'sine', 1700, 2600, 0.12, 0.1);
+    burst(out, t, 1.5, 'bandpass', 2200, 3400, 0.3, 2);
+  }
+
+  // The brute's roar before it charges: low and chesty, with a rumble under it.
+  function roar(pan: number, gain: number): void {
+    const t = context!.currentTime;
+    const out = output(pan, gain);
+    tone(out, t, 0.85, 'sawtooth', 92, 46, 0.6, 0.04);
+    tone(out, t, 0.85, 'square', 46, 38, 0.35, 0.05);
+    burst(out, t, 0.8, 'lowpass', 1000, 180, 0.55);
   }
 
   function swing(pan: number, gain: number): void {
@@ -640,19 +665,25 @@ export function createAudio(): Audio {
         present.add(zombie.id);
         let memory = zombies.get(zombie.id);
         if (!memory) {
-          memory = { attackTick: zombie.lastAttackTick, groanIn: Math.random() * 3 };
+          memory = { attackTick: zombie.lastAttackTick, groanIn: Math.random() * 3, cryTick: zombie.cryTick };
           zombies.set(zombie.id, memory);
         }
         if (watching && !zombie.dead) {
           const where = place(player, zombie.x, zombie.z);
           if (zombie.lastAttackTick !== memory.attackTick && zombie.lastAttackTick >= 0) swing(where.pan, 0.8 * where.gain);
+          // A scream or a roar is heard from anywhere on the floor, though quieter from far off.
+          if (zombie.cryTick >= 0 && zombie.cryTick !== memory.cryTick) {
+            if (zombie.kind === 'screamer') shriek(where.pan, Math.max(0.45, 1.1 * where.gain));
+            else if (zombie.kind === 'brute') roar(where.pan, Math.max(0.3, 1.0 * where.gain));
+          }
           memory.groanIn -= dt;
           if (memory.groanIn <= 0) {
-            memory.groanIn = 2.5 + Math.random() * 4;
-            if (where.gain > 0.12) groan(where.pan, 0.55 * where.gain);
+            memory.groanIn = (2.5 + Math.random() * 4) * (zombie.kind === 'runner' ? 0.6 : 1);
+            if (where.gain > 0.12) groan(where.pan, 0.55 * where.gain, zombie.kind);
           }
         }
         memory.attackTick = zombie.lastAttackTick;
+        memory.cryTick = zombie.cryTick;
       }
       for (const id of zombies.keys()) if (!present.has(id)) zombies.delete(id);
     },

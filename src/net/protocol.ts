@@ -58,7 +58,7 @@ export function readClientMessage(data: unknown, playerId: number): ReadMessage 
   }
   if (message?.type === 'restart') {
     const floor = message.floor;
-    return typeof floor === 'number' && Number.isInteger(floor) && floor >= 0 && floor <= TOP_FLOOR ? { type: 'restart', floor } : null;
+    return typeof floor === 'number' && Number.isInteger(floor) && floor >= -5 && floor <= TOP_FLOOR ? { type: 'restart', floor } : null;
   }
   if (message?.type !== 'input' || typeof message.seq !== 'number' || typeof message.input !== 'object' || !message.input) return null;
   const raw = message.input;
