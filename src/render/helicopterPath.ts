@@ -32,6 +32,13 @@ export function helicopterPose(state: GameState): HelicopterPose {
   if (objective?.kind !== 'signal') return hidden;
   const phase = state.waves.phase;
   const pad = objective.pad;
+  // The flight out: straight up off the pad, then away over the city.
+  if (phase === 'flight' && state.level.flight) {
+    const e = state.level.flight.seconds - state.waves.timer;
+    const lift = smooth(clamp(e / 4));
+    const away = Math.max(0, e - 3);
+    return { visible: true, x: pad.x + away * away * 2.2 + away * 6, y: 16 * lift + away * 3, z: pad.z - away * 1.5, yaw: -Math.PI / 2, pitch: 0.2 * clamp(away / 3), near: clamp(1 - e / 20), landed: false };
+  }
   if (phase === 'evac' || phase === 'won') return { visible: true, x: pad.x, y: 0, z: pad.z, yaw: LANDING_YAW, pitch: 0, near: 1, landed: true };
   if (phase !== 'hold') return hidden;
 

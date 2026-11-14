@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
+import { CREW } from './voices';
 import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor } from './streetKit';
 import { DOOR_HEIGHT, stationBoxes } from './wardKit';
 
@@ -21,9 +22,9 @@ const BARRIER = '#8a8d90';
 const SANDBAG = '#8a7d5a';
 const ARMY = '#4a5a3a';
 
-const doors = [streetDoor(-16, -9.25, 0, 1), streetDoor(6, -9.25, 0, 1), streetDoor(-6, 9.25, 0, -1), streetDoor(16, 9.25, 0, -1), streetDoor(30.25, 0, -1, 0)];
+const doors = [streetDoor(-16, -9.25, 0, 1), streetDoor(6, -9.25, 0, 1), streetDoor(-6, 9.25, 0, -1), streetDoor(16, 9.25, 0, -1)];
 
-const elevator: Elevator = { position: { x: -30.25, y: 0, z: 0 }, normal: { x: 1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
+const elevator: Elevator = { position: { x: 30.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -24, y: 1.25, z: 8.95 }, normal: { x: 0, z: -1 } },
@@ -40,6 +41,7 @@ const lights: LevelLight[] = [
 export const barricades: Level = {
   name: 'The barricades',
   theme: 'street',
+  exitGate: true,
   atmosphere: { fog: '#383c46', fogNear: 14, fogFar: 70, ambient: 1.5, sky: { horizon: '#6a5a66', zenith: '#1a2236', stars: 0.3 } },
   boxes: [
     ground(-30, 30, -6, 6, '#2a2d32', 'slab'),
@@ -47,8 +49,8 @@ export const barricades: Level = {
     ground(-30, 30, 6, 9, '#7d7f80'),
     ...frontage('x', -9.25, -30.5, 30.5, doors, FRONT_HEIGHT, STONE),
     ...frontage('x', 9.25, -30.5, 30.5, doors, FRONT_HEIGHT, BRICK),
-    ...frontage('z', -30.25, -9, 9, [elevator], FRONT_HEIGHT, STONE),
-    ...frontage('z', 30.25, -9, 9, doors, FRONT_HEIGHT, BRICK),
+    ...frontage('z', -30.25, -9, 9, [], FRONT_HEIGHT, STONE),
+    ...frontage('z', 30.25, -9, 9, [elevator], FRONT_HEIGHT, BRICK),
     ...stationBoxes(stations),
 
     // The first barricade line, torn open in the middle and near the north kerb.
@@ -82,7 +84,7 @@ export const barricades: Level = {
   signs: [
     { text: 'CHECKPOINT 4', sub: 'ALL TRAFFIC STOP', background: '#6b1b1b', position: { x: -12, y: 4.2, z: -8.96 }, rotation: 0, width: 3.0, height: 0.9 },
     { text: 'NO ENTRY', sub: 'RESTRICTED ZONE', background: '#6b4a12', position: { x: 22, y: 4.0, z: 8.96 }, rotation: Math.PI, width: 2.6, height: 0.8 },
-    { text: 'TRANSIT LIFT', sub: 'NO POWER  /  GENERATORS', background: '#5b1b1b', position: { x: -29.96, y: 3.0, z: 3.6 }, rotation: Math.PI / 2, width: 2.4, height: 0.5 },
+    { text: 'EAST GATE', sub: 'NO POWER  /  GENERATORS', background: '#5b1b1b', position: { x: 29.96, y: 3.0, z: 3.6 }, rotation: -Math.PI / 2, width: 2.4, height: 0.5 },
   ],
   // The three generator trailers' switchgear faces the road: one on the north side in the west, one
   // on the south side in the middle, and one on the north side in the east.
@@ -96,6 +98,26 @@ export const barricades: Level = {
       { position: { x: 14, y: 1.45, z: -6.2 }, normal: { x: 0, z: 1 } },
     ],
   },
+  // A run: they come in behind the crew all the way along the three generators.
+  flow: { kind: 'run', every: 3.4, max: 14 },
+  notes: [
+    {
+      position: { x: -28, y: 0.92, z: -7.6 },
+      what: 'evacuation map',
+      title: 'Evacuation map',
+      lines: [
+        'ZONE 4  /  EVACUATION ROUTES',
+        'Assembly point: the outskirts camp, east. All roads past this line are closed to civilians.',
+        'Air ambulance pickups only where flares are lit. Public park, east of the checkpoint.',
+        'Do not stop on the route.',
+      ],
+    },
+  ],
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'The barricades. Whoever held this line did not hold it.' },
+    { on: 'start', at: 7.5, speaker: CREW, text: 'Three generators along the road. Throw all three and the gate has power.', seconds: 6 },
+    { on: 'done', at: 0.6, speaker: CREW, text: 'Floodlights are up, gate is live. The park is next.' },
+  ],
   navBounds: { minX: -35, maxX: 35, minZ: -14, maxZ: 14 },
   ramp: null,
   barricadeBars: [

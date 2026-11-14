@@ -185,6 +185,8 @@ export interface Boss {
 
 // A short scene when step `after` of the floor is done: the rules stop, the camera takes over, and
 // the scientist walks from `from` to `to`. The shots and captions are for the renderer.
+export interface Flight { seconds: number; shots: Scene['shots']; captions: Scene['captions'] }
+
 export interface Scene {
   after: number;
   seconds: number;
@@ -328,6 +330,8 @@ export interface Level {
   notes?: Note[];
   boss?: Boss;
   scene?: Scene;
+  // The flight out, after the last floor's helicopter lifts: a camera film with captions, then the run ends.
+  flight?: Flight;
   ramp: Ramp | null;
   // The area zombies find their way around walls in, for floors with rooms.
   navBounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null;

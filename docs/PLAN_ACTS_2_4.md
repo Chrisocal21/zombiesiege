@@ -312,3 +312,30 @@ Each phase ends with a stop for you to compact, as usual.
 - The car battery is drawn as the steel case. A proper battery model is a small art job.
 - The lock prices on the sweep floors (250, 500) rely on points from the sleepers and from earlier floors. It needs play-testing.
 - Floor 20's monitor is a drawn overlay in the corner, not a screen in the room.
+
+---
+
+## 10. Phase 4b: what was built (Act 4)
+
+**Gates replace the transit lifts (DECIDE D).** Main Street, the market and the barricades have `exitGate` and the exit moved to the **east** end, so the crew starts at the west and runs east. Everyone through the open gate goes straight on, with no cab and no ride.
+
+- Arriving from the vault's lift, the crew steps out at the start of Main Street, not in a cab.
+- The banners and briefs say "the gate" on these floors.
+
+**All three blocks are run floors:**
+
+| Block | Run | Steps | Story |
+|---|---|---|---|
+| Main Street | every 3.6 s, max 12 | One gate-control box beside the east gate. No pass hunt | First daylight. The scientist's line about the shop route |
+| Market square | every 3 s, max 16 | The relay stand is now 30 s (was 55), then the gate | The pilot: "Find us somewhere flat." |
+| The barricades | every 3.4 s, max 14 | Three generators along the route, then the gate | Note: the army evacuation map (draft wording, in LORE) |
+
+**The Main Street shortcut.** Two barriers across the road and pavements, staggered (gap at the south, then at the north), make the road an S-bend. The north shop is a real room (6 sleepers, three dim lights, a counter and shelves) with doors either side of the barriers, about 6 m shorter than the road. `check-act4` measures both routes.
+
+**The flight out.** `Level.flight` (seconds, shots, captions) on the park. When everyone is aboard the new `flight` phase runs for 18 s: the helicopter lifts off and flies away, the camera takes three shots (from the ground, then high over the city, then wide to the sunrise) with letterbox and captions, then the run is won. Nobody can move during it. The captions are a pilot line, a broadcast naming Northline lost and "the river towns" newly hit, and "OUTSKIRTS CAMP / Safe. For now." **The town names and broadcast wording are draft.**
+
+**Open:**
+
+- The sunrise is the park's existing sky; the camera never leaves the park's own scenery (flat boxes for the city).
+- The scientist stands right beside the spawn on arrival and can block the first view for a moment.
+- The prologue's gate floors still say "The barrier is down" and use the old wording.

@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelBox, LevelLight, Station } from './types';
+import { BROADCAST, CREW, PILOT } from './voices';
 import { block, frontage, ground, streetDoor } from './streetKit';
 import { DOOR_HEIGHT, furniture, stationBoxes } from './wardKit';
 
@@ -95,6 +96,25 @@ export const park: Level = {
     pad: { x: 5, y: 0, z: 0 },
     padRadius: 5,
     seconds: 90,
+  },
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'The park. Flat ground at last. The flares are in the groundskeeper shed.' },
+    { on: 'start', at: 8, speaker: PILOT, text: 'We see the smoke when you light it. Hold the field and we will come down.', seconds: 6 },
+  ],
+  // The flight out, over the city at sunrise, and the run is over.
+  flight: {
+    seconds: 18,
+    shots: [
+      { from: 0, to: 5, start: { at: { x: -4, y: 1.7, z: 7 }, look: { x: 5, y: 3, z: 0 } }, end: { at: { x: -2, y: 2.4, z: 6 }, look: { x: 5, y: 14, z: 0 } } },
+      { from: 5, to: 11.5, start: { at: { x: 12, y: 24, z: 34 }, look: { x: 40, y: 20, z: -2 } }, end: { at: { x: 14, y: 30, z: 30 }, look: { x: 100, y: 28, z: -18 } } },
+      { from: 11.5, to: 18, start: { at: { x: 0, y: 70, z: 20 }, look: { x: -120, y: 26, z: -50 } }, end: { at: { x: 0, y: 80, z: 20 }, look: { x: -120, y: 34, z: -30 } } },
+    ],
+    captions: [
+      { from: 1, to: 5, speaker: PILOT, line: 'Everyone aboard. Lifting. Hold on.' },
+      { from: 5.5, to: 11, speaker: BROADCAST, line: 'Northline is lost. Outbreaks are now reported in the river towns. Do not return to the city.' },
+      { from: 11.5, to: 14.5, speaker: BROADCAST, line: 'Survivors are being received at the outskirts camp. Follow the signal east.' },
+      { from: 14.7, to: 17.6, title: 'OUTSKIRTS CAMP', line: 'Safe. For now.' },
+    ],
   },
   navBounds: { minX: -31, maxX: 31, minZ: -23, maxZ: 23 },
   ramp: null,

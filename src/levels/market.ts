@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
+import { CREW, PILOT } from './voices';
 import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor } from './streetKit';
 import { DOOR_HEIGHT, furniture, stationBoxes } from './wardKit';
 
@@ -24,7 +25,7 @@ const doors = [
   streetDoor(22.25, -7, -1, 0), streetDoor(22.25, 8, -1, 0),
 ];
 
-const elevator: Elevator = { position: { x: -22.25, y: 0, z: 0 }, normal: { x: 1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
+const elevator: Elevator = { position: { x: 22.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -21.95, y: 1.25, z: 8 }, normal: { x: 1, z: 0 } },
@@ -42,15 +43,16 @@ const stall = (x: number, z: number, color: string) => furniture(x, z, 3, 1.1, 1
 export const market: Level = {
   name: 'Market square',
   theme: 'street',
-  atmosphere: { fog: '#222a35', fogNear: 22, fogFar: 90, ambient: 1.25, sky: { horizon: '#2b3548', zenith: '#0a0f1c', stars: 0.6 } },
+  exitGate: true,
+  atmosphere: { fog: '#6a6e78', fogNear: 25, fogFar: 100, ambient: 1.4, sky: { horizon: '#e0a070', zenith: '#4a5f86', stars: 0.05 } },
   boxes: [
     ground(-22, 22, -16, 16, '#7d7f80'),
     // A band of road through the plaza, east to west.
     ground(-22, 22, -3, 3, '#2a2d32', 'slab'),
     ...frontage('x', -16.25, -22.5, 22.5, doors, FRONT_HEIGHT, SANDSTONE),
     ...frontage('x', 16.25, -22.5, 22.5, doors, FRONT_HEIGHT, BRICK),
-    ...frontage('z', -22.25, -16, 16, [elevator], FRONT_HEIGHT, STONE),
-    ...frontage('z', 22.25, -16, 16, doors, FRONT_HEIGHT, STONE),
+    ...frontage('z', -22.25, -16, 16, [], FRONT_HEIGHT, STONE),
+    ...frontage('z', 22.25, -16, 16, [...doors, elevator], FRONT_HEIGHT, STONE),
     ...stationBoxes(stations),
 
     // The fountain: a wide basin with a column.
@@ -81,7 +83,7 @@ export const market: Level = {
   signs: [
     { text: 'TOWN HALL', sub: 'MARKET SQUARE  /  CIVIC OFFICES', background: '#2c3a4d', position: { x: 0, y: 4.4, z: -15.96 }, rotation: 0, width: 4.2, height: 1.0 },
     { text: 'MARKET SQUARE', sub: 'SATURDAY MARKET  /  8 TO 2', background: '#6b4a12', position: { x: -9, y: 3.4, z: 15.96 }, rotation: Math.PI, width: 3.2, height: 0.8 },
-    { text: 'TRANSIT LIFT', sub: 'PASS ACCEPTED', background: '#1b5b4d', position: { x: -21.96, y: 3.0, z: 3.6 }, rotation: Math.PI / 2, width: 2.4, height: 0.5 },
+    { text: 'EAST GATE', sub: 'SIGNAL RELAY REQUIRED', background: '#5b1b1b', position: { x: 21.96, y: 3.0, z: 3.6 }, rotation: -Math.PI / 2, width: 2.4, height: 0.5 },
   ],
   // The radio relay on the town hall wall is what wakes the transit lift's signal. Start it and
   // hold the plaza in front of the hall while it climbs.
@@ -92,8 +94,15 @@ export const market: Level = {
     device: { position: { x: 0, y: 0, z: -15.95 }, normal: { x: 0, z: 1 } },
     room: { minX: -8, maxX: 8, minZ: -15.8, maxZ: -8 },
     roomName: 'Town hall steps',
-    seconds: 55,
+    seconds: 30,
   },
+  // A run: the side streets keep sending them the whole time, and the relay is a short stand.
+  flow: { kind: 'run', every: 3, max: 16 },
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'The square. Six side streets, and every one is pouring.' },
+    { on: 'start', at: 7.5, speaker: CREW, text: 'Relay is on the town hall wall. Thirty seconds on the steps and the gate gets its signal.', seconds: 6 },
+    { on: 'done', at: 0.6, speaker: PILOT, text: 'Got your signal. Find us somewhere flat, and keep moving.', seconds: 6 },
+  ],
   navBounds: { minX: -27, maxX: 27, minZ: -21, maxZ: 21 },
   ramp: null,
   barricadeBars: [

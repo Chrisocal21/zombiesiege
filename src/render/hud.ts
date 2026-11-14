@@ -8,7 +8,7 @@ import { CARD_SECONDS, cardFor } from '../game/notes';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import { flowOf, stepsOf, type GameState, type Player } from '../game/state';
-import { floorTitle, goesDown, isDescent, onFoot, stopAt, stops, wavesOnFloor } from '../game/tower';
+import { floorTitle, goesDown, isDescent, stopAt, stops, wavesOnFloor } from '../game/tower';
 import { zombiesInWave } from '../game/waves';
 import { objectiveMarkers } from '../game/objectives';
 import { arrivalDetail, clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
@@ -1120,9 +1120,10 @@ export function createHud(menu: Menu): Hud {
       age = 0.5;
     } else if (waves.phase === 'lift') {
       const down = goesDown(state.floor, state.floor + 1);
-      eyebrow = onFoot(state.floor) ? 'ON FOOT' : down ? 'THE WAY DOWN' : 'THE WAY UP';
-      title = onFoot(state.floor) ? 'THE WAY ON' : isDescent(state.floor) ? 'FREIGHT LIFT READY' : 'ELEVATOR READY';
-      detail = onFoot(state.floor) ? 'Everyone through the gate to go on' : down ? 'Step inside to go down' : 'Step inside to go up';
+      const gate = Boolean(state.level.exitGate);
+      eyebrow = gate ? 'ON FOOT' : down ? 'THE WAY DOWN' : 'THE WAY UP';
+      title = gate ? 'THE WAY ON' : isDescent(state.floor) ? 'FREIGHT LIFT READY' : 'ELEVATOR READY';
+      detail = gate ? 'Everyone through the gate to go on' : down ? 'Step inside to go down' : 'Step inside to go up';
       color = COLOR.good;
       age = 0.5;
     } else if (waves.phase === 'ride') {

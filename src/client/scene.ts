@@ -1,6 +1,9 @@
 import { config } from '../config';
 import type { GameState } from '../game/state';
 import type { Scene, Vec3 } from '../levels/types';
+
+// What the camera film needs of a scene: how long, the shots and the captions.
+export type Film = Pick<Scene, 'seconds' | 'shots' | 'captions'>;
 import type { IntroPose } from './intro';
 
 // A scene in a level (the vault opening): the camera follows the level's shots while the rules hold
@@ -11,14 +14,16 @@ const smooth = (t: number) => { t = Math.max(0, Math.min(1, t)); return t * t * 
 const mix = (a: Vec3, b: Vec3, t: number): Vec3 => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t });
 
 // The seconds into the scene, and the scene itself, while one plays.
-export function playing(state: GameState): { scene: Scene; t: number } | null {
+export function playing(state: GameState): { scene: Film; t: number } | null {
+  // The flight out at the end of the run.
+  if (state.waves.phase === 'flight' && state.level.flight) return { scene: state.level.flight, t: state.level.flight.seconds - state.waves.timer };
   const scene = state.level.scene;
   if (!state.scene || !scene) return null;
   return { scene, t: (state.tick - state.scene.startTick) / config.ticksPerSecond };
 }
 
 // Where the camera is at time t: along the shot playing then, eased, looking where the shot looks.
-export function scenePose(scene: Scene, t: number): IntroPose {
+export function scenePose(scene: Film, t: number): IntroPose {
   const shot = scene.shots.find((each) => t >= each.from && t < each.to) ?? scene.shots[scene.shots.length - 1];
   const k = smooth((t - shot.from) / (shot.to - shot.from));
   const at = mix(shot.start.at, shot.end.at, k);
@@ -34,7 +39,7 @@ export function scenePose(scene: Scene, t: number): IntroPose {
 }
 
 export interface SceneOverlay {
-  update(scene: Scene, t: number): void;
+  update(scene: Film, t: number): void;
   hide(hidden: boolean): void;
   remove(): void;
 }

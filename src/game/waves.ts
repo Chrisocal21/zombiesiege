@@ -170,6 +170,12 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   level = state.level;
   // A scene holds everything where it is.
   if (state.scene) return;
+  // The flight out: the film runs, then the run is over.
+  if (waves.phase === 'flight') {
+    waves.timer -= dt;
+    if (waves.timer <= 0) waves.phase = 'won';
+    return;
+  }
   const siege = flowOf(level).kind === 'siege';
 
   // On a siege floor nothing attacks once the waves are cleared, so going down there cannot happen.
@@ -257,7 +263,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.phase === 'evac') {
     if (everyoneAboard(state)) {
       if (state.floor >= LAST_FLOOR) {
-        waves.phase = 'won';
+        if (level.flight) { waves.phase = 'flight'; waves.timer = level.flight.seconds; } else waves.phase = 'won';
         return;
       }
       // The air ambulance takes the crew on to the office tower: Act 2 begins on its roof.
@@ -274,7 +280,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     if (everyoneInCab(state)) {
       closeLift(state);
       // In the prologue the way on is a gate, not a lift: everyone goes straight through to the next floor.
-      if (state.floor < 0) {
+      if (level.exitGate) {
         state.floor++;
         startFloor(state, true);
         state.waves.arrivedTick = state.tick;
@@ -341,6 +347,12 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
 // full health outside the elevator, and a fresh countdown to board up doors before wave 1.
 function arriveOnNextFloor(state: GameState): void {
   state.floor++;
+  // A block with a gate at its far end has no cab at this end: the crew steps out at the start.
+  if (levelForFloor(state.floor).exitGate) {
+    startFloor(state, true);
+    state.waves.arrivedTick = state.tick;
+    return;
+  }
   // Everyone stays in the cab, and the doors open a moment later to let them out.
   startFloor(state, true, true);
   state.waves.phase = 'arrive';
@@ -382,7 +394,7 @@ export function startOnFloor(state: GameState, floor: number): void {
   state.floor = floor;
   startFloor(state, false);
   // In the prologue the gate stays shut until the floor is done.
-  if (floor >= 0) openLift(state);
+  if (floor >= 0 && !levelForFloor(floor).exitGate) openLift(state);
   state.waves.arrivedTick = state.tick;
 }
 

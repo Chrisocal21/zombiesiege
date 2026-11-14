@@ -158,8 +158,9 @@ export interface Zombie {
 // 'search' is a cleared floor whose objective is still to be done: nothing attacks until it is,
 // unless the objective itself brings them.
 // 'hold' is a charger filling, or the helicopter on its way, with zombies coming all the while.
+// 'flight' is the last helicopter carrying the crew out, a short film before 'won'.
 // 'evac' is the helicopter down on the roof, waiting for everyone to get aboard.
-export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'hold' | 'evac' | 'lift' | 'ride' | 'arrive' | 'won';
+export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'hold' | 'evac' | 'lift' | 'ride' | 'arrive' | 'flight' | 'won';
 
 export interface Waves {
   // The wave being fought, or the one coming up during a break. Starts at 1.

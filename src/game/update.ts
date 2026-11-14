@@ -19,7 +19,7 @@ export const MAX_PITCH = Math.PI / 2 - 0.05;
 export function step(state: GameState, inputs: InputMessage[], dt: number): void {
   const level = state.level;
   // While a scene plays, nobody moves and nothing attacks: the camera has the floor.
-  const scene = state.scene !== null;
+  const scene = state.scene !== null || state.waves.phase === 'flight';
   for (const input of inputs) {
     const player = state.players.find((each) => each.id === input.playerId);
     if (!player || player.health <= 0 || scene) continue;

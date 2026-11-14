@@ -4,7 +4,7 @@ import { flowOf, type GameState, type Player } from '../game/state';
 import { actOf, isDescent, onFoot, ROOF } from '../game/tower';
 
 // What the way on is called: a gate in the prologue, a lift after.
-const exit = (state: GameState) => (onFoot(state.floor) ? 'the gate' : 'the elevator');
+const exit = (state: GameState) => (state.level.exitGate ? 'the gate' : 'the elevator');
 
 // The words the HUD uses for the floor's objective.
 
@@ -58,7 +58,7 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
     }
     case 'breakers':
       // A step before the last says what the breakers are for; the last one powers the way on.
-      return { title: `Throw the ${objective.label.toLowerCase()}`, detail: `${objectiveProgress(state) ?? ''}   ·   ${!lastStep(state) ? objective.part : onFoot(state.floor) ? 'The barrier is down' : 'The elevator has no power'}` };
+      return { title: `Throw the ${objective.label.toLowerCase()}`, detail: `${objectiveProgress(state) ?? ''}   ·   ${!lastStep(state) ? objective.part : onFoot(state.floor) ? 'The barrier is down' : state.level.exitGate ? 'The gate has no power' : 'The elevator has no power'}` };
     case 'charge':
       return onFoot(state.floor)
         ? { title: 'Start the delivery van', detail: 'They will come while it warms up' }
@@ -97,7 +97,7 @@ export function objectivePrompt(state: GameState, kind: string): string | null {
 // The cleared banner's line under the title.
 export function clearedDetail(state: GameState): string {
   const objective = state.level.objective;
-  if (state.objective.done || !objective) return `${onFoot(state.floor) ? 'The gate is' : 'The elevator is'} opening`;
+  if (state.objective.done || !objective) return `${state.level.exitGate ? 'The gate is' : 'The elevator is'} opening`;
   switch (objective.kind) {
     case 'keycard': return `Find the ${objective.label.toLowerCase()} to wake the elevator`;
     case 'breakers': return `Throw the ${objective.label.toLowerCase()} to power ${exit(state)}`;
@@ -129,7 +129,8 @@ export function partBanner(state: GameState): { eyebrow: string; title: string; 
     return { eyebrow: 'THE ROAD IN', title: objective.part.toUpperCase(), detail: 'The gate opens once the street is clear' };
   }
   if (isDescent(state.floor)) {
-    const detail = flowOf(state.level).kind === 'siege' && state.waves.phase !== 'search' ? 'The freight lift opens once the floor is clear' : 'The freight lift is open. Get to it';
+    const gate = state.level.exitGate;
+    const detail = flowOf(state.level).kind === 'siege' && state.waves.phase !== 'search' ? 'The freight lift opens once the floor is clear' : gate ? 'The gate opens when the job is done. Keep moving' : 'The freight lift is open. Get to it';
     return { eyebrow: actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail };
   }
   return {
