@@ -46,6 +46,10 @@ export interface MenuCallbacks {
   toTitle(): void;
   // A sound for moving between, choosing, and leaving menu items.
   sound?(kind: MenuSound): void;
+  // The co-op room this page is in, or null when playing solo, and how many players are in it.
+  room(): { code: string; players: number } | null;
+  // Go into a co-op room by its code (the page reloads into it), or back to solo with null.
+  setRoom(code: string | null): void;
 }
 
 export interface Menu {
@@ -235,6 +239,9 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   // The note chosen on the run log screen.
   let logScroll = 0;
   let itemCount = 3;
+  // The co-op page of the main menu, and the room code being typed on it, or null when not typing.
+  let coopPage = false;
+  let typing: string | null = null;
   let keyboardMode = false;
   let activate = false;
   let blocked = true;
@@ -262,6 +269,8 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
     sound('start');
   };
   const back = () => {
+    coopPage = false;
+    typing = null;
     current = parent;
     editingAmount = null;
     error = null;
@@ -429,6 +438,18 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           }
         }
         return;
+      }
+      if (current === 'main' && coopPage) {
+        if (typing !== null) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          if (event.code === 'Escape') { typing = null; sound('back'); }
+          else if (event.code === 'Backspace') typing = typing.slice(0, -1);
+          else if (event.code === 'Enter' && typing.length >= 4) { sound('start'); callbacks.setRoom(typing); }
+          else if (/^[a-zA-Z0-9]$/.test(event.key) && typing.length < 8 && !event.ctrlKey && !event.metaKey) typing += event.key.toUpperCase();
+          return;
+        }
+        if (event.code === 'Escape') { event.preventDefault(); coopPage = false; focusedItem = 1; sound('back'); return; }
       }
       if (current === 'pause' && event.code === bindings.pause) {
         event.preventDefault();
@@ -705,14 +726,44 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         }
         context.restore();
 
-        if (current === 'main') {
+        if (current === 'main' && coopPage) {
+          const room = callbacks.room();
+          if (typing !== null) {
+            text(context, 'JOIN A ROOM', left, height * 0.5 - 20 * unit, { size: 15 * unit, weight: 700, spacing: 6 * unit, color: COLOR.accent });
+            const shown = typing + (Math.floor(time * 2) % 2 ? '_' : ' ');
+            text(context, shown, left, height * 0.5 + 60 * unit, { size: 64 * unit, weight: 800, spacing: 12 * unit });
+            context.fillStyle = COLOR.accent;
+            context.fillRect(left, height * 0.5 + 84 * unit, 420 * unit, 3 * unit);
+            text(context, 'The code your friend sees on their menu. 4 to 8 letters or numbers.', left, height * 0.5 + 126 * unit, { size: 17 * unit, color: COLOR.dim, spacing: 0.5 * unit });
+            promptBar([['TYPE', 'THE CODE'], ['ENTER', 'JOIN'], ['ESC', 'CANCEL']]);
+            itemCount = 1;
+          } else {
+            drawLogo(left, 70 * unit, 0.42);
+            const entries: Entry[] = room
+              ? [
+                  { label: `ROOM  ${room.code}`, detail: `${room.players} ${room.players === 1 ? 'player is' : 'players are'} in this room. Give the code to a friend, then DEPLOY.`, action: () => { callbacks.sound?.('back'); } },
+                  { label: 'LEAVE ROOM', detail: 'Go back to solo play.', action: () => callbacks.setRoom(null) },
+                  { label: 'BACK', detail: 'Return to the main menu.', action: () => { coopPage = false; focusedItem = 1; } },
+                ]
+              : [
+                  { label: 'HOST A ROOM', detail: 'Make a room and get a code to give to up to three friends.', action: () => callbacks.setRoom(newRoomCode()) },
+                  { label: 'JOIN A ROOM', detail: 'Type the code a friend gave you.', action: () => { typing = ''; } },
+                  { label: 'BACK', detail: 'Return to the main menu.', action: () => { coopPage = false; focusedItem = 1; } },
+                ];
+            list(entries, left, height * 0.5, 0.05);
+            promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT'], ['ESC', 'BACK']]);
+          }
+          drawSurvivorCard(context, width - left, 70 * unit, unit, ease((since - 0.15) / 0.5), room);
+        } else if (current === 'main') {
+          const room = callbacks.room();
           list([
-            { label: 'DEPLOY', detail: 'Solo survival. Fight up the hospital tower to the roof.', action: () => (current = 'character') },
+            { label: 'DEPLOY', detail: room ? `Co-op in room ${room.code}. Everyone in the room starts together.` : 'Solo survival. Fight up the hospital tower to the roof.', action: () => (current = 'character') },
+            { label: 'CO-OP', detail: room ? `In room ${room.code}. Share the code, or leave the room.` : 'Host a room or join a friend\'s. Up to four players.', action: () => { coopPage = true; focusedItem = 0; } },
             ...(config.testing.floorSelect ? [{ label: 'LEVEL SELECT', detail: 'Start on any floor of any act.', action: () => (current = 'floors') }] : []),
             { label: 'CONTROLS', detail: 'See and rebind every key and mouse button.', action: () => (current = 'controls') },
             { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
           ], left, height * 0.5, 0.1);
-          drawSurvivorCard(context, width - left, 70 * unit, unit, ease((since - 0.15) / 0.5));
+          drawSurvivorCard(context, width - left, 70 * unit, unit, ease((since - 0.15) / 0.5), room);
           promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);
         } else if (current === 'pause') {
           const entries: Entry[] = [
@@ -1148,7 +1199,15 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
 }
 
 // Top right of the main menu: the survivor you will deploy as.
-function drawSurvivorCard(context: CanvasRenderingContext2D, right: number, top: number, unit: number, appear: number): void {
+// A room code to give to a friend: letters and numbers that are hard to misread aloud.
+function newRoomCode(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 5; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return code;
+}
+
+function drawSurvivorCard(context: CanvasRenderingContext2D, right: number, top: number, unit: number, appear: number, room: { code: string; players: number } | null): void {
   const w = 330 * unit;
   const h = 84 * unit;
   const x = right - w + (1 - appear) * 40 * unit;
@@ -1167,12 +1226,13 @@ function drawSurvivorCard(context: CanvasRenderingContext2D, right: number, top:
   const tx = x + swatch + 26 * unit;
   text(context, 'SURVIVOR', tx, top + 28 * unit, { size: 12 * unit, weight: 700, spacing: 4 * unit, color: COLOR.accent, shadow: false });
   text(context, selectedOutfit().name.toUpperCase(), tx, top + 54 * unit, { size: 22 * unit, weight: 800, spacing: 2 * unit, shadow: false });
-  text(context, selectedGloves().name, tx, top + 74 * unit, { size: 14 * unit, color: COLOR.dim, shadow: false });
+  if (room) text(context, `ROOM ${room.code}  ·  ${room.players} ${room.players === 1 ? 'PLAYER' : 'PLAYERS'}`, tx, top + 74 * unit, { size: 13 * unit, weight: 700, spacing: 2 * unit, color: COLOR.accent, shadow: false });
+  else text(context, selectedGloves().name, tx, top + 74 * unit, { size: 14 * unit, color: COLOR.dim, shadow: false });
   // Online status, for when there is any.
   context.fillStyle = COLOR.good;
   context.beginPath();
-  context.arc(x + w - 70 * unit, top + 24 * unit, 3.5 * unit, 0, Math.PI * 2);
+  context.arc(x + w - (room ? 76 : 70) * unit, top + 24 * unit, 3.5 * unit, 0, Math.PI * 2);
   context.fill();
-  text(context, 'SOLO', x + w - 14 * unit, top + 28 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: COLOR.dim, align: 'right', shadow: false });
+  text(context, room ? 'CO-OP' : 'SOLO', x + w - 14 * unit, top + 28 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: room ? COLOR.accent : COLOR.dim, align: 'right', shadow: false });
   context.restore();
 }

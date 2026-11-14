@@ -153,6 +153,14 @@ const menu = createMenu({
     enterGame(false);
   },
   sound: (kind) => audio.ui(kind),
+  room: () => (coop ? { code: roomCode!.toUpperCase(), players: session.state.players.length } : null),
+  // The room is the page's address, so going in or out reloads it.
+  setRoom(code) {
+    const url = new URL(location.href);
+    if (code) url.searchParams.set('room', code);
+    else url.searchParams.delete('room');
+    location.href = url.toString();
+  },
   playFloor(floor) {
     if (coop) {
       coop.restart(floor);
