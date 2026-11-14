@@ -508,6 +508,7 @@ export function createAudio(): Audio {
   let objectiveDone = true;
   let thrownCount = 0;
   let stepSeen = 0;
+  let vaultMoved = -1;
   let deliveredCount = 0;
   let carrying = -1;
   let startedTick = -1;
@@ -601,6 +602,9 @@ export function createAudio(): Audio {
           else sting(false);
         }
         if (thrown > thrownCount) breakerThrow();
+        // The vault door's bolts, opening or slamming shut.
+        const moved = Math.max(state.vault.shutTick, state.vault.openTick <= state.tick ? state.vault.openTick : -1);
+        if (moved >= 0 && moved !== vaultMoved) gateClank();
         // A step of the floor done: the sound of its last action, which its count no longer shows.
         if (state.objective.step > stepSeen) {
           const done = stepsOf(state.level)[state.objective.step - 1]?.kind;
@@ -617,6 +621,7 @@ export function createAudio(): Audio {
       }
       thrownCount = thrown;
       stepSeen = state.objective.step;
+      vaultMoved = Math.max(state.vault.shutTick, state.vault.openTick <= state.tick ? state.vault.openTick : -1);
       deliveredCount = delivered;
       carrying = player.carrying;
       startedTick = state.objective.startedTick;

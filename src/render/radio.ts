@@ -1,7 +1,7 @@
 import { config } from '../config';
 import { stepDoneTick, type GameState } from '../game/state';
 import type { Cue } from '../levels/types';
-import { CREW, HOSPITAL, SCIENTIST } from '../levels/voices';
+import { CREW, HOSPITAL, SCIENTIST, SCIENTIST_HERE } from '../levels/voices';
 
 // Short radio and crew lines that carry the story between objectives. Each one is tied to a moment on
 // its floor: the start, a step of the objective being done, the whole objective being done, or the
@@ -48,6 +48,7 @@ function momentOf(state: GameState, cue: Cue, index: number): number {
     case 'done': return state.objective.done ? state.objective.doneTick : -1;
     case 'step': return stepDoneTick(state, cue.step ?? 0);
     case 'area': return state.heard[index] ?? -1;
+    case 'boss': return state.boss?.arrivedTick ?? -1;
   }
 }
 
@@ -66,7 +67,7 @@ export function radioLine(state: GameState): RadioLine | null {
     const length = cue.seconds ?? SHOWN;
     if (age < 0 || age >= length || age >= newest) continue;
     newest = age;
-    line = { speaker: cue.speaker, text: cue.text, alpha: Math.min(1, age / FADE, (length - age) / FADE), scientist: cue.speaker === SCIENTIST };
+    line = { speaker: cue.speaker, text: cue.text, alpha: Math.min(1, age / FADE, (length - age) / FADE), scientist: cue.speaker === SCIENTIST || cue.speaker === SCIENTIST_HERE };
   }
   return line;
 }

@@ -6,6 +6,7 @@ import { dropSupply } from './items';
 import { nextStep, routeOf } from './navigation';
 import { flowOf, type GameState, type Player, type Zombie, type ZombieKind } from './state';
 import { crowdAt } from './tower';
+import { bossTarget, hurtBoss, retreatPoint } from './story';
 
 const ticks = (seconds: number): number => Math.round(seconds * config.ticksPerSecond);
 
@@ -59,6 +60,7 @@ export function spawnZombie(
     lastHitTick: -1,
     pushing: false,
     dormant: false,
+    boss: false,
     entry,
     dead: false,
     deadLeft: 0,
@@ -201,11 +203,24 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     const { height } = zombieHeights(zombie);
     zombie.attackCooldown = Math.max(0, zombie.attackCooldown - dt);
 
+    // Patient O, beaten, makes for the vault and lets nothing stop it.
+    const back = zombie.boss ? retreatPoint(state) : null;
+    if (back) {
+      const bx = back.x - zombie.x, bz = back.z - zombie.z, length = Math.hypot(bx, bz) || 1;
+      const pace = zombieConfig.moveSpeed * zombieConfig.boss.retreatPace * dt;
+      const moved = resolveCircle(level, zombie.x + (bx / length) * Math.min(pace, length), zombie.z + (bz / length) * Math.min(pace, length), radius, 0, height);
+      zombie.x = moved.x;
+      zombie.z = moved.z;
+      zombie.yaw = Math.atan2(-bx, -bz);
+      zombie.pushing = false;
+      continue;
+    }
+
     // Coming in through a doorway, a zombie walks to the spot just inside it first.
     if (zombie.entry && Math.hypot(zombie.entry.x - zombie.x, zombie.entry.z - zombie.z) < 0.5) {
       zombie.entry = null;
     }
-    const target = nearestPlayer(state, zombie);
+    const target = (zombie.boss ? bossTarget(state, zombie) : null) ?? nearestPlayer(state, zombie);
     if (!target) continue;
     const goal = zombie.entry ?? target;
     const dx = goal.x - zombie.x;
@@ -403,9 +418,15 @@ export function headDamage(zombie: Zombie, damage: number): number {
 export interface HitInfo {
   from?: { x: number; z: number };
   leg?: boolean;
+  head?: boolean;
 }
 
 export function damageZombie(state: GameState, zombie: Zombie, damage: number, hit: HitInfo = {}): void {
+  // Patient O cannot be killed, only beaten back.
+  if (zombie.boss) {
+    hurtBoss(state, zombie, damage, hit.head ?? false);
+    return;
+  }
   zombie.health -= damage;
   zombie.lastHitTick = state.tick;
   // Being shot wakes it up, wherever it was.

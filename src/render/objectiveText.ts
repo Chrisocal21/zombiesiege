@@ -48,6 +48,8 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
       total: objective.seconds,
     };
   }
+  // The boss is fought through the waves, so its words show whatever the phase.
+  if (objective.kind === 'contain') return containBrief(state);
   if (phase !== 'search') return null;
   switch (objective.kind) {
     case 'keycard': {
@@ -70,6 +72,13 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
         ? { title: 'Throw the signal flares', detail: 'The flare box is on the groundskeeper\'s shed' }
         : { title: 'Switch on the helipad lights', detail: 'The light box is on the east parapet' };
   }
+}
+
+// Beating the boss back into the vault.
+function containBrief(state: GameState): Brief {
+  const name = state.level.boss?.name ?? 'it';
+  if (state.boss && state.boss.retreatTick >= 0) return { title: `${name} is falling back`, detail: 'Into the vault. Let it go' };
+  return { title: `Drive ${name} back into the vault`, detail: 'It cannot be killed. Hurt it enough and it breaks' };
 }
 
 // What pressing use does at an objective.
@@ -95,6 +104,7 @@ export function clearedDetail(state: GameState): string {
     case 'charge': return `Start the charger in ${objective.roomName.toLowerCase()}`;
     case 'carry': return `Bring the ${objective.label.toLowerCase()}s to ${exit(state)}`;
     case 'signal': return objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights';
+    case 'contain': return `Drive ${state.level.boss?.name ?? 'it'} back into the vault`;
   }
 }
 

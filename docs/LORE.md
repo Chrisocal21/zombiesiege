@@ -170,7 +170,13 @@ From the master campaign handoff (Nov 14). The crew's ground ambulance runs out 
 | Pharmacy | A sweep: no waves. The shop's dead stand still among the shelves until they see or hear someone. A gunshot brings the crowd in off the street | He warns them to keep it quiet, or the whole street comes in |
 | Hidden lab | Still a siege, now in two steps: breakers to put the -80C freezer back on backup power, then two cryo carriers from cold storage to the lift | The carriers are the only safe way to move the sample. His calm starts to go: he can hear them at the vault door |
 
-The vault itself is unchanged until the next build pass (the scientist stepping out, Patient O).
+**The vault, built Nov 14:**
+
+- The time lock runs as before.
+- Partway through, Patient O comes in through the west door and goes for whoever is on the panel. The scientist names it over the radio: "a subject on twelve, at the hospital".
+- When the lock releases, a short scene plays: the vault door swings open, and the scientist steps out of a small strongroom in a white lab coat with the sample case. He says: "You came. I have the sample. All of it that is left." and "That thing came for it. Get me to the lift."
+- Patient O, enraged, then stands between the crew and the lift. It can't be killed: beaten down, it falls back into the strongroom, and the door is shut on it.
+- From then on the scientist follows the crew, on into Act 4. He can't be hurt, and the dead pay him no mind.
 
 ### Act 4 — Daybreak (the street run) · levels built
 
@@ -210,7 +216,7 @@ Not written yet. See **Places** for what's next.
 | Bosses | Only at big story moments. Until real bosses are built, big waves led by a Brute or Screamer stand in |
 | First meetings | The first Brute is on Floor 6 and the first Screamer on Floor 9 (handoff canon; the build matches since Nov 14) |
 | Patient O | A Floor 12 subject at the hospital, later transferred. Comes back as a mutation near the pharmacy vault and threatens the extraction (handoff canon) |
-| Patient O's fate in Act 3 | **Decided Nov 14:** driven back and sealed in the vault when its door shuts. Not killed. Its return later is left open. Not built yet |
+| Patient O's fate in Act 3 | **Decided Nov 14:** driven back and sealed in the vault when its door shuts. Not killed. Its return later is left open. Built Nov 14: a huge, pale brute in a patient's gown that can't be killed |
 
 **In the build:** one kind of zombie, in two body models with mixed skin, hair and clothes. No patient or staff looks yet, and no specials. They come through doors, press against steel cages, and collapse when killed.
 
@@ -594,3 +600,4 @@ Real-world things worth looking up to ground the story. None of this is decided.
 - **Nov 13, 2026:** Built the rest of the campaign as levels, ahead of the story: the tower roof and six office floors (Act 2), the tunnel, pharmacy, lab and vault (Act 3), and four outdoor blocks ending at the park (Act 4). Floors, names and objectives here are the build's own and are listed above as in the build. The park extraction is red flares and smoke in place of a pad. Added questions 11 to 13 (stairs or lift, what links the street blocks, the scientist at the vault). Nothing in Acts 2 to 4 has any story delivered yet: no radio, notes or scientist.
 - **Nov 14, 2026:** Received the master campaign handoff (12 acts, five-level prologue). Built the prologue as five levels, P01 to P05, Breakdown, Roadside Station, Checkpoint, Commercial District and Final Push. Acts 5 to 12 are working expansion only and not built.
 - **Nov 14, 2026:** Settled questions 11 to 13 and Patient O's fate (sealed in the vault). The tunnel became a run, the pharmacy a sweep with the shop's own dead standing in it, and the lab a two-step floor (freezer power, then the cryo carriers), with the scientist on the radio through all three. The first Brute and Screamer now come where the handoff puts them, Floors 6 and 9.
+- **Nov 14, 2026:** Built the vault's ending: Patient O in two stages, the vault opening scene, and the scientist stepping out and following the crew. Patient O is sealed back in the vault, as decided.

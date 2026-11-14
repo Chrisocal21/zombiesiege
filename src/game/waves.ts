@@ -10,6 +10,7 @@ import { LAST_FLOOR, ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower
 import type { ZombieKind } from './state';
 import { guaranteeAmmo } from './weapons';
 import { aliveOfKind, aliveZombies, placeResidents, spawnZombie, underAttack } from './zombies';
+import { bossAfterWipe, placeScientist, startScene } from './story';
 
 export function isTopFloor(state: GameState): boolean {
   return state.floor >= ROOF;
@@ -166,6 +167,8 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   const waves = state.waves;
   // A step done this tick hands the game a new copy of the level with the next step in it.
   level = state.level;
+  // A scene holds everything where it is.
+  if (state.scene) return;
   const siege = flowOf(level).kind === 'siege';
 
   // On a siege floor nothing attacks once the waves are cleared, so going down there cannot happen.
@@ -230,7 +233,10 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
       return;
     }
     const final = lastStep(state);
+    const done = state.objective.step;
     completeStep(state);
+    // The vault opens on a scene.
+    if (level.scene?.after === done) startScene(state, level);
     if (objective.kind === 'signal' && final) {
       // The helicopter is down. Everyone onto the pad.
       waves.phase = 'evac';
@@ -385,6 +391,10 @@ function startFloor(state: GameState, keepGuns: boolean, inCab = false): void {
   state.zombies = [];
   placeResidents(state, level);
   state.players = state.players.map((old, i) => respawn(old, level, keepGuns, inCab ? cabSpot(level, i, state.players.length) : null));
+  // The scientist, after the vault, comes along: in the cab with the crew, or beside where they start.
+  const count = state.players.length;
+  const beside = spawnPoint(level.playerSpawns, count, level.spawnYaw);
+  placeScientist(state, inCab ? cabSpot(level, count, count) : { x: beside.x, z: beside.z, yaw: level.spawnYaw ?? 0 });
   const waves = state.waves;
   waves.number = 1;
   waves.toSpawn = 0;
@@ -441,6 +451,11 @@ function restartWave(state: GameState, level: Level): void {
   for (const player of state.players) dropCase(state, player);
   // Going down costs a life but not the guns: weapons and spare rounds come back with the player.
   state.players = state.players.map((old) => respawn(old, level, true));
+  if (state.scientist) {
+    const beside = spawnPoint(level.playerSpawns, state.players.length, level.spawnYaw);
+    Object.assign(state.scientist, { x: beside.x, z: beside.z, lostTicks: 0 });
+  }
+  bossAfterWipe(state, level);
   if (flowOf(level).kind !== 'siege') {
     placeResidents(state, level);
     if (waves.phase === 'hold') {

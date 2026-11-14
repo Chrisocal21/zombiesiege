@@ -6,7 +6,7 @@
 >
 > **Decided Nov 14:** Chris took the recommendation on all four. A: keep the lift. B: Patient O is driven back and sealed in the vault. C: the scientist is the player body in a lab coat, labelled THE SCIENTIST. D: gates (`exitGate`) replace the Act 4 kiosks. Recorded in LORE.
 >
-> **Phase 3a done Nov 14** (see §7).
+> **Phase 3a done Nov 14** (see §7). **Phase 3b done Nov 14** (see §8).
 
 ---
 
@@ -225,3 +225,51 @@ Each phase ends with a stop for you to compact, as usual.
 
 - Residents stand upright and still. A slumped or shuffling idle pose would read better.
 - A two-browser co-op pass is still to do (planned for Phase 5).
+---
+
+## 8. What Phase 3b built (Nov 14)
+
+**The vault, in order:**
+
+1. **Time lock.** A 60 s hold at the panel, as before.
+2. **Patient O arrives.** At 22 s it comes through the west door. It's a Brute flagged as the boss: larger, in a patient's gown, health scaled by player count. It goes for whoever is in the time-lock room and charges like a Brute. It can't be brought below 40% health. A head shot staggers it, at most once every 3 s.
+3. **The scene.** It lasts 10.5 s. While it runs the rules stand still: no input, no zombie movement, no wave clock.
+   - The rest of the dead are cleared, and Patient O is moved behind the camera to where it will stand.
+   - The steel door swings open (a new strongroom alcove behind the north wall).
+   - The scientist walks out in a lab coat with the sample case, with two face-to-face captions.
+   - The scene runs on game ticks, so co-op players see the same moment.
+4. **Patient O enraged.** It stands between the crew and the lift with a fresh health pool, faster. The objective is the new `contain` kind.
+5. **Sealed in.** Beaten to zero, it can't be killed. It turns, takes no more damage and walks into the strongroom (it's placed there if it takes longer than 12 s). The door slams shut and the step completes (decision B).
+6. **The lift opens.**
+
+**Wipes and restarts:**
+
+- A wipe in stage 1 restarts the time lock, and Patient O goes with it.
+- A wipe in stage 2 brings it back where it stood, at full strength.
+- Running out of lives restarts the floor from the time lock, with the door shut and no scientist.
+
+**The scientist (E6):** `state.scientist`, in `src/game/story.ts`.
+
+- He follows the nearest player using the zombies' navigation grid and waits 2.4 m away.
+- If he's more than 14 m from everyone and out of sight for 2 s, he's placed behind the nearest player.
+- He rides in the cab and starts beside the crew on every floor after the vault, and he's there when starting directly on an Act 4 floor.
+- He has no health, zombies don't target him, and the mission rules never check on him.
+- Drawn: the survivor body with a clean shirt, coat, sleeves and steel case (`src/render/scientist.ts`). A SCIENTIST marker shows when he's more than 6 m away.
+
+**Other pieces:**
+
+- HUD bar for Patient O, with its stage-1 floor marked.
+- `boss` radio cue, and a face-to-face `THE SCIENTIST` speaker.
+- Vault door sound.
+- The time lock reads "VAULT TIME LOCK" with a "BACKUP UPS" pack.
+- Chargers at height 1.45 now stand on the floor (deadStop, lobby1, market, records34, vault, towerRoof).
+- The tower roof's leftover light-box collider is removed.
+- Sleeping zombies stand slumped.
+
+**Checks:** `tools/check-act3.mjs` (new) drives the whole vault and on into Main Street. All other checks pass as before.
+
+**Open:**
+
+- **Wave size this deep is very large.** `waveSize` grows 40% per floor index, so the vault's wave 5 is about 89 zombies, and the deep Act 3–4 floors are similar. It needs a balance pass, best done with Phase 5.
+- **Patient O doesn't break the pillars** (the plan's "breaks cover"). Destructible cover is a later job.
+- **No two-browser co-op run yet.** It's planned for Phase 5.

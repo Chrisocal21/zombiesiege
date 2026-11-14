@@ -142,6 +142,8 @@ export interface Zombie {
   pushing: boolean;
   // One of the floor's own dead, standing where it was until it sees or hears someone.
   dormant: boolean;
+  // The floor's boss (Patient O), a brute that cannot be killed. See GameState.boss.
+  boss: boolean;
   // While still coming in through a doorway, the spot just inside it to walk to first.
   // Null once it is in the room and chasing.
   entry: { x: number; z: number } | null;
@@ -185,6 +187,32 @@ export interface Waves {
   // On a run floor: a point that trails the crew by a few seconds, so where it has come from.
   trailX: number;
   trailZ: number;
+}
+
+// The scientist, once out of the vault: a companion who follows the crew. Nothing can hurt him and
+// the dead pay him no mind, so he can never make a mission fail.
+export interface Companion {
+  x: number;
+  z: number;
+  yaw: number;
+  // How fast he is walking, for the renderer.
+  speed: number;
+  // Ticks he has been far from everyone and out of their sight, before he is brought up to them.
+  lostTicks: number;
+}
+
+// How the floor's boss stands. Stage 1 is the time lock, stage 2 after the vault opens. It is beaten
+// back once its health runs out in stage 2, and sealed once it is behind the vault door.
+export interface BossState {
+  zombieId: number;
+  stage: 1 | 2;
+  arrivedTick: number;
+  // Ticks, -1 until they happen.
+  retreatTick: number;
+  sealedTick: number;
+  // The most it can have, for the HUD's bar, and the tick a head shot last staggered it.
+  maxHealth: number;
+  staggerTick: number;
 }
 
 export interface DoorState {
@@ -287,6 +315,14 @@ export interface GameState {
   lives: number;
   // For each of the level's radio cues, the tick its area was first walked into, or -1.
   heard: number[];
+  // The scientist, from the moment he steps out of the vault, or null.
+  scientist: Companion | null;
+  // The floor's boss, once it has come, or null.
+  boss: BossState | null;
+  // A scene playing (the rules stand still meanwhile): the tick it began, or null.
+  scene: { startTick: number } | null;
+  // The vault door: the tick it opened and the tick it shut again, or -1.
+  vault: { openTick: number; shutTick: number };
   // Each player's score, by player id. Spent on doors and weapons once those exist.
   points: number[];
   // Which floor of the tower this is. The ground floor is 0.
@@ -332,6 +368,9 @@ export function enterLevel(state: GameState, level: Level): void {
   const first = stepsOf(level)[0] ?? null;
   state.level = { ...level, objective: first, boxes: [...level.boxes, liftDoorBox(level.elevator), ...level.locks.map(lockBox)] };
   state.heard = (level.cues ?? []).map(() => -1);
+  state.boss = null;
+  state.scene = null;
+  state.vault = { openTick: -1, shutTick: -1 };
   state.gate = { closed: false, closedTick: -1 };
   state.lift = { open: false, changedTick: -1 };
   state.doors = level.doors.map(() => ({ boarded: false, boardedTick: -1 }));
@@ -431,6 +470,10 @@ export function createGameState(level: Level): GameState {
     floor: 0,
     lives: config.player.lives,
     heard: [],
+    scientist: null,
+    boss: null,
+    scene: null,
+    vault: { openTick: -1, shutTick: -1 },
     points: players.map(() => 0),
     doors: [],
     locks: [],

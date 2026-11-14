@@ -10,6 +10,7 @@ import { eyeY, type GameState, type Player, type Zombie } from './state';
 import { equipWeapon, isMelee, swapWeapon, weaponStats } from './weapons';
 import { resolveMelee, startMelee } from './melee';
 import { updateWaves } from './waves';
+import { updateStory } from './story';
 import { damageZombie, headDamage, kindOf, raycastZombies, updateZombies } from './zombies';
 
 export const MAX_PITCH = Math.PI / 2 - 0.05;
@@ -17,9 +18,11 @@ export const MAX_PITCH = Math.PI / 2 - 0.05;
 // Advances the game by one tick. Rules only, nothing here knows about Three.js.
 export function step(state: GameState, inputs: InputMessage[], dt: number): void {
   const level = state.level;
+  // While a scene plays, nobody moves and nothing attacks: the camera has the floor.
+  const scene = state.scene !== null;
   for (const input of inputs) {
     const player = state.players.find((each) => each.id === input.playerId);
-    if (!player || player.health <= 0) continue;
+    if (!player || player.health <= 0 || scene) continue;
 
     if (input.toggleFreeze) state.frozen = !state.frozen;
     if (input.toggleLight) player.flashlight = !player.flashlight;
@@ -42,8 +45,9 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
   // Whoever goes down lets go of what they were carrying.
   for (const player of state.players) if (player.health <= 0) dropCase(state, player);
   if (!state.frozen) {
-    updateZombies(state, dt, level);
+    if (!scene) updateZombies(state, dt, level);
     updateWaves(state, dt, level);
+    updateStory(state, dt);
   }
   for (const player of state.players) {
     updateItem(player, dt);
@@ -197,7 +201,7 @@ function weapon(
     if (pellet === 0) { wallDistance = wall; zombieHit = hit; }
     if (!hit) continue;
     // A shot to the head kills most kinds whatever their health.
-    damageZombie(state, hit.zombie, hit.head ? headDamage(hit.zombie, pistol.damage) : pistol.damage, { from: player, leg: hit.leg });
+    damageZombie(state, hit.zombie, hit.head ? headDamage(hit.zombie, pistol.damage) : pistol.damage, { from: player, leg: hit.leg, head: hit.head });
     struck.set(hit.zombie, (struck.get(hit.zombie) ?? false) || hit.head);
   }
   // Points once per zombie hit, however many pellets landed.

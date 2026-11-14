@@ -276,6 +276,17 @@ export const config = {
     // whatever they do, or anything that alerts them. Sight is checked every `everyTicks` ticks. One
     // waking wakes the others within `neighbours` metres.
     resident: { sight: 9, flashlight: 4, crouch: 0.5, touch: 1.8, everyTicks: 6, neighbours: 4.5 },
+    // The boss, Patient O, a brute that cannot be killed. Its health in each stage is the stage's figure
+    // times (healthBase + healthPerPlayer * players). In stage 1 it never drops below stageOneFloor of
+    // that, and its speed factor is stageOneSpeed (the floors deep down make every zombie quick); in
+    // stage 2 it is stageTwoSpeed. A head shot staggers it for staggerSeconds, no more than once every
+    // staggerEvery seconds. Beaten, it has retreatSeconds to get into the vault before it is put there.
+    boss: {
+      healthBase: 0.55, healthPerPlayer: 0.45, stageOneHealth: 2600, stageTwoHealth: 1500, stageOneFloor: 0.4,
+      stageOneSpeed: 0.55, stageTwoSpeed: 0.95, staggerEvery: 3, staggerSeconds: 1.1, retreatSeconds: 12,
+      // How fast it falls back, times moveSpeed.
+      retreatPace: 1.6,
+    },
     // Ordinary walkers trip now and then: every stumbleEvery seconds one in three loses stumbleSeconds.
     stumbleEvery: 11,
     stumbleSeconds: 0.7,

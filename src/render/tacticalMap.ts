@@ -58,7 +58,8 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
     keycard: '04 / Find the keycard',
     breakers: '04 / Throw the three breakers',
     charge: '04 / Charge the battery, hold the room',
-    carry: '04 / Carry three lamp cases',
+    carry: state.level.objective?.kind === 'carry' ? `04 / Carry the ${state.level.objective.label.toLowerCase()}s` : '04 / Carry the cases',
+    contain: `04 / Drive ${state.level.boss?.name ?? 'it'} into the vault`,
     signal: state.level.objective?.kind === 'signal' && state.level.objective.style === 'flares' ? '04 / Throw the signal flares' : '04 / Switch on the helipad lights',
   };
   const kind = state.level.objective?.kind ?? 'keycard';

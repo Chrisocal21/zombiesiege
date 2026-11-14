@@ -59,6 +59,8 @@ export function objectiveTarget(state: GameState, player: Player): ObjectiveTarg
       });
       return nearest >= 0 ? { kind: 'case', index: nearest } : null;
     }
+    case 'contain':
+      return null;
   }
 }
 
@@ -167,6 +169,14 @@ export function objectiveMarkers(state: GameState, player: Player): { at: Vec3; 
       return phase === 'hold' ? [] : [{ at: objective.device.position, label: objective.style === 'flares' ? 'FLARES' : 'LIGHTS' }];
     case 'carry':
       if (player.carrying >= 0) return [{ at: objective.dropoff, label: 'DROP-OFF' }];
-      return state.objective.items.flatMap((item, i) => (caseFree(state, i) ? [{ at: { x: item.x, y: item.y, z: item.z }, label: 'CASE' }] : []));
+      return state.objective.items.flatMap((item, i) => (caseFree(state, i) ? [{ at: { x: item.x, y: item.y, z: item.z }, label: objective.label.toUpperCase() }] : []));
+    case 'contain': {
+      // The boss itself, or the vault once it is falling back.
+      const boss = state.boss;
+      const zombie = boss ? state.zombies.find((each) => each.id === boss.zombieId && !each.dead) : null;
+      if (!boss || !zombie) return [];
+      if (boss.retreatTick >= 0 && state.level.boss) return [{ at: state.level.boss.retreat, label: 'VAULT' }];
+      return [{ at: { x: zombie.x, y: 0, z: zombie.z }, label: (state.level.boss?.name ?? 'BOSS').toUpperCase() }];
+    }
   }
 }

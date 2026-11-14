@@ -3,6 +3,7 @@ import { createAudio } from './client/audio';
 import { joinRoom } from './client/coop';
 import { createLocalInput } from './client/localInput';
 import { createIntroOverlay, INTRO_SECONDS, introPose, introWalker, WALKER_COUNT, type IntroOverlay, type IntroPose } from './client/intro';
+import { createSceneOverlay, playing, scenePose, type SceneOverlay } from './client/scene';
 import { createLocalSession, createRemoteSession } from './client/session';
 import { loadSettings, settings } from './client/settings';
 import { config } from './config';
@@ -21,6 +22,7 @@ import { createViewmodel } from './render/viewmodel';
 import type { WheelState } from './client/wheel';
 import { createSupplyViews } from './render/supplies';
 import { createZombieViews } from './render/zombies';
+import { createScientistView } from './render/scientist';
 
 document.body.style.margin = '0';
 document.body.style.overflow = 'hidden';
@@ -55,6 +57,9 @@ const viewmodel = createViewmodel(view.viewScene);
 const effects = createEffects(view.scene, view.camera, viewmodel);
 const zombieViews = createZombieViews(view.scene);
 const supplyViews = createSupplyViews(view.scene);
+const scientistView = createScientistView(view.scene);
+// The letterbox and captions of a level's scene, while one plays.
+let sceneOverlay: SceneOverlay | null = null;
 const audio = createAudio();
 // The other players in a co-op game, drawn as boxes for now.
 const remotePlayers = coop ? createRemotePlayers(view.scene) : null;
@@ -242,7 +247,18 @@ view.renderer.setAnimationLoop((now) => {
       pose = introPose(t, pose as IntroPose);
     }
   }
-  const cinematic = intro !== null;
+  // A level's scene (the vault opening) takes the camera while the rules hold still.
+  const levelScene = playing(state);
+  if (levelScene) {
+    sceneOverlay ??= createSceneOverlay();
+    sceneOverlay.hide(paused);
+    sceneOverlay.update(levelScene.scene, levelScene.t);
+    pose = scenePose(levelScene.scene, levelScene.t);
+  } else if (sceneOverlay) {
+    sceneOverlay.remove();
+    sceneOverlay = null;
+  }
+  const cinematic = intro !== null || levelScene !== null;
   if (onTitle) {
     // Behind the title, a slow handheld drift in the garage, looking out at the gate.
     const t = now / 1000;
@@ -284,8 +300,10 @@ view.renderer.setAnimationLoop((now) => {
   input.setLookScale(view.camera.fov / settings.fieldOfView);
   effects.update(player, paused ? 0 : frameSeconds, state.level);
   zombieViews.update(state, paused ? 0 : frameSeconds);
+  scientistView.update(state, paused ? 0 : frameSeconds);
   supplyViews.update(state, now / 1000);
-  audio.update(state, player, paused || onTitle || cinematic, frameSeconds);
+  // A level scene keeps its sound (the vault door); the opening scene has its own quiet.
+  audio.update(state, player, paused || onTitle || intro !== null, frameSeconds);
   view.render(!onTitle && !cinematic);
   if (outfitPreview) view.renderOutfitPreview();
   if (cinematic) hud.clear();

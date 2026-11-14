@@ -71,6 +71,9 @@ export interface LevelBox {
   // Ramp backing for shots/solids; feet follow Level.ramp's continuous surface instead.
   rampStep?: boolean;
   vehicleRole?: 'ambulance' | 'elCajon';
+  // The vault's door: solid until the time lock opens it, drawn from the game state, and shut again
+  // once what was driven back in is sealed behind it.
+  vaultDoor?: boolean;
 }
 
 // A ladder runs up the face of a box. The player climbs it from the side the normal points to.
@@ -158,12 +161,42 @@ export interface Area {
 // 'carry': bring each case to the drop-off. A case takes both hands, so no shooting while carrying.
 // 'signal': the roof. Once the waves are cleared, switch on the helipad lights, hold out until the
 //   helicopter lands, then everyone gets aboard.
+// 'contain': the floor's boss (Level.boss) is beaten back into the vault and sealed behind its door.
 export type Objective =
   | { kind: 'keycard'; label: string; part: string; position: Vec3 }
   | { kind: 'breakers'; label: string; part: string; panels: WallFitting[] }
-  | { kind: 'charge'; label: string; part: string; device: WallFitting; room: Area; roomName: string; seconds: number }
+  | { kind: 'charge'; label: string; part: string; device: WallFitting; room: Area; roomName: string; seconds: number; screen?: string }
   | { kind: 'carry'; label: string; part: string; items: Vec3[]; dropoff: Vec3 }
-  | { kind: 'signal'; label: string; part: string; device: WallFitting; pad: Vec3; padRadius: number; seconds: number; style?: 'helipad' | 'flares' };
+  | { kind: 'signal'; label: string; part: string; device: WallFitting; pad: Vec3; padRadius: number; seconds: number; style?: 'helipad' | 'flares' }
+  | { kind: 'contain'; label: string; part: string };
+
+// The floor's boss, Patient O: a brute grown far past the rest. It comes through door `door`
+// `arriveAt` seconds into the first step's hold. It cannot be killed: in the first stage it shrugs
+// off the worst and staggers when shot in the head; once the vault is open it is enraged, and beaten
+// down it falls back to `retreat`, inside the vault, and the door is shut on it.
+export interface Boss {
+  name: string;
+  door: number;
+  arriveAt: number;
+  retreat: Vec3;
+  // Where it stands when the scene ends: between the crew and the lift.
+  stand: Vec3;
+}
+
+// A short scene when step `after` of the floor is done: the rules stop, the camera takes over, and
+// the scientist walks from `from` to `to`. The shots and captions are for the renderer.
+export interface Scene {
+  after: number;
+  seconds: number;
+  from: Vec3;
+  to: Vec3;
+  // When in the scene the vault door starts to swing open, and when the scientist starts to walk.
+  doorAt: number;
+  walkAt: number;
+  walkSeconds: number;
+  shots: { from: number; to: number; start: { at: Vec3; look: Vec3 }; end: { at: Vec3; look: Vec3 } }[];
+  captions: { from: number; to: number; title?: string; speaker?: string; line: string }[];
+}
 
 // How a floor plays.
 // 'siege' (the default): waves come through the doors, then the floor goes quiet and the objective
@@ -192,10 +225,11 @@ export interface Resident {
 
 // A line of radio or crew talk, shown for a few seconds at a moment on the floor.
 // 'start': after arriving. 'done': once the whole floor's objective is done. 'step': once step
-// `step` of the floor's steps is done. 'area': once the first player walks into `area`.
+// `step` of the floor's steps is done. 'area': once the first player walks into `area`. 'boss':
+// once the floor's boss arrives.
 // `at` is the seconds after that moment.
 export interface Cue {
-  on: 'start' | 'done' | 'step' | 'area';
+  on: 'start' | 'done' | 'step' | 'area' | 'boss';
   at: number;
   speaker: string;
   text: string;
@@ -275,6 +309,8 @@ export interface Level {
   flow?: Flow;
   residents?: Resident[];
   cues?: Cue[];
+  boss?: Boss;
+  scene?: Scene;
   ramp: Ramp | null;
   // The area zombies find their way around walls in, for floors with rooms.
   navBounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null;

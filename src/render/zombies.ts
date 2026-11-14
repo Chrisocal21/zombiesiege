@@ -321,7 +321,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     dress(rig, zombie);
     // Each kind has its own build, and no two are quite the same height.
     const [sx, sy, sz] = KIND_LOOK[zombie.kind].scale;
-    const height = 0.95 + 0.1 * ((zombie.id * 0.381966) % 1);
+    const height = zombie.boss ? 1.16 : 0.95 + 0.1 * ((zombie.id * 0.381966) % 1);
     group.scale.set(sx * height, sy * height, sz * height);
     scene.add(group);
     return { group, ...joints, material: null, geometries: [], rig,

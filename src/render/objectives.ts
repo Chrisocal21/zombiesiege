@@ -179,7 +179,7 @@ function breakers(scene: THREE.Object3D, objective: Extract<Objective, { kind: '
 
 // The charger in recovery: a cabinet with a screen and a column of lights showing the charge, the
 // helipad's battery pack sitting on top of it wired in, and a beacon that turns while it charges.
-function charger(scene: THREE.Object3D, objective: Extract<Objective, { kind: 'charge' } | { kind: 'signal' }>, glowMap: THREE.Texture, title: string): { sync: Sync; group: THREE.Group } {
+function charger(scene: THREE.Object3D, objective: Extract<Objective, { kind: 'charge' } | { kind: 'signal' }>, glowMap: THREE.Texture, title: string, pack = 'HELIPAD UPS'): { sync: Sync; group: THREE.Group } {
   const group = onWall(scene, objective.device);
   mesh(group, new RoundedBoxGeometry(1.2, 1.55, 0.55, 2, 0.03), CABINET, 0, 0.775, 0.3);
   mesh(group, new THREE.BoxGeometry(1.22, 0.08, 0.57), HAZARD, 0, 0.04, 0.3);
@@ -197,7 +197,7 @@ function charger(scene: THREE.Object3D, objective: Extract<Objective, { kind: 'c
   });
   // The battery pack on top, with its cables.
   mesh(group, new RoundedBoxGeometry(0.8, 0.36, 0.42, 2, 0.03), new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.5, metalness: 0.3 }), -0.1, 1.73, 0.3);
-  mesh(group, new THREE.PlaneGeometry(0.6, 0.16), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: 'HELIPAD UPS', size: 48, color: '#1a1a1a' }, { text: '48V  /  LITHIUM', size: 26, color: '#1a1a1a' }], '#e0b323', 384, 112, '#1a1a1a'), roughness: 0.6 }), -0.1, 1.74, 0.512);
+  mesh(group, new THREE.PlaneGeometry(0.6, 0.16), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: pack, size: 48, color: '#1a1a1a' }, { text: '48V  /  LITHIUM', size: 26, color: '#1a1a1a' }], '#e0b323', 384, 112, '#1a1a1a'), roughness: 0.6 }), -0.1, 1.74, 0.512);
   const cable = new THREE.MeshStandardMaterial({ color: 0x111214, roughness: 0.7 });
   for (const [x, color] of [[0.2, 0xc4161c], [0.26, 0x111214]] as const) {
     const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(x, 1.75, 0.3), new THREE.Vector3(x + 0.3, 1.7, 0.45), new THREE.Vector3(0.5, 1.35, 0.58)]);
@@ -550,8 +550,9 @@ function buildObjective(scene: THREE.Object3D, level: Level, glowMap: THREE.Text
   switch (objective.kind) {
     case 'keycard': return keycard(scene, objective, glowMap);
     case 'breakers': return breakers(scene, objective, glowMap);
-    case 'charge': return charger(scene, objective, glowMap, 'BATTERY CHARGER').sync;
+    case 'charge': return charger(scene, objective, glowMap, objective.screen ?? 'BATTERY CHARGER', objective.screen ? 'BACKUP UPS' : undefined).sync;
     case 'carry': return cases(scene, objective, glowMap);
     case 'signal': return objective.style === 'flares' ? flares(scene, objective, glowMap, environment) : helipad(scene, objective, glowMap, environment);
+    case 'contain': return () => {};
   }
 }

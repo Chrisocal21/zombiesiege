@@ -3,3 +3,5 @@ export const CREW = 'CREW';
 export const HOSPITAL = 'NORTHLINE GENERAL';
 // Heard only over the radio until the vault opens.
 export const SCIENTIST = 'THE SCIENTIST  ·  RADIO';
+// Face to face, once he is out.
+export const SCIENTIST_HERE = 'THE SCIENTIST';

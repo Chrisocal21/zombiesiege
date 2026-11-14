@@ -177,6 +177,11 @@ export function createHud(menu: Menu): Hud {
         });
       }
     }
+    // The scientist, when he is not close by.
+    const scientist = state.scientist;
+    if (scientist && Math.hypot(scientist.x - player.x, scientist.z - player.z) > 6) {
+      points.push({ x: scientist.x, z: scientist.z, color: '#7fd0ff', label: 'SCIENTIST' });
+    }
     return points;
   }
 
@@ -209,6 +214,7 @@ export function createHud(menu: Menu): Hud {
     if (wheel) drawWheel(context, width, height, unit, player, wheel);
     drawBanner(width, height, unit, state, time);
     drawRadio(width, height, unit, state);
+    drawBoss(width, unit, state);
 
     if (state.frozen) {
       // A pill under the compass.
@@ -412,6 +418,9 @@ export function createHud(menu: Menu): Hud {
         total = Math.max(config.waves.breakSeconds, waves.timer);
         break;
       case 'active': {
+        // Fighting the boss through the last of the wave: its words come first.
+        const boss = state.level.objective?.kind === 'contain' ? objectiveBrief(state, player) : null;
+        if (boss) { title = boss.title; detail = boss.detail; break; }
         title = `Survive wave ${waves.number}`;
         const progress = objectiveProgress(state);
         detail = `${waves.toSpawn + aliveZombies(state)} zombies left${progress ? `   ·   ${progress}` : ''}`;
@@ -931,6 +940,36 @@ export function createHud(menu: Menu): Hud {
       text(context, costText, cursor + 11 * unit, y + 6 * unit, { size: 17 * unit, weight: 800, color: tone, spacing: 1 * unit, shadow: false });
       text(context, ' PTS', cursor + 11 * unit + amountWidth, y + 6 * unit, { size: 12 * unit, weight: 700, color: tone, spacing: 2 * unit, shadow: false });
     }
+  }
+
+  // The boss's name and health across the top, under the compass: in its first stage the bar stops at
+  // the share it cannot be brought below, and once it breaks the bar says so.
+  function drawBoss(width: number, unit: number, state: GameState): void {
+    const boss = state.boss;
+    if (!boss || boss.sealedTick >= 0) return;
+    const zombie = state.zombies.find((each) => each.id === boss.zombieId && !each.dead);
+    if (!zombie) return;
+    const name = (state.level.boss?.name ?? 'Boss').toUpperCase();
+    const barW = 520 * unit, barH = 10 * unit;
+    const x = (width - barW) / 2, y = 158 * unit;
+    const retreating = boss.retreatTick >= 0;
+    const share = retreating ? 0 : Math.max(0, Math.min(1, zombie.health / boss.maxHealth));
+    text(context, name, width / 2, y - 12 * unit, { size: 15 * unit, weight: 800, align: 'center', spacing: 5 * unit, color: COLOR.danger });
+    roundedRect(context, x, y, barW, barH, barH / 2);
+    context.fillStyle = 'rgba(255,255,255,0.12)';
+    context.fill();
+    if (share > 0) {
+      roundedRect(context, x, y, barW * share, barH, barH / 2);
+      context.fillStyle = COLOR.danger;
+      context.fill();
+    }
+    if (boss.stage === 1 && !retreating) {
+      // The floor it cannot be brought below yet.
+      context.fillStyle = 'rgba(255,255,255,0.55)';
+      context.fillRect(x + barW * config.zombie.boss.stageOneFloor - unit, y - 3 * unit, 2 * unit, barH + 6 * unit);
+    }
+    const note = retreating ? 'FALLING BACK INTO THE VAULT' : boss.stage === 1 ? 'IT CANNOT BE KILLED  ·  AIM FOR THE HEAD' : 'ENRAGED  ·  BEAT IT BACK INTO THE VAULT';
+    text(context, note, width / 2, y + barH + 18 * unit, { size: 11 * unit, weight: 700, align: 'center', spacing: 3 * unit, color: COLOR.dim });
   }
 
   // A radio or crew line in a small caption low in the view.
