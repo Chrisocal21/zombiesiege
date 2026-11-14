@@ -133,7 +133,7 @@ export function objectiveMarkers(state: GameState, player: Player): { at: Vec3; 
   if (!objective) return [];
   const phase = state.waves.phase;
   if (state.objective.done) {
-    return objective.kind === 'signal' && phase === 'evac' ? [{ at: objective.pad, label: 'HELICOPTER' }] : [];
+    return objective.kind === 'signal' && phase === 'evac' ? [{ at: objective.pad, label: objective.style === 'flares' ? 'AIR AMBULANCE' : 'HELICOPTER' }] : [];
   }
   switch (objective.kind) {
     case 'keycard':
@@ -144,7 +144,7 @@ export function objectiveMarkers(state: GameState, player: Player): { at: Vec3; 
       if (phase === 'hold') return inArea(player, objective.room) ? [] : [{ at: objective.device.position, label: objective.roomName.toUpperCase() }];
       return [{ at: objective.device.position, label: 'CHARGER' }];
     case 'signal':
-      return phase === 'hold' ? [] : [{ at: objective.device.position, label: 'LIGHTS' }];
+      return phase === 'hold' ? [] : [{ at: objective.device.position, label: objective.style === 'flares' ? 'FLARES' : 'LIGHTS' }];
     case 'carry':
       if (player.carrying >= 0) return [{ at: objective.dropoff, label: 'DROP-OFF' }];
       return state.objective.items.flatMap((item, i) => (caseFree(state, i) ? [{ at: { x: item.x, y: item.y, z: item.z }, label: 'CASE' }] : []));

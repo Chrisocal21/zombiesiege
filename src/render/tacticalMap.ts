@@ -59,12 +59,12 @@ export function drawTacticalMap(ctx: CanvasRenderingContext2D, width: number, he
     breakers: '04 / Throw the three breakers',
     charge: '04 / Charge the battery, hold the room',
     carry: '04 / Carry three lamp cases',
-    signal: '04 / Switch on the helipad lights',
+    signal: state.level.objective?.kind === 'signal' && state.level.objective.style === 'flares' ? '04 / Throw the signal flares' : '04 / Switch on the helipad lights',
   };
   const kind = state.level.objective?.kind ?? 'keycard';
   const steps = state.level.theme === 'garage'
     ? ['01 / Enter the garage', '02 / Seal the shutter', '03 / Barricade two doors', '04 / Survive five waves', '05 / Take the elevator up']
-    : ['01 / Board up two doors', '02 / Survive the waves', '03 / Open doors with points', goal[kind], kind === 'signal' ? '05 / Get aboard the helicopter' : '05 / Take the elevator up'];
+    : ['01 / Board up two doors', '02 / Survive the waves', '03 / Open doors with points', goal[kind], kind === 'signal' ? '05 / Get aboard the air ambulance' : '05 / Take the elevator up'];
   const done = state.level.theme === 'garage' ? (state.gate.closed ? 2 : 0) : state.objective.done ? 4 : 0;
   steps.forEach((line, i) => text(ctx, line, sx, y + (245 + i * 44) * u, { size: 15 * u, color: i < done ? COLOR.good : COLOR.text }));
   text(ctx, 'LEGEND', sx, y + 490 * u, { size: 12 * u, color: COLOR.dim, spacing: 3 * u });

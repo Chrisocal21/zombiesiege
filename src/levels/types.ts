@@ -163,7 +163,7 @@ export type Objective =
   | { kind: 'breakers'; label: string; part: string; panels: WallFitting[] }
   | { kind: 'charge'; label: string; part: string; device: WallFitting; room: Area; roomName: string; seconds: number }
   | { kind: 'carry'; label: string; part: string; items: Vec3[]; dropoff: Vec3 }
-  | { kind: 'signal'; label: string; part: string; device: WallFitting; pad: Vec3; padRadius: number; seconds: number };
+  | { kind: 'signal'; label: string; part: string; device: WallFitting; pad: Vec3; padRadius: number; seconds: number; style?: 'helipad' | 'flares' };
 
 // A buying point on a wall. Walk up, press use, and pay points.
 export interface Station {
@@ -196,6 +196,9 @@ export interface Atmosphere {
   fogNear: number;
   fogFar: number;
   ambient: number;
+  // The colours of the sky on a floor that is outdoors, and how bright the stars are (0 to 1). The
+  // night sky when left out.
+  sky?: { horizon: string; zenith: string; stars: number };
 }
 
 // A sign hung on a wall: a heading, a line under it, and the colour of the board.
@@ -213,8 +216,8 @@ export interface LevelSign {
 export interface Level {
   name: string;
   // The garage has the street, ramp and gate. A ward is a closed floor of rooms inside the tower.
-  // The roof is open to the sky, with the helipad.
-  theme: 'garage' | 'ward' | 'roof';
+  // The roof is open to the sky, with the helipad. A street is a block of the city in the open air.
+  theme: 'garage' | 'ward' | 'roof' | 'street';
   atmosphere?: Atmosphere;
   boxes: LevelBox[];
   ladders: Ladder[];

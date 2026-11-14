@@ -4,13 +4,21 @@ import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } 
 import { config } from '../config';
 import { changePoints, spawnAmmo, spawnWeapon, type AdminResult } from '../game/admin';
 import type { GameState } from '../game/state';
-import { stops, storeyLabel } from '../game/tower';
+import { LAST_DESCENT, LAST_FLOOR, LAST_VAULT, ROOF, stopAt, storeyLabel } from '../game/tower';
 import { WEAPON_IDS, isMelee, owns, weaponStats, type WeaponId } from '../game/weapons';
 import { outfitTexture } from './gearTextures';
 import { COLOR, FONT, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
 
 // 'title' is the press-any-key screen the game opens on; 'main' is the menu behind it.
-export type Screen = 'title' | 'main' | 'pause' | 'controls' | 'settings' | 'admin' | 'character' | 'victory';
+// The acts on the level select page: a tab each, with the floors in the order they are played.
+const ACTS = [
+  { kicker: 'OPERATION 001', name: 'THE TOWER', blurb: 'Fight up a hospital tower to the helicopter.', floors: Array.from({ length: ROOF + 1 }, (_, k) => k) },
+  { kicker: 'OPERATION 002', name: 'THE DESCENT', blurb: 'Fight down an office tower by freight lift.', floors: Array.from({ length: LAST_DESCENT - ROOF }, (_, k) => ROOF + 1 + k) },
+  { kicker: 'OPERATION 003', name: 'THE VAULT', blurb: 'Down the tunnel, through the pharmacy, to the vault.', floors: Array.from({ length: LAST_VAULT - LAST_DESCENT }, (_, k) => LAST_DESCENT + 1 + k) },
+  { kicker: 'OPERATION 004', name: 'DAYBREAK', blurb: 'Out into the open: block by block to the park.', floors: Array.from({ length: LAST_FLOOR - LAST_VAULT }, (_, k) => LAST_VAULT + 1 + k) },
+];
+
+export type Screen = 'title' | 'main' | 'pause' | 'controls' | 'settings' | 'admin' | 'character' | 'victory' | 'floors';
 
 // What the victory screen reports about the run that just ended.
 export interface RunStats {
@@ -219,6 +227,8 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   let rebinding: Action | null = null;
   let dragging: string | null = null;
   let focusedItem = 0;
+  // Which act's floors the level select page shows.
+  let floorAct = 0;
   let itemCount = 3;
   let keyboardMode = false;
   let activate = false;
@@ -450,7 +460,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         sound('select');
         callbacks.play();
       }
-      if (event.code === 'Escape' && (current === 'controls' || current === 'settings' || current === 'character')) back();
+      if (event.code === 'Escape' && (current === 'controls' || current === 'settings' || current === 'character' || current === 'floors')) back();
     },
     true,
   );
@@ -691,16 +701,11 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         if (current === 'main') {
           list([
             { label: 'DEPLOY', detail: 'Solo survival. Fight up the hospital tower to the roof.', action: () => (current = 'character') },
+            ...(config.testing.floorSelect ? [{ label: 'LEVEL SELECT', detail: 'Start on any floor of any act.', action: () => (current = 'floors') }] : []),
             { label: 'CONTROLS', detail: 'See and rebind every key and mouse button.', action: () => (current = 'controls') },
             { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
           ], left, height * 0.5, 0.1);
           drawSurvivorCard(context, width - left, 70 * unit, unit, ease((since - 0.15) / 0.5));
-          const picked = drawOperationCard(context, width - left, height * 0.3, unit, ease((since - 0.2) / 0.55), config.testing.floorSelect ? { inside, clicked: mouse.clicked } : null);
-          if (picked.hovering) hovering = true;
-          if (picked.floor >= 0) {
-            sound('select');
-            callbacks.playFloor(picked.floor);
-          }
           promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);
         } else if (current === 'pause') {
           const entries: Entry[] = [
@@ -716,7 +721,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           if (!bindings.pause.startsWith('Mouse')) prompts.push([keyLabel(bindings.pause), 'RESUME']);
           promptBar(prompts);
         } else {
-          text(context, 'THE HELICOPTER IS HERE. YOU MADE IT OUT OF THE TOWER', left, 300 * unit, { size: 19 * unit, color: COLOR.dim, spacing: 4 * unit });
+          text(context, 'THE AIR AMBULANCE IS HERE. YOU MADE IT OUT', left, 300 * unit, { size: 19 * unit, color: COLOR.dim, spacing: 4 * unit });
           const minutes = Math.floor(stats.seconds / 60);
           const rows: [string, string][] = [
             ['FLOORS CLEARED', String(stats.floors)],
@@ -752,12 +757,68 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         context.fillStyle = COLOR.accent;
         context.fillRect(px, py, panelWidth, 3 * unit);
         text(context, (parent === 'main' ? 'MAIN MENU' : 'PAUSED') + '  /', px + 44 * unit, py + 40 * unit, { size: 13 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint, shadow: false });
-        text(context, current === 'controls' ? 'CONTROLS' : current === 'character' ? 'YOUR SURVIVOR' : current === 'admin' ? 'ADMIN MENU' : 'SETTINGS', px + 44 * unit, py + 86 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
+        text(context, current === 'controls' ? 'CONTROLS' : current === 'floors' ? 'LEVEL SELECT' : current === 'character' ? 'YOUR SURVIVOR' : current === 'admin' ? 'ADMIN MENU' : 'SETTINGS', px + 44 * unit, py + 86 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
 
         const buttonHeight = 54 * unit;
         const buttonY = py + panelHeight - buttonHeight - 30 * unit;
 
-        if (current === 'admin') {
+        if (current === 'floors') {
+          const x0 = px + 44 * unit;
+          const inner = panelWidth - 88 * unit;
+          // One tab for each act.
+          ACTS.forEach((act, i) => {
+            const tabW = Math.min(330 * unit, (inner - 14 * unit * (ACTS.length - 1)) / ACTS.length), tabH = 52 * unit;
+            const tx = x0 + i * (tabW + 14 * unit), ty = py + 112 * unit;
+            const on = i === floorAct;
+            const hover = inside(tx, ty, tabW, tabH);
+            if (hover) hovering = true;
+            roundedRect(context, tx, ty, tabW, tabH, 4 * unit);
+            context.fillStyle = on ? 'rgba(232,184,102,0.2)' : hover ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)';
+            context.fill();
+            context.strokeStyle = on ? COLOR.accent : COLOR.border;
+            context.lineWidth = 1;
+            context.stroke();
+            text(context, act.kicker, tx + 16 * unit, ty + 20 * unit, { size: 11 * unit, weight: 700, spacing: 3 * unit, color: on ? COLOR.accent : COLOR.faint, shadow: false });
+            text(context, act.name, tx + 16 * unit, ty + 43 * unit, { size: 20 * unit, weight: 800, spacing: 2 * unit, color: on ? COLOR.text : COLOR.dim, shadow: false });
+            if (hover && mouse.clicked && !on) { floorAct = i; sound('move'); }
+          });
+          const act = ACTS[floorAct];
+          text(context, act.blurb, x0, py + 200 * unit, { size: 17 * unit, color: COLOR.dim, shadow: false });
+          const waves = act.floors.reduce((sum, floor) => sum + stopAt(floor).waves, 0);
+          text(context, `${act.floors.length} FLOORS  ·  ${waves} WAVES`, x0 + inner, py + 200 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, align: 'right', shadow: false });
+          // The floors, in the order they are played, in two columns, or three when there are many.
+          const cols = act.floors.length > 8 ? 3 : 2;
+          const gap = 12 * unit;
+          const tileW = (inner - gap * (cols - 1)) / cols;
+          const top = py + 226 * unit;
+          const roomH = buttonY - top - 18 * unit;
+          const rowsNeeded = Math.ceil(act.floors.length / cols);
+          const tileH = Math.min(64 * unit, (roomH - gap * (rowsNeeded - 1)) / rowsNeeded);
+          act.floors.forEach((floor, i) => {
+            const tx = x0 + (i % cols) * (tileW + gap), ty = top + Math.floor(i / cols) * (tileH + gap);
+            const hover = inside(tx, ty, tileW, tileH);
+            const roof = floor === ROOF;
+            if (hover) hovering = true;
+            roundedRect(context, tx, ty, tileW, tileH, 4 * unit);
+            context.fillStyle = hover ? 'rgba(232,184,102,0.2)' : 'rgba(255,255,255,0.05)';
+            context.fill();
+            context.strokeStyle = hover || roof ? COLOR.accent : COLOR.border;
+            context.lineWidth = 1;
+            context.stroke();
+            const label = storeyLabel(floor);
+            roundedRect(context, tx + 14 * unit, ty + tileH / 2 - 15 * unit, 58 * unit, 30 * unit, 3 * unit);
+            context.fillStyle = roof ? 'rgba(232,184,102,0.2)' : 'rgba(255,255,255,0.08)';
+            context.fill();
+            text(context, label, tx + 43 * unit, ty + tileH / 2 + 6 * unit, { size: 16 * unit, weight: 800, align: 'center', color: roof ? COLOR.accent : COLOR.text, shadow: false });
+            text(context, roof ? 'Helipad' : stopAt(floor).name, tx + 88 * unit, ty + tileH / 2 + 7 * unit, { size: 20 * unit, weight: 600, color: roof ? COLOR.accent : COLOR.text, shadow: false });
+            const tag = hover ? 'START HERE  ▶' : roof ? 'EXTRACT' : `${stopAt(floor).waves} WAVES`;
+            text(context, tag, tx + tileW - 16 * unit, ty + tileH / 2 + 5 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: hover || roof ? COLOR.accent : COLOR.faint, align: 'right', shadow: false });
+            if (hover && mouse.clicked) {
+              sound('select');
+              callbacks.playFloor(floor);
+            }
+          });
+        } else if (current === 'admin') {
           const state = callbacks.gameState();
           const player = state.players[0];
           const hitboxes = adminHitboxes(width, height);
@@ -1000,7 +1061,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         }
         if (panelScreen !== 'admin' && button('BACK', px + panelWidth - 44 * unit - 220 * unit, buttonY, 220 * unit, buttonHeight, true)) current = parent;
         promptBar(panelScreen === 'character' ? [['← →', 'CAMOUFLAGE'], ['↑ ↓', 'GLOVES'], ['ENTER', 'DEPLOY'], ['ESC', 'BACK']]
-          : panelScreen === 'admin' ? [['TAB', 'NAVIGATE'], ['ENTER', 'SELECT'], ['ESC', 'BACK']] : [['ESC', 'BACK']]);
+          : panelScreen === 'floors' ? [['CLICK', 'START ON A FLOOR'], ['ESC', 'BACK']] : panelScreen === 'admin' ? [['TAB', 'NAVIGATE'], ['ENTER', 'SELECT'], ['ESC', 'BACK']] : [['ESC', 'BACK']]);
       }
 
       if (error) text(context, error.message, width / 2, height - 86 * unit, { size: 19 * unit, align: 'center', color: COLOR.danger });
@@ -1039,106 +1100,4 @@ function drawSurvivorCard(context: CanvasRenderingContext2D, right: number, top:
   context.fill();
   text(context, 'SOLO', x + w - 14 * unit, top + 28 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: COLOR.dim, align: 'right', shadow: false });
   context.restore();
-}
-
-// Right of the main menu: the operation, with the tower drawn as a route from the garage to the
-// roof, every stop and its waves. With a pointer passed in, each stop can be clicked to start
-// there; the floor clicked is returned.
-interface CardPointer {
-  inside(x: number, y: number, w: number, h: number): boolean;
-  clicked: boolean;
-}
-
-function drawOperationCard(context: CanvasRenderingContext2D, right: number, top: number, unit: number, appear: number, pointer: CardPointer | null): { floor: number; hovering: boolean } {
-  let picked = -1;
-  let hovering = false;
-  const w = 430 * unit;
-  const pad = 32 * unit;
-  const rowH = 46 * unit;
-  const rows = stops.length + 1;
-  const h = 236 * unit + rows * rowH + 96 * unit;
-  const x = right - w + (1 - appear) * 60 * unit;
-  const cut = 22 * unit;
-  context.save();
-  context.globalAlpha = appear;
-  // Glass card with one corner cut away.
-  context.beginPath();
-  context.moveTo(x, top);
-  context.lineTo(x + w, top);
-  context.lineTo(x + w, top + h - cut);
-  context.lineTo(x + w - cut, top + h);
-  context.lineTo(x, top + h);
-  context.closePath();
-  context.fillStyle = 'rgba(8,12,16,0.78)';
-  context.fill();
-  context.strokeStyle = 'rgba(255,255,255,0.1)';
-  context.lineWidth = 1;
-  context.stroke();
-  context.fillStyle = COLOR.accent;
-  context.fillRect(x, top, w, 3 * unit);
-
-  text(context, 'OPERATION 001', x + pad, top + 44 * unit, { size: 13 * unit, weight: 700, spacing: 5 * unit, color: COLOR.accent, shadow: false });
-  text(context, 'THE TOWER', x + pad, top + 98 * unit, { size: 48 * unit, weight: 800, spacing: 4 * unit, shadow: false });
-  text(context, 'Fight up a hospital tower to the helicopter.', x + pad, top + 132 * unit, { size: 17 * unit, color: COLOR.dim, shadow: false });
-  text(context, 'THREAT', x + w - pad, top + 44 * unit, { size: 11 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, align: 'right', shadow: false });
-  for (let i = 0; i < 5; i++) {
-    context.fillStyle = i < 4 ? COLOR.danger : 'rgba(255,255,255,0.14)';
-    context.fillRect(x + w - pad - (5 - i) * 12 * unit + 4 * unit, top + 54 * unit, 8 * unit, 14 * unit);
-  }
-  context.fillStyle = 'rgba(255,255,255,0.1)';
-  context.fillRect(x + pad, top + 160 * unit, w - pad * 2, 1);
-
-  // The route, roof at the top. A line runs down through a node for each stop.
-  text(context, pointer ? 'ROUTE  ·  CLICK A FLOOR TO START' : 'ROUTE', x + pad, top + 194 * unit, { size: 12 * unit, weight: 700, spacing: 4 * unit, color: pointer ? COLOR.accent : COLOR.faint, shadow: false });
-  const routeTop = top + 222 * unit;
-  const lineX = x + pad + 9 * unit;
-  context.fillStyle = 'rgba(232,184,102,0.35)';
-  context.fillRect(lineX - 1 * unit, routeTop + rowH / 2, 2 * unit, (rows - 1) * rowH);
-  for (let i = 0; i < rows; i++) {
-    const floor = rows - 1 - i;
-    const roof = floor >= stops.length;
-    const y = routeTop + i * rowH;
-    const middle = y + rowH / 2;
-    const hover = appear > 0.9 && pointer !== null && pointer.inside(x + pad - 8 * unit, y + 2 * unit, w - pad * 2 + 16 * unit, rowH - 4 * unit);
-    if (hover) {
-      hovering = true;
-      if (pointer!.clicked) picked = floor;
-      const wash = context.createLinearGradient(x + pad, 0, x + w - pad, 0);
-      wash.addColorStop(0, 'rgba(232,184,102,0.24)');
-      wash.addColorStop(1, 'rgba(232,184,102,0.04)');
-      context.fillStyle = wash;
-      context.fillRect(x + pad - 8 * unit, y + 2 * unit, w - pad * 2 + 16 * unit, rowH - 4 * unit);
-    }
-    context.fillStyle = roof ? COLOR.accent : '#0b1015';
-    context.strokeStyle = COLOR.accent;
-    context.lineWidth = 2 * unit;
-    context.beginPath();
-    context.arc(lineX, middle, (roof ? 7 : 5.5) * unit, 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
-    const label = storeyLabel(floor);
-    const boxX = x + pad + 30 * unit;
-    roundedRect(context, boxX, middle - 13 * unit, 52 * unit, 26 * unit, 2 * unit);
-    context.fillStyle = roof ? 'rgba(232,184,102,0.2)' : 'rgba(255,255,255,0.07)';
-    context.fill();
-    text(context, label, boxX + 26 * unit, middle + 6 * unit, { size: 15 * unit, weight: 800, spacing: 1 * unit, align: 'center', color: roof ? COLOR.accent : COLOR.text, shadow: false });
-    text(context, roof ? 'Helipad' : stops[floor].name, boxX + 68 * unit, middle + 7 * unit, { size: 19 * unit, weight: 600, color: roof ? COLOR.accent : COLOR.text, shadow: false });
-    const tag = hover ? 'START HERE  ▶' : roof ? 'EXTRACT' : `${stops[floor].waves} WAVES`;
-    text(context, tag, x + w - pad, middle + 5 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: roof || hover ? COLOR.accent : COLOR.faint, align: 'right', shadow: false });
-  }
-
-  // The run at a glance.
-  const footY = routeTop + rows * rowH + 18 * unit;
-  context.fillStyle = 'rgba(255,255,255,0.1)';
-  context.fillRect(x + pad, footY, w - pad * 2, 1);
-  const totalWaves = stops.reduce((sum, stop) => sum + stop.waves, 0) + config.tower.roof.waves;
-  const facts: [string, string][] = [[String(totalWaves), 'WAVES'], [String(stops.length), 'STOPS'], ['1', 'WAY OUT']];
-  const column = (w - pad * 2) / facts.length;
-  facts.forEach(([value, label], i) => {
-    const fx = x + pad + i * column;
-    text(context, value, fx, footY + 48 * unit, { size: 32 * unit, weight: 800, shadow: false });
-    text(context, label, fx, footY + 70 * unit, { size: 11 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, shadow: false });
-  });
-  context.restore();
-  return { floor: picked, hovering };
 }

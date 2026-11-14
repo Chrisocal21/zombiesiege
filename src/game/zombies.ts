@@ -24,6 +24,7 @@ export function spawnZombie(
     speedFactor: 0.85 + 0.3 * ((id * 0.618) % 1),
     lastAttackTick: -1,
     lastHitTick: -1,
+    pushing: false,
     entry,
     dead: false,
     deadLeft: 0,
@@ -116,7 +117,10 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     }
 
     // It stops a little short of its reach, so it stays on you without walking into you.
-    if (!blocked && (zombie.entry || distance > zombieConfig.attackRange * 0.75)) {
+    // With every way shut, it still presses toward the player, against the cage or wall in the way.
+    zombie.pushing = false;
+    if (blocked) heading = { x: dx, z: dz };
+    if (zombie.entry || distance > zombieConfig.attackRange * 0.75) {
       const headingLength = Math.hypot(heading.x, heading.z) || 1;
       const speed =
         zombieConfig.moveSpeed *
@@ -130,6 +134,8 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
         0,
         zombieConfig.height,
       );
+      const intended = speed * dt;
+      zombie.pushing = blocked || Math.hypot(moved.x - zombie.x, moved.z - zombie.z) < intended * 0.35;
       zombie.x = moved.x;
       zombie.z = moved.z;
     }

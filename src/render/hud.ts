@@ -7,7 +7,7 @@ import { ITEMS } from '../game/items';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import type { GameState, Player } from '../game/state';
-import { floorTitle, stopAt, stops, wavesOnFloor } from '../game/tower';
+import { floorTitle, goesDown, isDescent, stopAt, stops, wavesOnFloor } from '../game/tower';
 import { zombiesInWave } from '../game/waves';
 import { objectiveMarkers } from '../game/objectives';
 import { clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
@@ -937,10 +937,12 @@ export function createHud(menu: Menu): Hud {
       color = COLOR.good;
       age = seconds(state.objective.doneTick);
     } else if (waves.phase === 'hold' && seconds(state.objective.startedTick) < BANNER_SECONDS) {
-      const roof = state.level.objective?.kind === 'signal';
-      eyebrow = roof ? 'THE ROOF' : 'HOLD THE ROOM';
-      title = roof ? 'LIGHTS ON' : 'CHARGING';
-      detail = roof ? 'The helicopter is coming. Hold out until it lands' : 'Keep someone in the room until it is full';
+      const signal = state.level.objective;
+      const roof = signal?.kind === 'signal';
+      const flares = roof && signal.style === 'flares';
+      eyebrow = flares ? 'DAYBREAK' : roof ? 'THE ROOF' : 'HOLD THE ROOM';
+      title = flares ? 'FLARES LIT' : roof ? 'LIGHTS ON' : 'CHARGING';
+      detail = roof ? 'The air ambulance is coming. Hold out until it lands' : 'Keep someone in the room until it is full';
       color = COLOR.accent;
       age = seconds(state.objective.startedTick);
     } else if (waves.phase === 'cleared' || waves.phase === 'search') {
@@ -950,15 +952,16 @@ export function createHud(menu: Menu): Hud {
       color = COLOR.accent;
       age = 0.5;
     } else if (waves.phase === 'lift') {
-      eyebrow = 'THE WAY UP';
-      title = 'ELEVATOR READY';
-      detail = 'Step inside to go up';
+      const down = goesDown(state.floor, state.floor + 1);
+      eyebrow = down ? 'THE WAY DOWN' : 'THE WAY UP';
+      title = isDescent(state.floor) ? 'FREIGHT LIFT READY' : 'ELEVATOR READY';
+      detail = down ? 'Step inside to go down' : 'Step inside to go up';
       color = COLOR.good;
       age = 0.5;
     } else if (waves.phase === 'ride') {
-      eyebrow = 'GOING UP';
+      eyebrow = goesDown(state.floor, state.floor + 1) ? 'GOING DOWN' : 'GOING UP';
       title = floorName(state.floor + 1).toUpperCase();
-      detail = state.floor + 1 < stops.length ? stopAt(state.floor + 1).name : 'The helipad';
+      detail = state.floor + 1 < stops.length || isDescent(state.floor + 1) ? stopAt(state.floor + 1).name : 'The helipad';
       color = COLOR.accent;
       age = 0.5;
     } else if (waves.arrivedTick >= 0 && seconds(waves.arrivedTick) < BANNER_SECONDS) {

@@ -1,6 +1,6 @@
 # Zombie Siege — Lore, Levels and Reasons
 
-A single file that holds the whole story so far, every decision, and what's still open. It's made to be pasted into a chat on the Claude website and talked through away from the code.
+A single file that holds the whole story so far, every decision, everything the game already shows the player, and what's still open. It's made to be pasted into a chat on the Claude website and talked through away from the code.
 
 ---
 
@@ -11,8 +11,10 @@ You're helping Chris build the story for Zombie Siege. Chris is a solo developer
 How to work with Chris:
 - Short, plain replies. One topic at a time.
 - No emojis.
-- Everything in this file is decided unless it sits under **Proposed** or **Parked**. Build on it; don't reopen it unless Chris asks to.
+- Everything in this file is decided unless it sits under **Where the game and the story disagree**, **Questions to settle**, **Proposed** or **Parked**. Build on the rest; don't reopen it unless Chris asks to.
+- **What the game already shows** is a record of the words and places that are built. It isn't a decision. Names in it (like Northline) are placeholders until Chris keeps them.
 - When offering choices, make them multiple choice and always leave room for Chris's own answer.
+- Chris is using this round to research and settle the story before building more levels. **Research leads** lists the real-world topics worth looking into.
 - At the end, write a short summary of what was decided, in the same style as this file, so Chris can paste it back into the project.
 
 ---
@@ -21,8 +23,9 @@ How to work with Chris:
 
 - **Zombie Siege** (working title): a browser zombie wave shooter. First person, full 3D, chunky low-poly look.
 - The core loop: survive waves of zombies, earn points, buy guns and ammo at wall stations, board up doors between waves.
-- Solo now; co-op for 2 and then 4 players is next on the roadmap. Zombie variety comes after co-op.
+- Solo and online co-op both work now (room codes, up to 4). Zombie variety comes next.
 - At the start of each prep phase, zombies rush through every door.
+- All four acts now exist as playable levels, from the street outside the hospital garage to the park at the end: 21 stops in a row. Only Act 1 has its story in the build. Acts 2 to 4 are levels with no radio, notes or scientist yet.
 
 ---
 
@@ -38,6 +41,8 @@ How to work with Chris:
 | The zombies | Infected people who keep changing, and later mutate |
 | What they remember | They drift to places they knew. Patients stay in wards, office workers at their desks |
 | The series | Games, shorts and longer stories. No cure for a long time |
+
+**In the build, not decided:** the city is called **Northline**. The hospital is Northline General Hospital. Street signs name the districts **City Centre**, **Old Town**, **Riverside** and **West End**. The roads out are closed with "EVACUATION IN EFFECT" signs. See **Questions to settle**.
 
 ---
 
@@ -84,21 +89,21 @@ The acts switch between **hold** (stay in one spot and fight off waves) and **mo
 
 - The crew drives a ground ambulance in to rescue survivors and is overrun in the parking garage.
 - The ground is blocked and some survivors can't walk, so the air ambulance is the only way out. But the helipad is broken, so the crew has to fix it.
-- The crew climbs floor by floor. Each floor fixes one part of the helipad:
+- The crew rides the elevator up, floor by floor. The hospital has more storeys than the elevator stops at. Each stop fixes one part of the helipad, and also gets the elevator going again:
 
-| Level | Place | Objective | What it fixes |
-|---|---|---|---|
-| Level 0 | Parking garage | Survive the waves | — |
-| Floor 3 | Hospital floor | Find the manager's keycard | Helipad control key |
-| Floor 6 | Hospital floor | Turn on three breakers | Power to the roof |
-| Floor 9 | Recovery ward | Hold the Recovery room for 60 seconds while it charges | Helipad battery |
-| Floor 12 | Hospital floor | Carry three lamp cases to the drop-off | Landing lamps |
-| Roof | Helipad | Stand on the pad for 90 seconds with the lights on | Extraction: the air ambulance lands |
+| Stop | What the floor is | Objective | What it fixes | Waves |
+|---|---|---|---|---|
+| Ground (Level 0) | Parking garage, B1 | Survive the waves | — | 5 |
+| Floor 3 | Admissions: lobby, open-plan office, medical records, the administrator's office | Find the manager's keycard | Helipad control key | 3 |
+| Floor 6 | Pharmacy and laboratories: pharmacy, Lab 1 (biohazard), Lab 2 (pathology), cold storage, dispensary. The power is out | Throw three breakers | Power to the roof | 3 |
+| Floor 9 | Surgery: two operating theatres, scrub, recovery | Start the charger and hold the Recovery room for 60 seconds | Helipad battery | 4 |
+| Floor 12 | Intensive care: bays 1 to 5, Isolation A and B (infection control) | Carry three lamp cases to the elevator | Landing lamps | 4 |
+| Roof (level 14) | Helipad, machine room, AC plant, water tank, four stair heads | Switch on the helipad lights, hold 90 seconds, get everyone on the pad | Extraction: the air ambulance lands | 2 |
 
-- Rescued people are found outside and behind locked doors on each floor. They're story only: they appear on the roof and count toward a **people saved** total.
-- Hospital clues hint at the scientist, but the crew first hears about him from a radio call on the air ambulance after Act 1.
+- Rescued people are found outside and behind locked doors on each floor. They're story only: they appear on the roof and count toward a **people saved** total. (Not built yet.)
+- Hospital clues hint at the scientist, but the crew first hears about him from a radio call on the air ambulance after Act 1. (Not built yet.)
 
-### Act 2 — Descent (the office tower)
+### Act 2 — Descent (the office tower) · levels built
 
 - The streets are too overrun to land on, so the air ambulance drops the crew on the tower roof.
 - The only safe way to the pharmacy is the tunnel system, through the tower's parking garage.
@@ -111,7 +116,19 @@ The acts switch between **hold** (stay in one spot and fight off waves) and **mo
   - a fire door stays locked until the breakers are back on
 - The scientist is on the radio or intercom the whole way down: short lines, calm at first. The crew catches one glimpse of him on a security camera near the bottom.
 
-### Act 3 — The Vault (the pharmacy and lab)
+**In the build (Nov 13):** seven levels. The air ambulance drops the crew on the tower roof, and they go down by **freight lift**, not stairs. Every floor's job also gets the lift working, as in the hospital. Nothing comes up the stairs or bursts out of floors yet, and the scientist isn't heard.
+
+| Stop | What the floor is | Objective | Waves |
+|---|---|---|---|
+| Tower roof | The hospital roof's shape under a new name: plant room, four stair heads, no helipad | Start the roof controls and hold them for 40 seconds | 2 |
+| Floor 41 | Open-plan offices: desk rows, kitchen, meeting room behind a paid door. The power is out | Throw three breakers | 3 |
+| Floor 34 | Records floor: shelving aisles, standby generator room | Start the generator and hold the room for 45 seconds | 3 |
+| Floor 27 | Executive suites: warm wood, boardroom, the chief executive's suite behind a paid door | Find the executive keycard | 3 |
+| Floor 20 | Server floor: racks, the power out, a UPS room behind a paid door | Throw three breakers | 4 |
+| Lobby | Ground-floor reception: marble hall, columns, a security booth with the lift's service controls | Start the controls and hold the booth for 50 seconds | 4 |
+| Tower garage (B1) | The tower's own parking level, dark and packed, tunnel mouths in the east wall | Throw three breakers | 5 |
+
+### Act 3 — The Vault (the pharmacy and lab) · levels built
 
 - A normal street pharmacy with a secret lab behind it, reached **underground** through the tunnel from the tower's garage.
 - It's overrun because people ran there for medicine, and the sample pulled in more.
@@ -119,13 +136,33 @@ The acts switch between **hold** (stay in one spot and fight off waves) and **mo
 - The vault runs a timed unlock while the crew holds the pharmacy (proposed; reuses the Floor 9 hold).
 - The vault opens, the scientist steps out, and the crew moves on.
 
-### Act 4 — Daybreak (the street run)
+**In the build (Nov 13):** four levels. The vault opening, the scientist stepping out and the mutations are **not built**: the vault is an ordinary hold with ordinary zombies, and the lift out of it goes straight to Act 4.
+
+| Stop | What the floor is | Objective | Waves |
+|---|---|---|---|
+| Service tunnel | A long, narrow concrete run under the street with barriers staggered down it | Throw three breakers spread along it | 4 |
+| Pharmacy | A street-level shop: shelves, a dispensing counter, the street doors at the front. The tunnel lift comes up in the stockroom | Find the manager's keycard behind a paid door | 3 |
+| Hidden lab | The lab behind the pharmacy, reached by lift down. Ring corridor round a central lab, cold storage behind a paid door. The power is out | Throw three breakers | 4 |
+| The vault | A cold chamber with the vault door in the north wall | Start the time lock and hold the door for 60 seconds | 5 |
+
+### Act 4 — Daybreak (the street run) · levels built
 
 - The first time the crew is outside. The sun is coming up.
 - The street changes block by block: it starts with shopping streets and ends at failed barricades near the edge of the zone.
 - Waves come the whole way, drawn by the sample.
 - The extraction site is a park or sports field. Throw a flare and hold until the ride lands (proposed).
 - The extraction goes to plan: the ride lands and the crew gets out. Trouble waits for the next trip.
+
+**In the build (Nov 13):** four outdoor levels, the first that aren't inside a building. Each block's exit is a **transit lift** in a kiosk (a stand-in, see Questions). The sky lightens block by block, and the park is at sunrise.
+
+| Stop | What the place is | Objective | Waves |
+|---|---|---|---|
+| Main Street | Shopfronts both sides, parked cars and barriers in the road | Find the transit pass in the newspaper stand at the far end | 4 |
+| Market square | A paved plaza with a fountain and stalls, the town hall on the north side, six side streets | Start the radio relay on the town hall wall and hold the steps for 55 seconds | 4 |
+| The barricades | A road checkpoint torn open, army trucks left where they stopped, generator trailers | Throw the switch on three generators (they light the floodlights) | 4 |
+| The park | Grass, paths, trees, a hedge broken at five gates, a groundskeeper's shed | Throw the signal flares and hold 90 seconds until the air ambulance lands in the smoke, then get aboard | 3 |
+
+The extraction has no painted pad: five red flares are thrown onto the grass and red smoke goes up. The run ends when everyone is aboard.
 
 ### After Act 4
 
@@ -143,6 +180,8 @@ Not written yet. See **Places** for what's next.
 | Later specials | Crawler, Bloater, Armored, with later places |
 | Bosses | Only at big story moments. Until real bosses are built, big waves led by a Brute or Screamer stand in |
 
+**In the build:** one kind of zombie, in two body models with mixed skin, hair and clothes. No patient or staff looks yet, and no specials. They come through doors, press against steel cages, and collapse when killed.
+
 ---
 
 ## Tone and storytelling
@@ -157,6 +196,8 @@ Not written yet. See **Places** for what's next.
 | Ending | Not decided. It gets found as the series grows |
 | Twist | None for now. "The scientist is immune" stays in the back pocket for a later reveal |
 
+**In the build:** the only story the player sees is the three captions in the opening scene and the signs on the walls. There are no radio lines, notes, files or text cards yet. The studio name on the title screen is "Probably Fine Studios", which fits the dry humor.
+
 ---
 
 ## Structure
@@ -164,13 +205,17 @@ Not written yet. See **Places** for what's next.
 | Decision | Detail |
 |---|---|
 | Full game | One long run from the garage to the end, like COD Zombies. No level picker |
-| During development | The win screen and level menu stay for testing Level 0, then come out |
+| During development | The win screen and level menu stay for testing, then come out |
 | Co-op | The same story for 1 to 4 players |
 | Failure | When every player is out of lives, the whole run restarts |
 
+**In the build:** 3 lives each. The menu lets you start at any floor, for testing.
+
 ---
 
-## Loadout and survival (Phase 3, not in Level 0)
+## Loadout and survival
+
+### The plan
 
 | Slot | Rule |
 |---|---|
@@ -184,7 +229,20 @@ Not written yet. See **Places** for what's next.
 - **Medicine** (bandages, first aid kits) heals big and fast in a crisis.
 - **Radial wheel** for carry items. It doesn't slow time in co-op. Hotkeys for bandages and water make the emergency items one press.
 - **Carry items stay with you** for the whole run.
-- Level 0 keeps one pistol and plain auto-regen.
+
+### What's built now
+
+| Thing | In the build |
+|---|---|
+| Starting gun | P9 service pistol, 12 rounds. The character screen calls it the "field kit" |
+| Guns on the walls | Pump shotgun and AK, bought with points |
+| Melee | Machete and spiked bat are built but switched off until they look right |
+| Items | Bandage, first aid kit, water. Carry up to 10 of each |
+| Thirst | Hydration drains slowly. Low hydration halves regen, it doesn't stop it |
+| Restocks | A set of bandages, water and so on is set out by the elevator after every wave and when a floor is cleared |
+| Doors | Boards to nail up, and steel cages that zombies press against but can't pass |
+| Hotbar and wheel | Guns, cages and items on a hotbar and a radial wheel |
+| Flashlight | On F. It matters on Floor 6, where the power is out |
 
 ---
 
@@ -196,7 +254,7 @@ Not written yet. See **Places** for what's next.
 - **Each item fits its place.**
 - **Three kinds:**
   - **Use now:** takes effect when you pick it up.
-  - **Carry:** goes into one of the 5 item slots, used from the radial wheel or a hotkey.
+  - **Carry:** goes into one of the item slots, used from the radial wheel or a hotkey.
   - **Story:** clues, notes, files and emails. These count as collectibles.
 - **Weapons** found in the world go into the loadout slots, not the item slots.
 
@@ -204,13 +262,15 @@ Not written yet. See **Places** for what's next.
 
 | Item | Kind | What it does |
 |---|---|---|
-| Bandages | Carry | Fast heal |
-| Water bottle | Carry | Keeps you hydrated |
+| Bandages | Carry | Built: fast heal |
+| First aid kit | Carry | Built: full heal, slower to use |
+| Water bottle | Carry | Built: keeps you hydrated |
 | Adrenaline syringe | Carry | Revive a downed teammate faster, or get yourself up once |
 | Painkillers | Carry | Take less damage for a short time |
 | Fire extinguisher | Use now | Spray to push zombies back and blind them |
 | Patient files, lab sample | Story | Hints at the scientist |
 | Boards | Use now | Built: barricade the doors |
+| Steel cages | Carry | Built: block a door completely |
 
 ### Office tower (Descent)
 
@@ -255,14 +315,215 @@ Not written yet. See **Places** for what's next.
 | Place | What it's good for | Where it fits |
 |---|---|---|
 | Hospital | Climbing up, helipad extraction | Act 1 (built) |
-| Office tower | Going down, varied floors, parking garage at the bottom | Act 2 |
-| Pharmacy and lab | A tight space to clear, the vault hold, mutations | Act 3 |
-| City street and field | Open ground, a moving fight, the final hold | Act 4 |
+| Office tower | Going down, varied floors, parking garage at the bottom | Act 2 (built) |
+| Pharmacy and lab | A tight space to clear, the vault hold, mutations | Act 3 (built, no mutations) |
+| City street and field | Open ground, a moving fight, the final hold | Act 4 (built) |
 | Apartment block | Tight hallways, door by door | Next |
 | Subway | Dark tunnels that link to the Act 3 tunnels | Next |
 | Police station | Armory, cells, Armored zombies | Next |
 | School or university | A lab site for the scientist's other trips | Next |
 | Mall, military base, bridge, harbor, stadium | — | Open for later acts and spin-offs |
+
+---
+
+## What the game already shows
+
+Every piece of story the player can see in the build today, word for word where it's text. Useful for checking new ideas against what's already there.
+
+### Title, menus and end screen
+
+- Boot screen: "PROBABLY FINE STUDIOS PRESENTS", then **"THE TOWER · NIGHTFALL"**, then "PRESS ANY KEY TO START".
+- Main menu footer: "PROBABLY FINE STUDIOS · PRE-ALPHA BUILD".
+- Mission card: **"OPERATION 001 — THE TOWER"**, "Fight up a hospital tower to the helicopter." Threat 4 of 5. Footer: total waves, 5 stops, "1 WAY OUT".
+- Route list on the card: G Garage, 3 Admissions, 6 Pharmacy and lab, 9 Surgery, 12 Intensive care, ROOF Helipad ("EXTRACT").
+- Character screen: "YOUR SURVIVOR". Outfits are military camouflage (Woodland, Desert, Urban, Digital, Special Ops, Winter) and tactical gloves (Black Tactical, Coyote, Ranger, Urban Grey). "Enter to deploy."
+- Bodycam camera option, with an overlay reading "REC / BODY 01" and a timestamp.
+- Win screen: **"EXTRACTED"**, "THE HELICOPTER IS HERE. YOU MADE IT OUT OF THE TOWER", floors cleared, lives left.
+- Death: "OVERRUN", "OUT OF LIVES".
+
+### The opening scene (14 seconds, skippable)
+
+Two camera shots on the street outside the garage at night: wide over the street, a parked ambulance and the mouth of the ramp, then low at the top of the ramp, looking down into the dark as five zombies shamble up it. Then the camera settles into the player's view.
+
+Captions, in order:
+1. **LEVEL 0** — "The hospital parking garage"
+2. "The crew drove in to bring survivors out."
+3. "The garage is already overrun."
+
+### The street outside the garage
+
+- The players start on the street, run down a ramp into the garage and close a metal gate behind them.
+- A parked ambulance in the hospital's ambulance bay. Its livery reads "AMBULANCE / NORTHLINE GENERAL HOSPITAL".
+- The **El Cajon**, a 1960s coupe utility in dark blue, parked in bay **E05**, which is signed "E05 RESERVED / KEEP BAY CLEAR". It's the most detailed vehicle in the game. Nobody has said whose it is.
+- Ordinary saloons, estates and a cargo van in the lot and on the road, and a concrete barrier.
+- Hospital signs: "NORTHLINE GENERAL HOSPITAL / ACUTE CARE / TRAUMA CENTRE", "MAIN ENTRANCE", "ENTRANCE CLOSED / EMERGENCY ACCESS VIA B1 RAMP", "EMERGENCY / 24 HOURS / ACCESS VIA B1".
+- Lot signs: "VISITOR PARKING", "HOSPITAL TRANSPORT / AMBULANCE BAY / KEEP ACCESS CLEAR".
+- Shopfronts along the block, each under "NORTHLINE / CITY CENTRE": **Northline Offices, Corner Market, Metro House, Night Owl Cafe, West End House, Northline Pharmacy, Riverside House, 24 / Seven Market**.
+- Both ends of the road are sealed: tunnel portals signed **"OLD TOWN"** and **"RIVERSIDE"** with "ROAD CLOSED / EVACUATION IN EFFECT", concrete closures reading "ROAD CLOSED / EMERGENCY ACCESS ONLY", and shut security gates.
+- Tall towers on the skyline behind.
+- The HUD's compass reads "NORTHLINE / STREET".
+
+### Level 0 — the garage (B1)
+
+- Signs: "B1 / STAFF PARKING / NORTHLINE GENERAL HOSPITAL", "LIFTS / HOSPITAL / FOLLOW THE GREEN WALKWAY", "10 / SLOW", "PARKING B1", "LOADING DOCK".
+- A loading dock, a shipping container, crates, and doorways in each wall where zombies come from.
+- The elevator up to the hospital.
+
+### Floor 3 — Admissions
+
+- Signs: "ADMISSIONS / FLOOR 3 / RECEPTION", "MEDICAL RECORDS / STAFF ONLY", "ADMINISTRATOR / PRIVATE", "ELEVATOR / OUT OF SERVICE / KEYCARD OVERRIDE".
+- Lobby with a reception counter and waiting seats, an open-plan office, the records room (filing cabinets) and the manager's office. The manager's keycard is on the desk. It overrides the elevator and opens the helipad's control box on the roof.
+
+### Floor 6 — Pharmacy and laboratories
+
+- Signs: "FLOOR 6 / PHARMACY AND LABORATORIES", "PHARMACY / AUTHORISED STAFF", "LAB 1 / BIOHAZARD", "LAB 2 / PATHOLOGY", "COLD STORAGE / SAMPLES / -20C", "DISPENSARY / COLLECT HERE", "ELEVATOR / NO POWER / RESET THE BREAKERS".
+- The power is out. Only red emergency lamps until the breakers are thrown, one circuit at a time.
+
+### Floor 9 — Surgery
+
+- Signs: "SURGERY / FLOOR 9", "THEATRE 1" and "THEATRE 2 / STERILE / NO ENTRY", "SCRUB / WASH BEFORE ENTRY", "RECOVERY / QUIET PLEASE", "ELEVATOR / ON BATTERY / CHARGE IN RECOVERY".
+- The charger in Recovery fills the helipad battery. Zombies keep coming while it charges.
+
+### Floor 12 — Intensive care
+
+- Signs: "INTENSIVE CARE / FLOOR 12 / QUIET", "ISOLATION A" and "ISOLATION B / INFECTION CONTROL", "BAYS 1 TO 5 / ONE VISITOR AT A TIME", "ELEVATOR / HELIPAD SPARES / LOAD HERE".
+- Three lamp cases to carry to the elevator.
+
+### The roof (level 14)
+
+- Sign: "HELIPAD / ROOF / LEVEL 14".
+- Open night sky over the city. Zombies climb the stairwells and come out of four stair heads.
+- The light box is on the far east parapet. Once it's on: "Lights on. It is on its way", a 90-second hold, then "HELICOPTER DOWN / Everyone onto the helipad".
+- The helicopter is a white twin-engine light helicopter marked **"AIR AMBULANCE"**.
+
+### Objective words on screen
+
+"HELIPAD PART 1 OF 4" and so on, with the part named: Helipad control key, Power to the roof, Helipad battery, Landing lamps. Between floors: "THE WAY UP", "ELEVATOR READY", "GOING UP".
+
+---
+
+## Where the game and the story disagree
+
+Things the build says that clash with the decisions above, or with each other. Each needs a call before more levels get built.
+
+1. **"The tower" is used for two buildings.** The game calls the hospital "The Tower" (title screen, mission card, win screen). The story uses "the office tower" for Act 2.
+   - a) The hospital keeps "The Tower"; Act 2 gets another name (the high-rise, the head office, the company's name)
+   - b) The hospital becomes "Northline General" or similar on screen; "the tower" stays for Act 2
+   - c) Your own answer
+
+2. **There's already a pharmacy on the street outside the hospital.** "Northline Pharmacy" sits a few metres from the garage ramp. Act 3's pharmacy is meant to be reached underground from the office tower. The hospital's own Floor 6 is a pharmacy and lab floor too, with cold storage for samples.
+   - a) It's just a shop; the Act 3 pharmacy is somewhere else in the city
+   - b) It *is* the Act 3 pharmacy, and the long way round through the office tower is because the street is overrun
+   - c) Rename the street shop so it doesn't point the wrong way
+   - d) Your own answer
+
+3. **Whose ambulance is in the opening shot?** The ambulance parked outside wears Northline General Hospital livery, in the hospital's own bay. The story says the crew drove a ground ambulance in, and the Proposed section says it ran out of fuel 9 miles out.
+   - a) It's the hospital's own ambulance, abandoned. The crew's is dead somewhere else (fits the fuel proposal)
+   - b) It's the crew's ambulance, and the livery should change to the crew's group
+   - c) Your own answer
+
+4. **The players look like soldiers, not paramedics.** Outfits are all camouflage, the starting gun is a "service pistol" in a "field kit", the menu says "deploy" and "Operation 001", and the bodycam says "BODY 01". The core crew is meant to be paramedics.
+   - a) Fine: the player characters are the ex-military side of the mixed crew
+   - b) Add paramedic and civilian outfits, and soften the military words
+   - c) Your own answer
+
+5. **The player is "your survivor".** The story says the crew are named characters with callsigns.
+   - a) Pick from named crew members on the character screen
+   - b) A custom survivor who joins the named crew
+   - c) Your own answer
+
+6. **The opening caption says "drove in".** This is the line the fuel proposal would change.
+
+7. **Thirst is already in, and it's softer than the plan.** The plan says dehydrated stops regen and that thirst waits for Phase 3. The build has it now, and low hydration only halves regen.
+
+8. **Item carrying.** The plan has 5 item slots. The build carries up to 10 each of bandages, first aid kits and water.
+
+9. **Melee.** The plan says machete or baseball bat. The build has a machete and a spiked bat (switched off for now).
+
+---
+
+## Questions to settle
+
+New story questions raised by what's in the build. Multiple choice, with room for your own answer.
+
+1. **Is the city called Northline?** It's on the hospital, the street signs, the shops and the HUD.
+   - a) Yes, the city is Northline, and the zone is named after it
+   - b) Northline is just the hospital and that part of town; the city has another name
+   - c) Replace it
+   - d) Your own answer
+
+2. **Old Town, Riverside, West End and City Centre.** These districts are on the signs. Do they become the map of the zone?
+   - a) Yes: they're the districts of the city, and later levels happen in them (Old Town for the apartments, Riverside for the harbor and bridge, and so on)
+   - b) Background only
+   - c) Your own answer
+
+3. **"Road closed / evacuation in effect."** The city was evacuated, at least in the centre. Who ran it, and where did people go?
+   - a) The authorities ran it and it failed; the camps in the outskirts are what's left of it
+   - b) It's still going, and the military holds the edge of the zone (ties to the failed barricades in Act 4)
+   - c) Your own answer
+
+4. **Who leaves the supplies by the elevator after every wave?** It happens in the build on every floor.
+   - a) Hospital staff hiding on the floor, who slip them out once it's quiet (ties to "people saved")
+   - b) The crew's own kit, dropped from a bag the team carries
+   - c) The air crew or camps send them up, and it's never explained in play
+   - d) Your own answer
+
+5. **Why are there steel cages to block the doors?** Players carry them and set them across doorways.
+   - a) Hospital security shutters and trolley cages
+   - b) The crew's own gear, built for exactly this
+   - c) Your own answer
+
+6. **Floor 12 has isolation rooms marked "Infection control".** A strong place for a clue.
+   - a) The first patients were isolated here, before anyone knew what it was. Their charts are the first patient files
+   - b) Just a normal ICU
+   - c) Your own answer
+
+7. **Floor 6 has "Cold storage: samples" and a biohazard lab.** Does it connect to the scientist?
+   - a) Yes: the hospital tested early cases here and sent results to his lab. A clue, not the sample
+   - b) No, a normal hospital lab
+   - c) Your own answer
+
+8. **Whose is the El Cajon in reserved bay E05?** It's the most detailed thing on the street, and the reserved bay makes it look like someone's.
+   - a) The hospital manager's (the keycard owner), a small human touch
+   - b) The scientist's, left behind when he moved to the pharmacy lab
+   - c) It becomes a vehicle the crew uses later
+   - d) Just a car
+   - e) Your own answer
+
+9. **Why does the elevator need each fix?** In the build, each floor's job also wakes the elevator (keycard override, breakers, battery, spares loaded). Does the story keep both reasons, or just the helipad?
+
+10. **The hospital has 14 storeys but the elevator stops at five.** Are the floors in between part of the story (sealed off, overrun, where survivors are), or just skipped?
+
+11. **Stairs or freight lift in the tower?** The story says the dead come up the stairs and burst out of floors. The build uses a freight lift that needs power, like the hospital.
+   - a) Keep the lift, and the stairs are full, so the lift is the only way down
+   - b) Build real stairwell levels: collapsed flights, locked fire doors, dead coming up
+   - c) Both: lift between the story floors, stairs for the short landings
+   - d) Your own answer
+
+12. **What carries the crew between street blocks in Act 4?** The build has a transit lift in a kiosk on every block.
+   - a) A metro or tram entrance, which also ties to the Subway place
+   - b) Loading docks and service lifts, so it's a lift everywhere
+   - c) No lift: the blocks join by shutters and gates, and the screen cuts
+   - d) Your own answer
+
+13. **Who is the scientist when the vault opens?** There's no scene yet. The run just ends on the vault lift, then Act 4 begins.
+   - a) He steps out, a short scene, and he is carried to the air ambulance in the park
+   - b) He's already out of sight and only heard until the park
+   - c) Your own answer
+
+---
+
+## Research leads
+
+Real-world things worth looking up to ground the story. None of this is decided.
+
+- **Air ambulance (HEMS) operations:** crew make-up (pilot, paramedic, doctor), callsigns, how a hospital helipad is lit and powered, what grounds a helicopter.
+- **Hospital layout:** what really sits on which floor (admissions, pharmacy, labs, theatres, ICU), how isolation rooms work, what a hospital does in a mass casualty event or a lockdown.
+- **Labs and containment:** biosafety levels, how samples are stored (the "-20C" sign on Floor 6), what a secret or private lab behind a pharmacy would need.
+- **Evacuations:** how a city centre gets evacuated, road closures, where people get sent, how it fails.
+- **Callsigns and radio talk:** how crews talk on the radio, for the short call-outs.
+- **The company:** what kind of company owns a lab, a pharmacy chain and an office tower. Pharma, biotech, a holding company.
+- **Place names:** whether Northline, Old Town, Riverside and West End sound like one city, and what country it's in.
 
 ---
 
@@ -274,13 +535,20 @@ Not written yet. See **Places** for what's next.
 
 ---
 
+- **Why the lifts work in an overrun tower (build, Nov 13):** every floor's job also gets its lift going. It reads as one rule from the hospital on: the building's power and lifts are out, and the crew brings them back a floor at a time. For the tower that means breakers and generators. It still needs a line that says why the crew takes the freight lift and not the stairs: the stairwells are full, which fits the dead coming up them.
+- **Why the tower floors have names and numbers (build, Nov 13):** floors 41, 34, 27, 20 and the lobby are invented to give the descent variety. The tenants are offices, records, executives and servers, owned by the lab's company. Nothing on them hints at the scientist yet. Executive suites is where a clue belongs.
+- **The transit lift (build, Nov 13):** between street blocks the crew rides a lift in a kiosk. It's only there because the game moves between levels by lift. Replace it with something the story supports: a metro entrance, a loading dock, a shutter.
+- **Signal flares at the end (build, Nov 13):** the park extraction uses red flares and smoke, as asked, in place of a helipad. It fits a field with no landing site. Who carries the flares, and why the crew has them, isn't said.
+- **The barricades (build, Nov 13):** the checkpoint is the military's failed attempt to hold the zone edge. It ties to Questions item 3 (the evacuation) and is a place to show that.
+
+---
+
 ## Parked
 
 - Is the first aid slot the same item as the rare first aid kit that revives a teammate, or a different one? (The adrenaline syringe overlaps with this too.)
-- How does the long run save progress between sittings? Needs an answer before Act 2 is built.
-- Names for the crew, the pilot, the co-pilot, the scientist and the zone.
+- How does the long run save progress between sittings? It was meant to be answered before Act 2 was built. Act 2 is built now, and it is 21 stops long, so this is overdue.
+- Names for the crew, the pilot, the co-pilot, the scientist, the lab's company and the zone.
 - Where "people saved" shows up, and how camps are introduced.
-- The thirst meter conflicts with the plan's plain auto-regen. It's Phase 3 only, so the plan files need updating before then.
 
 ---
 
@@ -289,3 +557,5 @@ Not written yet. See **Places** for what's next.
 - **Nov 2, 2026:** First riff: hospital extraction → stairwell descent in a second building → pharmacy vault rescue → street run to the next extraction. Fleshed out into four acts, with the office tower, the underground route, the scientist on the radio, the sample, places and pickups.
 - **Nov 3, 2026:** Went through the question list on the Claude website. Decided the cause, the scientist, the sample, the crew, the zone, the reasons for every act, zombies, tone, structure and the loadout. The question list was replaced by these decisions.
 - **Nov 3, 2026:** Proposed that the crew's ambulance ran out of fuel 9 miles out, which is why they are on foot at the hospital, with the run in as a bonus level once the street is mapped.
+- **Nov 10, 2026:** Went through the build and wrote down every piece of story it shows: the opening captions, title and menu words, every sign on every floor, the street, the shops, the vehicles and the gear. Brought the Act 1 table in line with the real floors (Admissions, Pharmacy and laboratories, Surgery, Intensive care, the roof at level 14) and the loadout in line with what's built. Listed where the build and the story disagree, new questions the build raises, and research leads, ready for a research pass before more levels.
+- **Nov 13, 2026:** Built the rest of the campaign as levels, ahead of the story: the tower roof and six office floors (Act 2), the tunnel, pharmacy, lab and vault (Act 3), and four outdoor blocks ending at the park (Act 4). Floors, names and objectives here are the build's own and are listed above as in the build. The park extraction is red flares and smoke in place of a pad. Added questions 11 to 13 (stairs or lift, what links the street blocks, the scientist at the vault). Nothing in Acts 2 to 4 has any story delivered yet: no radio, notes or scientist.

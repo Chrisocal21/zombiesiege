@@ -3,13 +3,13 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { config } from '../config';
 import { settings } from '../client/settings';
 import type { GameState } from '../game/state';
-import { stopAt, storeyLabel, storeysToNext } from '../game/tower';
+import { goesDown, stopAt, storeyLabel, storeysToNext } from '../game/tower';
 import type { Level } from '../levels/types';
 
 const FRAME = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.35, metalness: 0.85 });
 const DOOR = new THREE.MeshStandardMaterial({ color: 0xa9aeb4, roughness: 0.3, metalness: 0.9 });
 
-function displayTexture(): { texture: THREE.CanvasTexture; draw: (label: string, open: boolean) => void } {
+function displayTexture(): { texture: THREE.CanvasTexture; draw: (label: string, open: boolean, arrow?: string) => void } {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 160;
@@ -18,7 +18,7 @@ function displayTexture(): { texture: THREE.CanvasTexture; draw: (label: string,
   texture.colorSpace = THREE.SRGBColorSpace;
   return {
     texture,
-    draw(label, open) {
+    draw(label, open, arrow = '▲') {
       context.fillStyle = '#0b0d10';
       context.fillRect(0, 0, 512, 160);
       context.strokeStyle = '#8a8f96';
@@ -30,7 +30,7 @@ function displayTexture(): { texture: THREE.CanvasTexture; draw: (label: string,
       context.fillText('ELEVATOR', 256, 70);
       context.fillStyle = open ? '#38e070' : '#ffd24a';
       context.font = '700 46px Bahnschrift, Arial Narrow, sans-serif';
-      context.fillText(label === 'ROOF' ? '▲  ROOF' : `▲  FLOOR ${label}`, 256, 130);
+      context.fillText(label === 'ROOF' ? '▲  ROOF' : `${arrow}  FLOOR ${label}`, 256, 130);
       texture.needsUpdate = true;
     },
   };
@@ -105,13 +105,13 @@ export function buildLift(scene: THREE.Object3D, level: Level, glowMap: THREE.Te
       const from = stopAt(state.floor).number, to = stopAt(state.floor + 1).number;
       const total = config.elevator.rideSeconds + config.elevator.rideSecondsPerStorey * storeysToNext(state.floor);
       const done = Math.min(1, Math.max(0, 1 - state.waves.timer / total));
-      const storey = Math.min(to, from + Math.floor(done * (to - from + 1)));
-      label = storey >= to ? storeyLabel(state.floor + 1) : storey <= 0 ? 'G' : String(storey);
+      const storey = to < from ? Math.max(to, from - Math.floor(done * (from - to + 1))) : Math.min(to, from + Math.floor(done * (to - from + 1)));
+      label = storey === to ? storeyLabel(state.floor + 1) : storey <= 0 ? 'G' : String(storey);
     } else if (state.waves.phase === 'arrive') label = storeyLabel(state.floor);
     if (label !== shownLabel || state.lift.open !== shownOpen) {
       shownLabel = label;
       shownOpen = state.lift.open;
-      display.draw(label, state.lift.open);
+      display.draw(label, state.lift.open, goesDown(state.floor, state.floor + 1) || (state.waves.phase === 'arrive' && state.floor > 0 && goesDown(state.floor - 1, state.floor)) ? '▼' : '▲');
     }
     const pulse = settings.reducedFlashing ? 1 : 0.7 + 0.3 * Math.sin(time * 6);
     light.intensity = (riding ? 10 * pulse : 14) * (0.5 + 0.5 * Math.max(eased, riding ? 1 : 0.4));

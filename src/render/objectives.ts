@@ -241,8 +241,9 @@ function charger(scene: THREE.Object3D, objective: Extract<Objective, { kind: 'c
     const running = holding && charging(state);
     const done = state.objective.done || charge >= 1;
     const ready = state.waves.phase === 'search' && !done;
-    if (done) paint(100, objective.kind === 'signal' ? 'LIGHTS ON  /  LANDED' : 'CHARGED', '#38e070');
-    else if (running) paint(percent, objective.kind === 'signal' ? 'LIGHTS ON  /  INBOUND' : 'CHARGING', '#ffb02a');
+    const lit = objective.kind === 'signal' && objective.style === 'flares' ? 'FLARES LIT' : 'LIGHTS ON';
+    if (done) paint(100, objective.kind === 'signal' ? `${lit}  /  LANDED` : 'CHARGED', '#38e070');
+    else if (running) paint(percent, objective.kind === 'signal' ? `${lit}  /  INBOUND` : 'CHARGING', '#ffb02a');
     else if (holding) paint(percent, 'PAUSED  /  ROOM EMPTY', '#ff5a3a');
     else if (ready) paint(percent, 'READY  /  PRESS START', '#38e070');
     else paint(percent, 'LOCKED  /  AREA NOT SECURE', '#ff5a3a');
@@ -461,6 +462,65 @@ function helipad(scene: THREE.Object3D, objective: Extract<Objective, { kind: 's
   };
 }
 
+// Signal flares for a landing in the open: the crew throws a ring of red flares onto the field when
+// the signal starts, a moment apart, and a column of red smoke rises from each. The helicopter comes
+// down in the middle of them. There is no painted pad and no lights, just the smoke.
+function flares(scene: THREE.Object3D, objective: Extract<Objective, { kind: 'signal' }>, glowMap: THREE.Texture, environment: THREE.Texture): Sync {
+  const { sync: syncBox } = charger(scene, objective, glowMap, 'SIGNAL FLARES');
+  const field = new THREE.Group();
+  field.position.set(objective.pad.x, 0, objective.pad.z);
+  scene.add(field);
+  const radius = Math.max(2.5, objective.padRadius - 1);
+  const count = 5;
+  const stick = new THREE.MeshStandardMaterial({ color: 0xb01c14, roughness: 0.6 });
+  const smokeColor = new THREE.Color(0xe03a28);
+  const columns = Array.from({ length: count }, (_, i) => {
+    const angle = (i / count) * Math.PI * 2 + 0.4;
+    const group = new THREE.Group();
+    group.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+    group.visible = false;
+    field.add(group);
+    const body = mesh(group, new THREE.CylinderGeometry(0.035, 0.035, 0.32, 8), stick, 0, 0.035, 0);
+    body.rotation.z = Math.PI / 2;
+    body.rotation.y = angle * 3;
+    const tip = glowSprite(group, glowMap, 0xff5030, 1.6, 0, 0.15, 0);
+    const light = new THREE.PointLight(0xff4a2a, 0, 10, 2);
+    light.position.y = 0.6;
+    group.add(light);
+    const puffs = Array.from({ length: 14 }, () => {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color: smokeColor, transparent: true, depthWrite: false, opacity: 0 }));
+      group.add(sprite);
+      return sprite;
+    });
+    return { group, tip, light, puffs };
+  });
+  const syncHelicopter = buildHelicopter(scene, glowMap, environment);
+
+  return (state, time, dt) => {
+    syncBox(state, time, dt);
+    const started = state.objective.startedTick;
+    const lit = started >= 0 || state.objective.done;
+    const since = !lit ? 0 : started >= 0 ? (state.tick - started) / config.ticksPerSecond : 99;
+    columns.forEach((column, i) => {
+      // Each flare is thrown a moment after the last.
+      const age = since - i * 0.35;
+      column.group.visible = age > 0;
+      if (age <= 0) return;
+      const grow = Math.min(1, age / 5);
+      const flicker = settings.reducedFlashing ? 1 : 0.8 + 0.2 * Math.sin(time * 31 + i * 5) * Math.sin(time * 13 + i);
+      column.light.intensity = 9 * flicker;
+      column.tip.material.opacity = 0.9 * flicker;
+      column.puffs.forEach((puff, k) => {
+        const phase = (time * 0.16 + k / column.puffs.length + i * 0.37) % 1;
+        puff.position.set(phase * 2.6 + Math.sin(phase * 6 + k) * 0.3, 0.3 + phase * 11 * grow, Math.cos(phase * 5 + k) * 0.3);
+        puff.scale.setScalar(1.8 + phase * 7);
+        puff.material.opacity = 0.55 * grow * (1 - phase * 0.8) * Math.min(1, phase * 8);
+      });
+    });
+    syncHelicopter(state, time, dt);
+  };
+}
+
 export function buildObjective(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture, environment: THREE.Texture): Sync {
   const objective = level.objective;
   if (!objective) return () => {};
@@ -469,6 +529,6 @@ export function buildObjective(scene: THREE.Object3D, level: Level, glowMap: THR
     case 'breakers': return breakers(scene, objective, glowMap);
     case 'charge': return charger(scene, objective, glowMap, 'BATTERY CHARGER').sync;
     case 'carry': return cases(scene, objective, glowMap);
-    case 'signal': return helipad(scene, objective, glowMap, environment);
+    case 'signal': return objective.style === 'flares' ? flares(scene, objective, glowMap, environment) : helipad(scene, objective, glowMap, environment);
   }
 }

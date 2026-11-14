@@ -119,6 +119,8 @@ export interface Zombie {
   // Tick of its last swing and of the last bullet that hit it, for the renderer. -1 means never.
   lastAttackTick: number;
   lastHitTick: number;
+  // True while it is trying to get at a player but a cage, wall or door stops it, so it shoves and reaches.
+  pushing: boolean;
   // While still coming in through a doorway, the spot just inside it to walk to first.
   // Null once it is in the room and chasing.
   entry: { x: number; z: number } | null;

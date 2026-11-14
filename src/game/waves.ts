@@ -6,7 +6,7 @@ import { beginPrep, closeGate, doorwaySpawn } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, dropCase, everyoneAboard } from './objectives';
 import { createPlayer, enterLevel, spawnPoint, type GameState, type Player } from './state';
-import { ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower';
+import { LAST_FLOOR, ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower';
 import { guaranteeAmmo } from './weapons';
 import { aliveZombies, spawnZombie } from './zombies';
 
@@ -112,7 +112,13 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
 
   if (waves.phase === 'evac') {
     if (everyoneAboard(state)) {
-      waves.phase = 'won';
+      if (state.floor >= LAST_FLOOR) {
+        waves.phase = 'won';
+        return;
+      }
+      // The air ambulance takes the crew on to the office tower: Act 2 begins on its roof.
+      state.floor++;
+      startFloor(state, true);
       return;
     }
     trickle(state, dt, level);
@@ -122,6 +128,11 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   if (waves.phase === 'lift') {
     if (everyoneInCab(state)) {
       closeLift(state);
+      // The last floor built so far: the run ends here until the next one exists.
+      if (state.floor >= LAST_FLOOR) {
+        waves.phase = 'won';
+        return;
+      }
       waves.phase = 'ride';
       waves.timer = config.elevator.rideSeconds + config.elevator.rideSecondsPerStorey * storeysToNext(state.floor);
     }

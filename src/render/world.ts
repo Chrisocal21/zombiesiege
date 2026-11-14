@@ -422,13 +422,17 @@ function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture)
 }
 
 // The night sky, the moon and a far ring of buildings standing on the ground at `ground`.
-function buildSky(scene: THREE.Object3D, ground: number): void {
+function buildSky(scene: THREE.Object3D, ground: number, palette?: { horizon: string; zenith: string; stars: number }): void {
+  const horizonColor = new THREE.Color(palette?.horizon ?? '#131a26');
+  const zenithColor = new THREE.Color(palette?.zenith ?? '#03050b');
+  const starLevel = palette?.stars ?? 1;
   const dome = new THREE.Mesh(
     new THREE.SphereGeometry(110, 32, 16),
     new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
       fog: false,
+      uniforms: { horizonColor: { value: horizonColor }, zenithColor: { value: zenithColor } },
       vertexShader: /* glsl */ `
         varying float height;
         void main() {
@@ -438,10 +442,10 @@ function buildSky(scene: THREE.Object3D, ground: number): void {
       `,
       fragmentShader: /* glsl */ `
         varying float height;
+        uniform vec3 horizonColor;
+        uniform vec3 zenithColor;
         void main() {
-          vec3 horizon = vec3(0.075, 0.1, 0.15);
-          vec3 zenith = vec3(0.012, 0.02, 0.045);
-          vec3 color = mix(horizon, zenith, pow(clamp(height, 0.0, 1.0), 0.55));
+          vec3 color = mix(horizonColor, zenithColor, pow(clamp(height, 0.0, 1.0), 0.55));
           gl_FragColor = vec4(color, 1.0);
           #include <colorspace_fragment>
         }
@@ -470,7 +474,7 @@ function buildSky(scene: THREE.Object3D, ground: number): void {
   starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   const stars = new THREE.Points(
     starGeometry,
-    new THREE.PointsMaterial({ color: 0xcfdcff, size: 1.1, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.75, depthWrite: false }),
+    new THREE.PointsMaterial({ color: 0xcfdcff, size: 1.1, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.75 * starLevel, depthWrite: false }),
   );
   stars.renderOrder = -1;
   scene.add(stars);
@@ -481,6 +485,7 @@ function buildSky(scene: THREE.Object3D, ground: number): void {
   );
   moon.position.set(-27, 79, 18);
   moon.scale.setScalar(26);
+  moon.visible = starLevel > 0.3;
   scene.add(moon);
   const disc = new THREE.Mesh(
     new THREE.CircleGeometry(3.4, 32),
@@ -488,6 +493,7 @@ function buildSky(scene: THREE.Object3D, ground: number): void {
   );
   disc.position.copy(moon.position).multiplyScalar(0.95);
   disc.lookAt(0, 0, 0);
+  disc.visible = starLevel > 0.3;
   scene.add(disc);
 
   // A ring of dark buildings far off, with a few lit windows.
@@ -640,7 +646,8 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
     if (garage) scene.add(puddle);
   }
 
-  const syncDressing = garage ? () => {} : buildWardDressing(scene, level);
+  const street = level.theme === 'street';
+  const syncDressing = garage || street ? () => {} : buildWardDressing(scene, level);
   if (garage) buildGarageDressing(scene, level);
   const detailProps = new THREE.Group(); scene.add(detailProps);
   const animateDressing = buildDressing(detailProps, level);
@@ -657,6 +664,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
     buildStreet(scene, level, glowMap);
     void buildStreetBuildings(scene, level);
   }
+  if (street) buildSky(scene, 0, level.atmosphere?.sky);
   if (level.theme === 'roof') {
     buildSky(scene, -CITY_DEPTH);
     buildCity(scene, -CITY_DEPTH);

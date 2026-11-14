@@ -1,7 +1,7 @@
 import { bindings, keyLabel } from '../client/bindings';
 import { charging, inArea } from '../game/objectives';
 import type { GameState, Player } from '../game/state';
-import { ROOF } from '../game/tower';
+import { actOf, isDescent, ROOF } from '../game/tower';
 
 // The words the HUD uses for the floor's objective.
 
@@ -30,7 +30,8 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
   if (!objective) return null;
   if (phase === 'evac' && objective.kind === 'signal') {
     const distance = Math.hypot(objective.pad.x - player.x, objective.pad.z - player.z);
-    return { title: 'Get to the helicopter', detail: distance > objective.padRadius ? `${Math.round(distance)} m to the helipad` : 'Everyone aboard to lift off' };
+    const flares = objective.style === 'flares';
+    return { title: flares ? 'Get to the air ambulance' : 'Get to the helicopter', detail: distance > objective.padRadius ? `${Math.round(distance)} m to the ${flares ? 'smoke' : 'helipad'}` : 'Everyone aboard to lift off' };
   }
   if (phase === 'hold' && (objective.kind === 'charge' || objective.kind === 'signal')) {
     const left = objective.seconds - state.objective.charge;
@@ -58,7 +59,9 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
         ? { title: 'Load the case at the elevator', detail: `${keyLabel(bindings.fire)} puts it down and brings the gun up` }
         : { title: 'Bring the lamp cases to the elevator', detail: objectiveProgress(state) ?? '' };
     case 'signal':
-      return { title: 'Switch on the helipad lights', detail: 'The light box is on the east parapet' };
+      return objective.style === 'flares'
+        ? { title: 'Throw the signal flares', detail: 'The flare box is on the groundskeeper\'s shed' }
+        : { title: 'Switch on the helipad lights', detail: 'The light box is on the east parapet' };
   }
 }
 
@@ -68,7 +71,7 @@ export function objectivePrompt(state: GameState, kind: string): string | null {
   switch (kind) {
     case 'objective': return `Take the ${objective?.label.toLowerCase() ?? 'item'}`;
     case 'breaker': return 'Throw the breaker';
-    case 'device': return objective?.kind === 'signal' ? 'Switch on the helipad lights' : 'Start the charger';
+    case 'device': return objective?.kind === 'signal' ? (objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights') : 'Start the charger';
     case 'case': return 'Pick up the lamp case';
     case 'deliver': return 'Load the lamp case';
     default: return null;
@@ -84,7 +87,7 @@ export function clearedDetail(state: GameState): string {
     case 'breakers': return 'Throw the breakers to power the elevator';
     case 'charge': return `Start the charger in ${objective.roomName.toLowerCase()}`;
     case 'carry': return 'Bring the lamp cases to the elevator';
-    case 'signal': return 'Switch on the helipad lights';
+    case 'signal': return objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights';
   }
 }
 
@@ -92,7 +95,14 @@ export function clearedDetail(state: GameState): string {
 export function partBanner(state: GameState): { eyebrow: string; title: string; detail: string } | null {
   const objective = state.level.objective;
   if (!objective) return null;
-  if (objective.kind === 'signal') return { eyebrow: 'THE ROOF', title: 'HELICOPTER DOWN', detail: 'Everyone onto the helipad' };
+  if (objective.kind === 'signal') {
+    return objective.style === 'flares'
+      ? { eyebrow: 'DAYBREAK', title: 'AIR AMBULANCE DOWN', detail: 'Everyone into the smoke' }
+      : { eyebrow: 'THE ROOF', title: 'HELICOPTER DOWN', detail: 'Everyone onto the helipad' };
+  }
+  if (isDescent(state.floor)) {
+    return { eyebrow: actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail: 'The freight lift opens once the floor is clear' };
+  }
   return {
     eyebrow: `HELIPAD PART ${state.floor} OF ${ROOF - 1}`,
     title: objective.part.toUpperCase(),

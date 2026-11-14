@@ -589,7 +589,7 @@ export function createAudio(): Audio {
       // The charger hums, rising as it fills; the roof has wind; the helicopter is heard before it is seen.
       const objective = state.level.objective;
       const humming = objective?.kind === 'charge' && state.waves.phase === 'hold' && charging(state);
-      const roof = state.level.theme === 'roof';
+      const roof = state.level.theme === 'roof' || state.level.theme === 'street';
       const heli = helicopterPose(state);
       if (humming || roof || loops) {
         loops ??= startLoops();

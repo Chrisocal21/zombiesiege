@@ -149,6 +149,30 @@ export const config = {
     // The roof, above the last stop: its storey number for the elevator ride, and its waves before
     // the helipad lights can be switched on.
     roof: { number: 14, name: 'Helipad', waves: 2 },
+    // Act 2, the office tower: the floors after the roof in the run, reached going down by freight lift.
+    descent: [
+      { number: 44, name: 'Tower roof', waves: 2 },
+      { number: 41, name: 'Open-plan offices', waves: 3 },
+      { number: 34, name: 'Records floor', waves: 3 },
+      { number: 27, name: 'Executive suites', waves: 3 },
+      { number: 20, name: 'Server floor', waves: 4 },
+      { number: 1, name: 'Lobby', waves: 4 },
+      { number: -1, name: 'Tower garage', waves: 5 },
+    ],
+    // Act 3, the vault: down the service tunnel, up into the pharmacy and down again into the lab.
+    vault: [
+      { number: -3, name: 'Service tunnel', waves: 4 },
+      { number: 0, name: 'Pharmacy', waves: 3 },
+      { number: -1, name: 'Hidden lab', waves: 4 },
+      { number: -2, name: 'The vault', waves: 5 },
+    ],
+    // Act 4, daybreak: out of the transit lift and onto the street, block by block, to the park.
+    daybreak: [
+      { number: 0, name: 'Main Street', waves: 4 },
+      { number: 0, name: 'Market square', waves: 4 },
+      { number: 0, name: 'The barricades', waves: 4 },
+      { number: 0, name: 'The park', waves: 3 },
+    ],
   },
 
   objectives: {

@@ -346,9 +346,11 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         const turn = Math.atan2(Math.sin(zombie.yaw - view.group.rotation.y), Math.cos(zombie.yaw - view.group.rotation.y));
         view.group.rotation.y += turn * (1 - Math.exp(-dt * 9));
         const speed = dt > 0 ? Math.hypot(dx, dz) * smoothing / dt : 0;
-        const walking = Math.min(1, speed / 1.4);
+        // Held back by a cage or wall, it keeps shuffling and straining toward the player.
+        const strain = zombie.pushing && !zombie.dead ? 1 : 0;
+        const walking = Math.min(1, Math.max(speed / 1.4, strain * 0.6));
         view.gait += (walking - view.gait) * Math.min(1, dt * 7);
-        view.phase += Math.min(speed, 3.5) * dt * 3.1 + dt * 0.18;
+        view.phase += Math.min(Math.max(speed, strain * 1.1), 3.5) * dt * 3.1 + dt * 0.18;
         const phase = view.phase, swing = Math.sin(phase), walk = view.gait;
         const limp = zombie.id % 3 === 0 ? 0.62 : 1;
         view.hips.position.y = 0.94 + Math.abs(Math.sin(phase)) * 0.019 * walk;
@@ -370,7 +372,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
         view.arms.forEach((arm, side) => {
           const asymmetry = side === 0 ? 1 : -1;
           // The skinned zombies reach further out in front, the arms of the drawn ones being shorter.
-          arm.rotation.x = (view.rig ? 0.85 : 0.45) + 0.15 * Math.sin(phase * 0.7 + side) + attack * (view.rig ? 0.55 : 0.83);
+          arm.rotation.x = (view.rig ? 0.85 : 0.45) + 0.15 * Math.sin(phase * 0.7 + side) + attack * (view.rig ? 0.55 : 0.83) + strain * (0.2 + 0.18 * Math.sin(phase * 1.3 + side * 2));
           arm.rotation.z = asymmetry * (0.08 + Math.sin(phase * 0.5) * 0.025);
           view.elbows[side].rotation.x = 0.58 + Math.sin(phase * 0.8 + side) * 0.1 - attack * 0.38;
           view.wrists[side].rotation.x = -0.12 - attack * 0.15;
