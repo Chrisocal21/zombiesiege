@@ -99,6 +99,8 @@ for (const type of ['keydown', 'mousedown'] as const) {
 }
 
 const introAt = import.meta.env.DEV ? new URLSearchParams(location.search).get('introAt') : null;
+// How long the run-over banner shows before the screen comes up.
+const LOST_SECONDS = 3;
 let reviewing = false;
 let lastTime = performance.now();
 let gaitPhase = 0;
@@ -146,6 +148,8 @@ const menu = createMenu({
       session.replace(newRun());
       dressed = false;
     }
+    // In co-op the room's run has been waiting for someone to come in.
+    coop?.start();
     enterGame(false);
   },
   sound: (kind) => audio.ui(kind),
@@ -157,7 +161,9 @@ const menu = createMenu({
     }
     const next = createGameState(level);
     // The garage starts out in the street as usual; the floors start just out of the elevator.
+    // Anywhere but the start of the run is practice.
     if (floor !== 0) startOnFloor(next, floor);
+    else next.practice = true;
     dressed = false;
     session.replace(next);
     enterGame(floor === 0);
@@ -165,7 +171,10 @@ const menu = createMenu({
   resume: enterGame,
   gameState: () => session.state,
   restart() {
-    if (coop) coop.restart(FIRST_FLOOR);
+    // In co-op, from the end screen, someone else may already have started the next run: just go back in.
+    const phase = session.state.waves.phase;
+    const already = menu.screen() === 'victory' && phase !== 'won' && phase !== 'lost';
+    if (coop) { if (!already) coop.restart(FIRST_FLOOR); }
     else session.replace(newRun());
     enterGame();
   },
@@ -201,12 +210,15 @@ view.renderer.setAnimationLoop((now) => {
   // Coming through the last gate of the prologue into the hospital garage plays the Nightfall opening.
   if (!coop && floorBefore === -1 && state.floor === 0 && !intro) startIntro(now);
   // The run is over: show the victory screen and let go of the mouse.
-  if (state.waves.phase === 'won' && !menu.isOpen()) {
+  // Or nobody is left standing: the run is over, a moment after it happens, and starts again from P01.
+  const lost = state.waves.phase === 'lost' && (state.tick - state.waves.diedTick) / config.ticksPerSecond > LOST_SECONDS;
+  if ((state.waves.phase === 'won' || lost) && !menu.isOpen()) {
     menu.open('victory', {
       floors: state.floor + 1,
       points: state.points[session.playerId] ?? 0,
-      lives: state.lives,
+      lives: session.player().lives,
       seconds: state.tick / config.ticksPerSecond,
+      lost: lost ? { floor: state.floor } : undefined,
     });
     document.exitPointerLock();
   }

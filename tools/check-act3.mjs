@@ -85,11 +85,10 @@ assert.ok(Math.hypot(s.scientist.x - s.level.scene.to.x, s.scientist.z - s.level
 assert.match(radioLine({ ...s, tick: s.tick + 1 * HZ }).text, /Drive it back/);
 
 // A wipe in stage 2 puts it back where it stood at full strength, the scientist with the crew.
-const lives = s.lives;
 boss.health = 10;
-for (const p of s.players) p.health = 0;
+for (const p of s.players) Object.assign(p, { health: 0, lives: 1 });
 tick(s);
-assert.equal(s.lives, lives - 1);
+assert.ok(s.practice && s.players.every((p) => p.health > 0 && p.lives === 1), 'practice: everyone is back up, no life lost');
 const again = bossZombie(s);
 assert.ok(again && again.health === s.boss.maxHealth, 'back at full strength');
 assert.ok(s.scientist, 'he is still with them');
@@ -152,16 +151,16 @@ console.log('rode to', s.level.name);
   run(t, 25, hold(t, panel));
   assert.ok(t.boss);
   // A wipe in stage 1: the lock starts over, and Patient O goes with it.
-  for (const p of t.players) p.health = 0;
+  for (const p of t.players) Object.assign(p, { health: 0, lives: 1 });
   tick(t);
   assert.equal(t.boss, null);
   assert.equal(t.waves.phase, 'search');
-  // Out of lives: the floor from the start, no scientist, the door shut.
-  t.lives = 1;
-  for (const p of t.players) p.health = 0;
+  // In a real run, nobody standing is the end of the run.
+  t.practice = false;
+  t.waves.phase = 'active';
+  for (const p of t.players) Object.assign(p, { health: 0, lives: 1 });
   tick(t);
-  assert.equal(t.objective.step, 0);
-  assert.equal(t.scientist, null);
+  assert.equal(t.waves.phase, 'lost');
   assert.ok(doorBox(t));
   console.log('restart ok');
 }

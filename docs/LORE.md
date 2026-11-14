@@ -145,7 +145,7 @@ From the master campaign handoff (Nov 14). The crew's ground ambulance runs out 
 | Lobby | Ground-floor reception: marble hall, columns, a security booth with the lift's service controls | Siege, 4 waves; a brute leads the last wave | Start the controls and hold the booth for 50 seconds | The street doors are barricaded and something heavy is leaning on them |
 | Tower garage (B1) | The tower's own parking level, dark and packed, tunnel mouths in the east wall | Siege, 5 waves | Step 1: throw three breakers. Step 2: carry a car battery from a parked car to the dead tunnel lift | "Under the street. That is how they moved me" |
 
-**Notes to read (clues).** Press use beside one for a card, and it goes in the **RUN LOG** on the pause screen. They're optional and never block progress. **These texts are draft wording for you to approve or change:**
+**Notes to read (clues).** Press use beside one for a card, and it goes in the **RUN LOG** on the pause screen. They're optional and never block progress. **Wording settled Nov 14** (Chris asked for my recommendation on what works for the story):
 
 - *Evacuation notice* (floor 41): all staff to the lower levels; not the street entrances, not the main stairs; the freight lift is reserved for transfers.
 - *Transfer order* (floor 34): patient and materials to the pharmacy facility; sign-off by the director only; route by freight lift, garage and tunnel, not the street; no copy kept on site.
@@ -192,16 +192,27 @@ From the master campaign handoff (Nov 14). The crew's ground ambulance runs out 
 - The extraction site is a park or sports field. Throw a flare and hold until the ride lands (proposed).
 - The extraction goes to plan: the ride lands and the crew gets out. Trouble waits for the next trip.
 
-**In the build (Nov 13):** four outdoor levels, the first that aren't inside a building. Each block's exit is a **transit lift** in a kiosk (a stand-in, see Questions). The sky lightens block by block, and the park is at sunrise.
+**In the build (Nov 14):** four outdoor levels, the first that aren't inside a building.
+- The transit kiosks are gone. Each block ends in a **steel gate** at its east end, and everyone through it goes straight on to the next block (Questions item 12, answer c).
+- The crew comes up out of the vault at the west end of Main Street at first light. The sky lightens block by block to sunrise at the park.
+- The scientist walks with the crew the whole way.
 
-| Stop | What the place is | Objective | Waves |
+| Stop | What the place is | How it plays | Objective |
 |---|---|---|---|
-| Main Street | Shopfronts both sides, parked cars and barriers in the road | Find the transit pass in the newspaper stand at the far end | 4 |
-| Market square | A paved plaza with a fountain and stalls, the town hall on the north side, six side streets | Start the radio relay on the town hall wall and hold the steps for 55 seconds | 4 |
-| The barricades | A road checkpoint torn open, army trucks left where they stopped, generator trailers | Throw the switch on three generators (they light the floodlights) | 4 |
-| The park | Grass, paths, trees, a hedge broken at five gates, a groundskeeper's shed | Throw the signal flares and hold 90 seconds until the air ambulance lands in the smoke, then get aboard | 3 |
+| Main Street | Shopfronts both sides, parked cars, two staggered barriers turning the road into an S-bend | Run: the dead come from behind, and standing still is worse. Six sleepers in the north shop | Throw the control box by the gate. **Shop shortcut:** in one shop door and out the other, past the sleepers. It's about 6 m shorter than the road |
+| Market square | A paved plaza with a fountain and stalls, the town hall on the north side, six side streets | Run | Start the radio relay on the town hall wall and hold the steps for 30 seconds. The pilot answers: "Find us somewhere flat" |
+| The barricades | A road checkpoint torn open, army trucks left where they stopped, generator trailers | Run | Throw three generators along the route. An army **evacuation map** to read |
+| The park | Grass, paths, trees, a hedge broken at five gates, a groundskeeper's shed | Siege, 3 waves | Throw the signal flares and hold 90 seconds until the air ambulance lands in the smoke, then get aboard |
 
-**Decided (Nov 14):** the transit kiosks go. The blocks join by shutters, gates and side streets, the way the prologue's blocks do, and the screen cuts (Questions item 12, answer c). Not built yet.
+**The flight out (04-C).** When everyone is aboard, an 18-second film plays. The helicopter lifts off, the camera goes from the ground to high over the city to a wide shot of the sunrise, and the run is won. Captions:
+- AIR AMBULANCE · RADIO: "Everyone aboard. Lifting. Hold on."
+- EMERGENCY BROADCAST: "Northline is lost. New outbreaks are reported beyond the city. Do not return."
+- EMERGENCY BROADCAST: "Survivors are being received at the outskirts camp. Follow the signal east."
+- Title card: **OUTSKIRTS CAMP** / Safe. For now.
+
+The broadcast deliberately names no other towns. The handoff only asks for a hint of wider collapse here, and naming places would get ahead of Acts 5 to 12.
+
+**Evacuation map** (the barricades), settled Nov 14: *ZONE 4 / EVACUATION ROUTES. Assembly point: the outskirts camp, east. All roads past this line are closed to civilians. Air ambulance pickups only where flares are lit. Public park, east of the checkpoint. Do not stop on the route.*
 
 The extraction has no painted pad: five red flares are thrown onto the grass and red smoke goes up. The run ends when everyone is aboard.
 
@@ -287,6 +298,10 @@ Not written yet. See **Places** for what's next.
 | Doors | Boards to nail up, and steel cages that zombies press against but can't pass |
 | Hotbar and wheel | Guns, cages and items on a hotbar and a radial wheel |
 | Flashlight | On F. It matters on Floor 6, where the power is out |
+| Lives | Each player has their own: 3 to start, never more than 5 (nothing gives more yet) |
+| Going down | At 0 health you're down: you can crawl and fire what's left in the gun in hand, with no reload, and you have 45 s before you bleed out. A teammate who kneels beside you for 4 still seconds brings you back, free. Alone, you can get up yourself in 6 s for a life, but not on your last |
+| Bleeding out | Costs a life. With lives left you're back at the next quiet moment (a break between waves, a cleared floor, the open lift, the next floor). With none you're out of the run and watch |
+| Nobody standing | The run is over and starts again from P01 (locked canon). Floors started from the floor list are practice, where the wave or floor starts again instead |
 
 ---
 
@@ -608,3 +623,6 @@ Real-world things worth looking up to ground the story. None of this is decided.
 - **Nov 14, 2026:** Settled questions 11 to 13 and Patient O's fate (sealed in the vault). The tunnel became a run, the pharmacy a sweep with the shop's own dead standing in it, and the lab a two-step floor (freezer power, then the cryo carriers), with the scientist on the radio through all three. The first Brute and Screamer now come where the handoff puts them, Floors 6 and 9.
 - **Nov 14, 2026:** Built the vault's ending: Patient O in two stages, the vault opening scene, and the scientist stepping out and following the crew. Patient O is sealed back in the vault, as decided.
 - **Nov 14, 2026:** Reworked Act 2 for play: floors 41, 34 and 27 are sweeps with sleeping dead, floor 34 is two steps (transfer file, then the generator), floor 20 has the camera glimpse, the lobby's last wave is led by a brute, and the garage needs a car battery for the tunnel lift. Added readable notes (evacuation notice, transfer order, board memo) and a run log on the pause screen. The note texts are draft wording awaiting approval.
+- **Nov 14, 2026:** Rebuilt Act 4 for play. The transit kiosks became gates, and Main Street, the market and the barricades are run floors. Main Street has the shop shortcut, the relay stand is 30 seconds, and the park ends with the flight out (04-C) to the outskirts camp. Added the army evacuation map at the barricades.
+- **Nov 14, 2026:** Settled the open wording on my recommendation, at Chris's request. The Act 2 notes and the evacuation map stand as written. The broadcast no longer names "the river towns" and says only "beyond the city", so nothing gets ahead of Acts 5 to 12.
+- **Nov 14, 2026:** Lives now follow canon. They belong to each player (3, cap 5). Going down comes before dying: 45 s to bleed out, a 4 s revive by a teammate, or a slower self-revive alone that costs a life. Nobody left standing ends the run, which starts again from P01. Floors started from the floor list are practice. A co-op room waits for someone to press DEPLOY before its run begins.

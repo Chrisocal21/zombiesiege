@@ -145,7 +145,7 @@ export function charging(state: GameState): boolean {
 export function everyoneAboard(state: GameState): boolean {
   const objective = state.level.objective;
   if (objective?.kind !== 'signal') return false;
-  const alive = state.players.filter((player) => player.health > 0);
+  const alive = state.players.filter((player) => !player.out);
   return alive.length > 0 && alive.every((player) => Math.hypot(player.x - objective.pad.x, player.z - objective.pad.z) <= objective.padRadius);
 }
 

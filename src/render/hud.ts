@@ -5,6 +5,7 @@ import { config } from '../config';
 import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
 import { ITEMS } from '../game/items';
 import { CARD_SECONDS, cardFor } from '../game/notes';
+import { bleedLeft, canGetUp, isDown, reviveProgress, reviveTarget, revivedBy } from '../game/downed';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import { flowOf, stepsOf, type GameState, type Player } from '../game/state';
@@ -165,6 +166,10 @@ export function createHud(menu: Menu): Hud {
     } else if (phase === 'search' || phase === 'hold' || phase === 'evac' || phase === 'break' || phase === 'active') {
       for (const marker of objectiveMarkers(state, player)) points.push({ x: marker.at.x, z: marker.at.z, color: COLOR.good, label: marker.label });
     }
+    // A teammate down, to get to before they bleed out.
+    for (const other of state.players) {
+      if (other !== player && isDown(other)) points.push({ x: other.x, z: other.z, color: COLOR.danger, label: 'DOWN' });
+    }
     // Boards can be picked up and nailed up any time on a floor.
     if (phase === 'entry' || phase === 'prep' || phase === 'break' || phase === 'active' || phase === 'cleared' || phase === 'search' || phase === 'hold' || phase === 'evac') {
       if (player.bars < config.doors.carryLimit) {
@@ -198,7 +203,7 @@ export function createHud(menu: Menu): Hud {
     if (settings.showCompass) drawCompass(width, unit, player, points);
     drawObjective(margin, unit, state, player, points);
     drawRadar(margin, height, unit, state, player, points);
-    drawHealth(margin, height, unit, state.lives, player, time);
+    drawHealth(margin, height, unit, player.lives, player, time);
     drawAmmo(width, height, margin, unit, player, time);
     drawStatus(width, height, margin, unit, state, time);
     if (settings.cameraStyle === 'bodycam') {
@@ -212,6 +217,7 @@ export function createHud(menu: Menu): Hud {
     drawHotbar(context, width, height - margin + 22 * unit, unit, player);
     drawItemUse(context, width, height, unit, player);
     drawPrompt(width, height, unit, state, player);
+    drawDowned(width, height, unit, state, player, time);
     if (wheel) drawWheel(context, width, height, unit, player, wheel);
     drawBanner(width, height, unit, state, time);
     drawRadio(width, height, unit, state);
@@ -643,8 +649,10 @@ export function createHud(menu: Menu): Hud {
 
     scrim(0, base - 92 * unit, x + w + 110 * unit, 120 * unit, 'left');
     text(context, 'VITALS', x, base - 52 * unit, { size: 12 * unit, color: COLOR.dim, spacing: 4 * unit, weight: 700 });
-    for (let i = 0; i < config.player.lives; i++) {
-      lifeCross(x + w - 7 * unit - (config.player.lives - 1 - i) * 22 * unit, base - 56 * unit, 14 * unit, i < lives);
+    // One cross a life: three to start, more shown only once there are more.
+    const shown = Math.min(config.player.livesCap, Math.max(config.player.lives, lives));
+    for (let i = 0; i < shown; i++) {
+      lifeCross(x + w - 7 * unit - (shown - 1 - i) * 22 * unit, base - 56 * unit, 14 * unit, i < lives);
     }
 
     const value = String(Math.max(0, Math.ceil(player.health)));
@@ -881,7 +889,11 @@ export function createHud(menu: Menu): Hud {
   function drawPrompt(width: number, height: number, unit: number, state: GameState, player: Player): void {
     let prompt: { keys: string[]; label: string; cost?: number; short?: boolean } | null = null;
     const interaction = interactionTarget(state, player);
-    if (interaction?.kind === 'station') {
+    const patient = player.revive ? null : reviveTarget(state, player);
+    if (patient === player) prompt = { keys: [bindings.use], label: 'Get up. It costs a life' };
+    else if (patient) prompt = { keys: [bindings.use], label: `Revive player ${patient.id + 1}. Hold still` };
+    else if (player.health <= 0) prompt = null;
+    else if (interaction?.kind === 'station') {
       const offer = stationOffer(state, player, interaction.index);
       prompt = offer.status === 'ok'
         ? { keys: [bindings.use], label: offer.label, cost: offer.cost }
@@ -944,6 +956,51 @@ export function createHud(menu: Menu): Hud {
       const amountWidth = measure(context, costText, 17 * unit, 800, 1 * unit);
       text(context, costText, cursor + 11 * unit, y + 6 * unit, { size: 17 * unit, weight: 800, color: tone, spacing: 1 * unit, shadow: false });
       text(context, ' PTS', cursor + 11 * unit + amountWidth, y + 6 * unit, { size: 12 * unit, weight: 700, color: tone, spacing: 2 * unit, shadow: false });
+    }
+  }
+
+  // Down, out, or a revive going on: a word in the middle of the view, a line under it, and a bar.
+  function drawDowned(width: number, height: number, unit: number, state: GameState, player: Player, time: number): void {
+    const helper = revivedBy(state, player);
+    const giving = player.revive && player.revive.target !== player.id ? state.players.find((each) => each.id === player.revive!.target) : null;
+    let title = '';
+    let line = '';
+    let bar = -1;
+    if (state.waves.phase === 'lost') return;
+    if (player.out) {
+      title = player.lives > 0 ? 'BLED OUT' : 'OUT OF LIVES';
+      line = player.lives > 0 ? 'Back with the crew at the next quiet moment' : 'Out of this run. Watching the crew';
+    } else if (isDown(player)) {
+      const left = Math.ceil(bleedLeft(state, player));
+      title = 'DOWN';
+      if (helper) { line = `Player ${helper.id + 1} is bringing you back`; bar = reviveProgress(state, helper); }
+      else if (player.revive) { line = 'Getting up'; bar = reviveProgress(state, player); }
+      else if (state.players.length > 1) line = `Bleeding out  ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}   ·   A teammate can bring you back`;
+      else if (canGetUp(state, player)) line = `Bleeding out  ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      else line = 'Your last life';
+    } else if (giving) {
+      title = 'REVIVING';
+      line = `Player ${giving.id + 1}. Hold still`;
+      bar = reviveProgress(state, player);
+    } else return;
+    // Under the crosshair, clear of the floor banners above it and the prompt below.
+    const y = height * 0.585;
+    const tone = title === 'REVIVING' ? COLOR.good : COLOR.danger;
+    const pulse = title === 'DOWN' && bar < 0 ? 0.75 + Math.sin(time * 4) * 0.25 : 1;
+    context.save();
+    context.globalAlpha = pulse;
+    text(context, title, width / 2, y, { size: 54 * unit, weight: 800, align: 'center', spacing: 10 * unit, color: tone });
+    context.restore();
+    text(context, line, width / 2, y + 40 * unit, { size: 19 * unit, weight: 600, align: 'center', spacing: 0.5 * unit, color: COLOR.text });
+    if (bar >= 0) {
+      const barW = 320 * unit, barH = 8 * unit;
+      const x = (width - barW) / 2, top = y + 62 * unit;
+      roundedRect(context, x, top, barW, barH, barH / 2);
+      context.fillStyle = 'rgba(255,255,255,0.14)';
+      context.fill();
+      roundedRect(context, x, top, Math.max(barH, barW * bar), barH, barH / 2);
+      context.fillStyle = COLOR.good;
+      context.fill();
     }
   }
 
@@ -1091,7 +1148,14 @@ export function createHud(menu: Menu): Hud {
     const part = partBanner(state);
     const siege = flowOf(state.level).kind === 'siege';
     const stepDone = state.objective.past[state.objective.step - 1];
-    if (state.objective.doneTick >= 0 && seconds(state.objective.doneTick) < BANNER_SECONDS && part) {
+    if (waves.phase === 'lost') {
+      // Nothing else matters once nobody is standing.
+      eyebrow = 'NOBODY LEFT STANDING';
+      title = 'THE RUN IS OVER';
+      detail = 'It starts again from the road in';
+      color = COLOR.danger;
+      age = Math.min(seconds(waves.diedTick), 0.5);
+    } else if (state.objective.doneTick >= 0 && seconds(state.objective.doneTick) < BANNER_SECONDS && part) {
       ({ eyebrow, title, detail } = part);
       color = COLOR.good;
       age = seconds(state.objective.doneTick);
@@ -1139,9 +1203,9 @@ export function createHud(menu: Menu): Hud {
       color = COLOR.accent;
       age = seconds(waves.arrivedTick);
     } else if (waves.diedTick >= 0 && seconds(waves.diedTick) < BANNER_SECONDS) {
-      eyebrow = waves.lostRun ? 'NO LIVES LEFT' : `${state.lives} ${state.lives === 1 ? 'LIFE' : 'LIVES'} LEFT`;
-      title = waves.lostRun ? 'OUT OF LIVES' : 'OVERRUN';
-      detail = waves.lostRun ? (siege ? 'Back to wave 1 with fresh lives' : 'The floor starts over with fresh lives') : siege ? `Restarting wave ${waves.number}` : 'Back where you came in. What is done stays done';
+      eyebrow = 'PRACTICE';
+      title = 'OVERRUN';
+      detail = siege ? `Restarting wave ${waves.number}` : 'Back where you came in. What is done stays done';
       color = COLOR.danger;
       age = seconds(waves.diedTick);
     } else if (state.gate.closed && seconds(state.gate.closedTick) < BANNER_SECONDS) {
@@ -1153,7 +1217,7 @@ export function createHud(menu: Menu): Hud {
     } else if (waves.startedTick >= 0 && seconds(waves.startedTick) < BANNER_SECONDS) {
       eyebrow = `${floorName(state.floor).toUpperCase()}  ·  ${waves.number} OF ${wavesOnFloor(state.floor)}`;
       title = `WAVE ${waves.number}`;
-      detail = `${zombiesInWave(state.floor, waves.number)} zombies incoming`;
+      detail = `${zombiesInWave(state)} zombies incoming`;
       age = seconds(waves.startedTick);
     } else if (state.tick < 4.5 * config.ticksPerSecond && waves.phase === 'entry') {
       eyebrow = 'LEVEL 0';

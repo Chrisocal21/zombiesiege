@@ -44,19 +44,24 @@ const first = await a.next((m) => m.type === 'snapshot', 'first snapshot');
 assert.ok(first.level, 'the first snapshot carries the level');
 assert.equal(first.state.level, undefined, 'the state itself leaves the level out');
 assert.equal(first.state.players.length, 1);
+// A new room's run waits for someone to press DEPLOY: snapshots come, but nothing moves.
+await delay(300);
+assert.equal(a.latest().state.tick, first.state.tick, 'the run waits until someone is in');
+a.socket.send(JSON.stringify({ type: 'start' }));
 const later = await a.next((m) => m.type === 'snapshot' && m.state.tick > first.state.tick, 'second snapshot');
 assert.equal(later.level, undefined, 'the level is not sent again while it is unchanged');
 
-// Holding forward walks player A toward the garage (yaw 0 faces -z), and the server says
-// which input it used.
-const startZ = me(later, 0).z;
+// Holding forward walks player A up the road (the run starts at P01), and the server says which
+// input it used.
+const start = me(later, 0);
 for (let i = 0; i < 20; i++) {
   a.input({ moveForward: 1 });
   await delay(16);
 }
 a.input();
 await delay(150);
-assert.ok(me(a.latest(), 0).z < startZ - 0.5, `A walked forward (${startZ} to ${me(a.latest(), 0).z})`);
+const walked = Math.hypot(me(a.latest(), 0).x - start.x, me(a.latest(), 0).z - start.z);
+assert.ok(walked > 0.5, `A walked forward (${walked.toFixed(2)} m)`);
 assert.equal(a.latest().ack, a.seq(), 'every input was used');
 
 // A second player joins the same game, and both are sent the same state.
@@ -92,6 +97,11 @@ assert.equal(b.latest().state.floor, 2, 'a restart to a floor that does not exis
 assert.ok(Number.isFinite(afterJunk.yaw), 'a bad turn amount is dropped');
 assert.ok(Math.hypot(afterJunk.x - beforeJunk.x, afterJunk.z - beforeJunk.z) < 1, 'a huge move is clamped to one step of walking');
 
+// Act 4 floors can be started on too.
+b.socket.send(JSON.stringify({ type: 'restart', floor: 20 }));
+await b.next((m) => m.type === 'snapshot' && m.state.floor === 20, 'onto the park');
+assert.equal(b.latest().state.practice, true, 'a restart onto a floor is practice');
+
 const c = connect();
 const d = connect();
 await Promise.all([c.opened, d.opened]);
@@ -113,4 +123,4 @@ const bad = connect('no!');
 await assert.rejects(bad.opened, 'bad room codes are refused');
 
 for (const player of [b, c, d, f]) player.socket.close();
-console.log(`PASS: co-op server runs the game for everyone: inputs, shared state, floor restart with zombies, junk, full room, leaving (room ${room})`);
+console.log(`PASS: co-op server runs the game for everyone: inputs, shared state, waiting for DEPLOY, floor restart with zombies, junk, full room, leaving (room ${room})`);

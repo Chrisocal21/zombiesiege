@@ -5,7 +5,7 @@ import { rayAabb, raycastBoxes } from './hitscan';
 import { dropSupply } from './items';
 import { nextStep, routeOf } from './navigation';
 import { flowOf, type GameState, type Player, type Zombie, type ZombieKind } from './state';
-import { crowdAt } from './tower';
+import { crowdAt, depth } from './tower';
 import { bossTarget, hurtBoss, retreatPoint } from './story';
 
 const ticks = (seconds: number): number => Math.round(seconds * config.ticksPerSecond);
@@ -300,7 +300,7 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
       const sight = target.flashlight ? zombieConfig.flashlightSightRange : zombieConfig.sightRange;
       const aware = distance <= sight || state.tick < zombie.alertUntil;
       let pace = zombieConfig.moveSpeed * kind.speed * zombie.speedFactor
-        * (1 + zombieConfig.speedPerWave * (state.waves.number - 1) + config.elevator.speedPerFloor * state.floor);
+        * (1 + zombieConfig.speedPerWave * (state.waves.number - 1) + config.elevator.speedPerFloor * floorPace(state.floor));
       if (!aware && !zombie.entry) pace *= zombieConfig.unawareSpeed;
       if (zombie.crawling) pace *= zombieConfig.crawlSpeed;
       if (state.tick < zombie.staggerUntil) pace *= 0.18;
@@ -367,6 +367,12 @@ function separate(state: GameState): void {
       b.z += dz * push * share;
     }
   }
+}
+
+// The floor's share of the pace: slower in the prologue, as it always was, and growing with depth
+// up to a cap after that.
+function floorPace(floor: number): number {
+  return floor < 0 ? floor : Math.min(depth(floor), config.elevator.speedDepthCap);
 }
 
 export function hurtPlayer(state: GameState, player: Player, damage: number): void {

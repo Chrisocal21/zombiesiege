@@ -104,6 +104,18 @@ export interface Player {
   // The item being used and the seconds left, or null and 0.
   item: ItemId | null;
   itemLeft: number;
+  // Lives belong to each player: three to start, never more than config.player.livesCap. One goes
+  // each time this player bleeds out or gets up alone. See downed.ts.
+  lives: number;
+  // The tick this player went down, or -1 while on their feet (or out). Down is health 0 with the
+  // bleed-out clock running: a teammate can still bring them back.
+  downTick: number;
+  // Bled out. With lives left they come back at the next safe moment; with none they are out of
+  // the run and watch.
+  out: boolean;
+  // A revive this player is giving (to a teammate, or to themself when alone): who, and the tick
+  // it began. Null when not reviving.
+  revive: { target: number; startTick: number } | null;
 }
 
 // The infected come in kinds. The runner is fast and fragile, the brute slow and heavy, and the screamer
@@ -159,8 +171,9 @@ export interface Zombie {
 // unless the objective itself brings them.
 // 'hold' is a charger filling, or the helicopter on its way, with zombies coming all the while.
 // 'flight' is the last helicopter carrying the crew out, a short film before 'won'.
+// 'lost' is the end of a run where nobody was left standing: the run starts again from the prologue.
 // 'evac' is the helicopter down on the roof, waiting for everyone to get aboard.
-export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'hold' | 'evac' | 'lift' | 'ride' | 'arrive' | 'flight' | 'won';
+export type WavePhase = 'entry' | 'prep' | 'break' | 'active' | 'cleared' | 'search' | 'hold' | 'evac' | 'lift' | 'ride' | 'arrive' | 'flight' | 'won' | 'lost';
 
 export interface Waves {
   // The wave being fought, or the one coming up during a break. Starts at 1.
@@ -174,13 +187,11 @@ export interface Waves {
   reinforce: number;
   spawnTimer: number;
   spawnIndex: number;
-  // Tick the wave last began, and the tick the player last died, for messages on screen.
+  // Tick the wave last began, and the tick everyone was last down, for messages on screen.
   startedTick: number;
   diedTick: number;
   // Tick the players last stepped out of the elevator onto a new floor, or -1.
   arrivedTick: number;
-  // True when the last time everyone went down was the final life, so the floor started over.
-  lostRun: boolean;
   // On a sweep floor: the tick of the last loud moment that brought more of them, or -1, and how
   // many loud moments there have been.
   loudTick: number;
@@ -319,8 +330,9 @@ export interface GameState {
   frozen: boolean;
   gate: GateState;
   lift: LiftState;
-  // Shared by the players. Going down costs one.
-  lives: number;
+  // Started from the floor list on a floor that is not the start of the run: a practice game,
+  // where everyone going down starts the wave or the floor again instead of ending the run.
+  practice: boolean;
   // For each of the level's radio cues, the tick its area was first walked into, or -1.
   heard: number[];
   // For each of the level's notes, the tick someone first read it, or -1.
@@ -471,6 +483,10 @@ export function createPlayer(id: number, spawn: Vec3): Player {
     hydration: 50,
     item: null,
     itemLeft: 0,
+    lives: config.player.lives,
+    downTick: -1,
+    out: false,
+    revive: null,
   };
 }
 
@@ -484,7 +500,7 @@ export function createGameState(level: Level): GameState {
     gate: { closed: false, closedTick: -1 },
     lift: { open: false, changedTick: -1 },
     floor: 0,
-    lives: config.player.lives,
+    practice: false,
     heard: [],
     read: [],
     log: [],
@@ -514,7 +530,6 @@ export function createGameState(level: Level): GameState {
       startedTick: -1,
       diedTick: -1,
       arrivedTick: -1,
-      lostRun: false,
       loudTick: -1,
       alarms: 0,
       trailX: 0,

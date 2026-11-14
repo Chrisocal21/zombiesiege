@@ -111,7 +111,7 @@ export const park: Level = {
     ],
     captions: [
       { from: 1, to: 5, speaker: PILOT, line: 'Everyone aboard. Lifting. Hold on.' },
-      { from: 5.5, to: 11, speaker: BROADCAST, line: 'Northline is lost. Outbreaks are now reported in the river towns. Do not return to the city.' },
+      { from: 5.5, to: 11, speaker: BROADCAST, line: 'Northline is lost. New outbreaks are reported beyond the city. Do not return.' },
       { from: 11.5, to: 14.5, speaker: BROADCAST, line: 'Survivors are being received at the outskirts camp. Follow the signal east.' },
       { from: 14.7, to: 17.6, title: 'OUTSKIRTS CAMP', line: 'Safe. For now.' },
     ],

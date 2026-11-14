@@ -6,6 +6,7 @@ import { raycastBoxes } from './hitscan';
 import type { InputMessage } from './inputs';
 import { moveBody } from './movement';
 import { dropCase } from './objectives';
+import { startRevive, updateDowned } from './downed';
 import { eyeY, type GameState, type Player, type Zombie } from './state';
 import { equipWeapon, isMelee, swapWeapon, weaponStats } from './weapons';
 import { resolveMelee, startMelee } from './melee';
@@ -20,13 +21,25 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
   const level = state.level;
   // While a scene plays, nobody moves and nothing attacks: the camera has the floor.
   const scene = state.scene !== null || state.waves.phase === 'flight';
+  // Who moved or fired this tick, which stops a revive they are giving.
+  const moved = new Set<number>();
   for (const input of inputs) {
     const player = state.players.find((each) => each.id === input.playerId);
-    if (!player || player.health <= 0 || scene) continue;
+    if (!player || player.out || scene) continue;
+    if (input.moveForward !== 0 || input.moveRight !== 0 || input.fire || input.jump) moved.add(player.id);
+    if (player.health <= 0) {
+      crawl(state, player, input, dt, level);
+      continue;
+    }
+    // Kneeling over a teammate: only looking about, until it is done or they move.
+    if (player.revive) {
+      look(player, input);
+      if (!moved.has(player.id)) continue;
+    }
 
     if (input.toggleFreeze) state.frozen = !state.frozen;
     if (input.toggleLight) player.flashlight = !player.flashlight;
-    if (input.use) useAction(state, player);
+    if (input.use && !startRevive(state, player)) useAction(state, player);
     if (input.useItem) startItem(player, input.useItem);
     look(player, input);
     // You can't look down the sights mid-reload, while hanging off a ladder or a ledge, or with
@@ -44,6 +57,8 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
 
   // Whoever goes down lets go of what they were carrying.
   for (const player of state.players) if (player.health <= 0) dropCase(state, player);
+  // Once the run is over, won or lost, nobody bleeds out any more.
+  if (state.waves.phase !== 'lost' && state.waves.phase !== 'won') updateDowned(state, moved);
   if (!state.frozen) {
     if (!scene) updateZombies(state, dt, level);
     updateWaves(state, dt, level);
@@ -55,6 +70,21 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     regenerate(state, player, dt);
   }
   state.tick++;
+}
+
+// Down: looking about, crawling, the gun in hand with what is left in it, and, alone with a life to
+// spare, getting up.
+function crawl(state: GameState, player: Player, input: InputMessage, dt: number, level: Level): void {
+  look(player, input);
+  if (input.toggleLight) player.flashlight = !player.flashlight;
+  if (input.use) startRevive(state, player);
+  if (player.revive) return;
+  const slow = config.player.down.crawlMultiplier;
+  moveBody(player, {
+    ...input, moveForward: input.moveForward * slow, moveRight: input.moveRight * slow,
+    crouch: true, sprint: false, jump: false, toggleCover: false,
+  }, dt, level);
+  weapon(state, player, { ...input, aim: false, reload: false, swap: false, selectWeapon: undefined, melee: false }, dt, level);
 }
 
 function look(player: Player, input: InputMessage): void {
@@ -125,13 +155,13 @@ function weapon(
     else if (input.swap) swapWeapon(player, state.tick, input.swapDirection);
   }
   const pistol = weaponStats(player.weapon);
-  if (!player.ladder && !player.mantle && (input.melee || (isMelee(player.weapon) && input.fire && player.cooldown === 0))) {
+  if (player.health > 0 && !player.ladder && !player.mantle && (input.melee || (isMelee(player.weapon) && input.fire && player.cooldown === 0))) {
     startMelee(state, player);
     return;
   }
   if (isMelee(player.weapon)) return;
 
-  if (player.reloadLeft > 0) {
+  if (player.reloadLeft > 0 && player.health > 0) {
     player.reloadLeft -= dt;
     if (player.reloadLeft <= 0) {
       player.reloadLeft = 0;
@@ -145,9 +175,11 @@ function weapon(
   // Both hands are busy on a ladder or a ledge.
   if (player.ladder || player.mantle) return;
 
-  const wantsReload = input.reload && player.ammo < pistol.magazineSize && player.reserve > 0;
+  // Down, there is no reloading: only what is left in the gun.
+  const down = player.health <= 0;
+  const wantsReload = !down && input.reload && player.ammo < pistol.magazineSize && player.reserve > 0;
   // Pulling the trigger on an empty magazine reloads too, if there is anything to load.
-  if (wantsReload || (input.fire && player.ammo === 0 && player.reserve > 0)) {
+  if (wantsReload || (!down && input.fire && player.ammo === 0 && player.reserve > 0)) {
     player.reloadLeft = pistol.reloadSeconds;
     return;
   }

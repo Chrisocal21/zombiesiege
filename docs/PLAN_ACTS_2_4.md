@@ -332,10 +332,60 @@ Each phase ends with a stop for you to compact, as usual.
 
 **The Main Street shortcut.** Two barriers across the road and pavements, staggered (gap at the south, then at the north), make the road an S-bend. The north shop is a real room (6 sleepers, three dim lights, a counter and shelves) with doors either side of the barriers, about 6 m shorter than the road. `check-act4` measures both routes.
 
-**The flight out.** `Level.flight` (seconds, shots, captions) on the park. When everyone is aboard the new `flight` phase runs for 18 s: the helicopter lifts off and flies away, the camera takes three shots (from the ground, then high over the city, then wide to the sunrise) with letterbox and captions, then the run is won. Nobody can move during it. The captions are a pilot line, a broadcast naming Northline lost and "the river towns" newly hit, and "OUTSKIRTS CAMP / Safe. For now." **The town names and broadcast wording are draft.**
+**The flight out.** `Level.flight` (seconds, shots, captions) on the park. When everyone is aboard the new `flight` phase runs for 18 s: the helicopter lifts off and flies away, the camera takes three shots (from the ground, then high over the city, then wide to the sunrise) with letterbox and captions, then the run is won. Nobody can move during it. The captions are a pilot line, a broadcast naming Northline lost and outbreaks "beyond the city", and "OUTSKIRTS CAMP / Safe. For now." The wording was settled Nov 14 (see LORE.md). An earlier draft named "the river towns"; that was dropped so the broadcast doesn't get ahead of Acts 5 to 12.
 
 **Open:**
 
 - The sunrise is the park's existing sky; the camera never leaves the park's own scenery (flat boxes for the city).
 - The scientist stands right beside the spawn on arrival and can block the first view for a moment.
 - The prologue's gate floors still say "The barrier is down" and use the old wording.
+
+---
+
+## 11. Phase 5: what was built (lives, wipe rule, co-op pass, balance)
+
+**Lives per person (canon §2.3).** `Player.lives` replaces the team pool: 3 to start, `livesCap` 5 (no source of extra lives yet). New `src/game/downed.ts`:
+- **Down** at 0 health: `downTick` set. The player can look, crawl (crouched, at 35% of crouch speed), and fire what's left in the gun in hand. There's no reload, swap, melee or items. Zombies go for whoever is still standing.
+- **Revive:** a standing teammate within 1.8 m presses use, then holds still for 4 s. Moving, firing or being hit stops it. It costs nothing, and the player comes back at 30 health.
+- **Self-revive (solo only):** press use while down. It takes 6 s, costs a life, and can't be done on the last life.
+- **Bleed-out** after 45 s costs a life (`out`). With lives left the player comes back beside a standing teammate at the next quiet moment: a wave break, cleared, the open lift, siege search, or the next floor. With none, they're out of the run and spectate (their own view for now).
+- The lift, the gate and the helicopter wait for downed players (who can crawl in), but not for those out.
+- **Nobody standing** (and nobody able to get up alone) → `WavePhase 'lost'`. Three seconds later the end screen shows RUN OVER with TRY AGAIN, which starts a new run at P01. That's the locked full-wipe rule.
+- **Practice:** `GameState.practice` is true for any game started from the floor list on a floor other than P01. There, a wipe runs the old restart (same wave, or back to the floor's entry with steps kept), everyone back up, no lives lost. The Act 3 wipe behaviours (Patient O's stages) still apply there.
+- The HUD shows one cross per life, DOWN / BLED OUT / OUT OF LIVES / REVIVING with the bleed timer and a progress bar, a "Revive player N" prompt, and a red DOWN marker on the compass and radar for a downed teammate. Other players see a downed teammate lying on the floor.
+
+**Wave balance.** The 40% per floor index growth made deep waves about 89 and also made zombies faster than a walking player by the park. `tower.ts depth(floor)` now climbs one step per floor through the hospital and 0.2 per floor after the roof (`config.waves.laterFloorStep`).
+- Act 1 and the prologue are unchanged. The prologue keeps its slower pace.
+- The last wave on the deep siege floors is now about 41 to 50. The park's final wave is 50.
+- Zombie speed growth from depth is capped at depth 6.
+- Each extra player adds 25% to a wave (`extraPerPlayer`).
+- A wave pauses spawning while 32 are up (`maxAlive`).
+
+**Co-op.**
+- The server room now waits, players standing at P01, until someone presses DEPLOY (new `start` message) or restarts. Before this, players sitting on the title screen got overrun.
+- Joining a room whose run is over starts the next run.
+- Restarts can now go to any floor up to the park; before, they stopped at the roof.
+- TRY AGAIN doesn't restart a run someone else already restarted.
+- `check-coop-server` was failing only because it assumed the old garage start facing −z. It now measures distance, and also covers the waiting room and an Act 4 restart.
+- **Two-browser pass** (headless Chrome ×2 plus a scripted third player, against wrangler and Vite):
+  - Both tabs joined and saw the same state tick for tick.
+  - Each tab drew the third player.
+  - After an idle wipe, both showed the RUN OVER screen.
+  - On the practice floor a downed teammate lay on the floor with the "Revive player 3" prompt over them.
+
+**Story items closed on recommendation:**
+- The Act 2 notes and the evacuation map stand as written.
+- The broadcast drops "the river towns".
+- The scientist now starts a step behind the crew (or to one side if a wall is there), so he isn't the first thing in view.
+- The prologue's breaker wording ("The barrier is down") is kept, because it fits the checkpoint.
+
+**Still open:**
+- Nobody has played Acts 2–4 with a mouse yet.
+- An out-of-lives player watches from where they fell, not over a teammate's shoulder.
+- No item or event gives extra lives (canon: rare and bounded).
+- The canon's "dragging/stabilization" isn't built.
+- Act-start autosaves (resume an interrupted session) aren't built.
+- Patient O doesn't break pillars.
+- The garage battery is drawn as the steel case.
+- Floor 20's camera is a HUD overlay.
+- `check-admin`, `check-melee` and `check-ramp` still fail as they did before Phase 3a.

@@ -6,10 +6,12 @@ import { beginPrep, closeGate, doorwaySpawn } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, completeStep, dropCase, everyoneAboard, inArea, lastStep } from './objectives';
 import { createPlayer, enterLevel, flowOf, spawnPoint, type GameState, type Player } from './state';
-import { LAST_FLOOR, ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower';
+import { FIRST_FLOOR, LAST_FLOOR, ROOF, storeysToNext, waveSize, wavesOnFloor } from './tower';
 import type { ZombieKind } from './state';
 import { guaranteeAmmo } from './weapons';
+import { raycastBoxes } from './hitscan';
 import { aliveOfKind, aliveZombies, placeResidents, spawnZombie, underAttack } from './zombies';
+import { bringBack, nobodyStanding } from './downed';
 import { bossAfterWipe, placeScientist, startScene } from './story';
 
 export function isTopFloor(state: GameState): boolean {
@@ -160,7 +162,9 @@ function listen(state: GameState): void {
 }
 
 // Every floor up brings more zombies to each wave.
-export const zombiesInWave = waveSize;
+export function zombiesInWave(state: GameState): number {
+  return waveSize(state.floor, state.waves.number, state.players.length);
+}
 
 // Spawns the wave's zombies one at a time, runs the break between waves, and resets the wave if
 // every player is down.
@@ -182,13 +186,20 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   // On a floor with no waves the dead are about the whole time.
   const quiet = waves.phase === 'ride' || waves.phase === 'arrive' || waves.phase === 'won'
     || (siege && (waves.phase === 'cleared' || waves.phase === 'search' || waves.phase === 'lift'));
-  if (!quiet && state.players.length > 0 && state.players.every((player) => player.health <= 0)) {
-    restartWave(state, level);
+  if (!quiet && waves.phase !== 'lost' && nobodyStanding(state)) {
+    // In a run, nobody left on their feet ends it. A practice game starts the wave again.
+    if (state.practice) restartWave(state, level);
+    else {
+      waves.phase = 'lost';
+      waves.diedTick = state.tick;
+    }
     return;
   }
 
   // Nothing happens until the players are in and the gate is closed, and nothing after the end.
-  if (waves.phase === 'entry' || waves.phase === 'won') return;
+  if (waves.phase === 'entry' || waves.phase === 'won' || waves.phase === 'lost') return;
+  // A quiet moment brings back whoever bled out with a life to spare.
+  if (waves.phase === 'break' || waves.phase === 'cleared' || waves.phase === 'lift' || (siege && waves.phase === 'search')) bringBack(state, level);
   listen(state);
   callReinforcements(state, level);
 
@@ -320,7 +331,9 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     waves.spawnTimer -= dt;
     if (waves.spawnTimer <= 0) {
       // Zombies only come through the doors that are still open. The first of the wave leads it.
-      spawnAtDoor(state, level, waves.toSpawn === zombiesInWave(state.floor, waves.number));
+      // Held back while the room is full, so a big wave comes in as the first of it fall.
+      if (aliveZombies(state) >= config.waves.maxAlive) return;
+      spawnAtDoor(state, level, waves.toSpawn === zombiesInWave(state));
       waves.toSpawn--;
       waves.spawnTimer = config.waves.secondsBetweenSpawns;
     }
@@ -359,6 +372,25 @@ function arriveOnNextFloor(state: GameState): void {
   state.waves.timer = config.elevator.arriveSeconds;
 }
 
+// Where the scientist stands when the crew starts a floor on foot: a step behind the first of them,
+// or to one side if a wall is there, so he is never the first thing in anyone's view.
+function besideCrew(level: Level): { x: number; z: number } {
+  const yaw = level.spawnYaw ?? 0;
+  const first = spawnPoint(level.playerSpawns, 0, yaw);
+  const forward = { x: -Math.sin(yaw), z: -Math.cos(yaw) };
+  const right = { x: Math.cos(yaw), z: -Math.sin(yaw) };
+  const options = [
+    { x: -forward.x, z: -forward.z, reach: 1.4 },
+    { x: right.x, z: right.z, reach: 1.3 },
+    { x: -right.x, z: -right.z, reach: 1.3 },
+  ];
+  for (const option of options) {
+    const wall = raycastBoxes(level, { x: first.x, y: 1, z: first.z }, { x: option.x, y: 0, z: option.z }, option.reach + 0.6);
+    if (wall === null) return { x: first.x + option.x * option.reach, z: first.z + option.z * option.reach };
+  }
+  return spawnPoint(level.playerSpawns, level.playerSpawns.length, yaw);
+}
+
 // Where a player stands in the cab: its middle, spread across its width, facing the doors.
 function cabSpot(level: Level, index: number, count: number): { x: number; z: number; yaw: number } {
   const { position, normal, cabDepth } = level.elevator;
@@ -376,6 +408,12 @@ function respawn(old: Player, level: Level, keepGuns: boolean, cab: { x: number;
   const player = createPlayer(old.id, cab ? { x: cab.x, y: 0, z: cab.z } : spawnPoint(level.playerSpawns, old.id, level.spawnYaw));
   player.yaw = cab ? cab.yaw : level.spawnYaw ?? 0;
   player.flashlight = old.flashlight;
+  // Lives stay with the player. Anyone out of them stays out, watching.
+  player.lives = old.lives;
+  if (old.out && old.lives <= 0) {
+    player.out = true;
+    player.health = 0;
+  }
   if (!keepGuns) return player;
   player.weapon = old.weapon;
   player.stowed = old.stowed;
@@ -392,6 +430,8 @@ function respawn(old: Player, level: Level, keepGuns: boolean, cab: { x: number;
 // Starts a new game on any elevator stop, as if just arrived there, for testing a floor.
 export function startOnFloor(state: GameState, floor: number): void {
   state.floor = floor;
+  // Anywhere but the start of the run is practice.
+  state.practice = floor !== FIRST_FLOOR;
   startFloor(state, false);
   // In the prologue the gate stays shut until the floor is done.
   if (floor >= 0 && !levelForFloor(floor).exitGate) openLift(state);
@@ -406,7 +446,7 @@ function startFloor(state: GameState, keepGuns: boolean, inCab = false): void {
   state.players = state.players.map((old, i) => respawn(old, level, keepGuns, inCab ? cabSpot(level, i, state.players.length) : null));
   // The scientist, after the vault, comes along: in the cab with the crew, or beside where they start.
   const count = state.players.length;
-  const beside = spawnPoint(level.playerSpawns, count, level.spawnYaw);
+  const beside = besideCrew(level);
   placeScientist(state, inCab ? cabSpot(level, count, count) : { x: beside.x, z: beside.z, yaw: level.spawnYaw ?? 0 });
   const waves = state.waves;
   waves.number = 1;
@@ -436,36 +476,33 @@ function beginFloor(state: GameState, level: Level): void {
 function startWave(state: GameState): void {
   const waves = state.waves;
   waves.phase = 'active';
-  waves.toSpawn = zombiesInWave(state.floor, waves.number);
+  waves.toSpawn = zombiesInWave(state);
   waves.spawnTimer = 0;
   waves.startedTick = state.tick;
   for (const player of state.players) guaranteeAmmo(player);
 }
 
-// Everyone is down. That costs a life: with one left, the same wave begins again after a short
-// pause. With none left the floor starts over from wave 1 and the lives are refilled.
+// Practice only: everyone is down, and the same wave begins again after a short pause, everyone back
+// on their feet with their lives as they were (anyone out of them gets one back).
 // Going down while holding a room loses the charge and goes back to the charger; going down
 // waiting for the helicopter keeps it waiting. On a floor with no waves the crew goes back to where
 // it came in, with the floor's own dead back where they stood, and the steps already done stay done.
+// In a run, nobody standing is the end of it (phase 'lost').
 function restartWave(state: GameState, level: Level): void {
   const waves = state.waves;
   waves.diedTick = state.tick;
-  state.lives--;
-  if (state.lives <= 0) {
-    state.lives = config.player.lives;
-    waves.lostRun = true;
-    // The score goes with the run.
-    state.points = state.points.map(() => 0);
-    startFloor(state, false);
-    return;
-  }
-  waves.lostRun = false;
   state.zombies = [];
   for (const player of state.players) dropCase(state, player);
-  // Going down costs a life but not the guns: weapons and spare rounds come back with the player.
-  state.players = state.players.map((old) => respawn(old, level, true));
+  // The guns come back with the player: weapons and spare rounds.
+  state.players = state.players.map((old) => {
+    const player = respawn(old, level, true);
+    player.out = false;
+    player.health = config.player.maxHealth;
+    player.lives = Math.max(1, player.lives);
+    return player;
+  });
   if (state.scientist) {
-    const beside = spawnPoint(level.playerSpawns, state.players.length, level.spawnYaw);
+    const beside = besideCrew(level);
     Object.assign(state.scientist, { x: beside.x, z: beside.z, lostTicks: 0 });
   }
   bossAfterWipe(state, level);

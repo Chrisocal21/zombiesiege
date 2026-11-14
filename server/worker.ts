@@ -51,8 +51,11 @@ const MAX_CATCH_UP_MS = 250;
 export class Room extends DurableObject<Env> {
   private seats = new Map<number, Seat>();
   private game: GameState | null = null;
+  // A new room's run waits, everyone standing at the start, until someone presses DEPLOY (or restarts).
+  private started = false;
   private loop: ReturnType<typeof setInterval> | null = null;
   private lastTime = 0;
+  private waits = 0;
   private leftover = 0;
   // The level last sent, and how many boxes it had, to tell when it has changed.
   private sentLevel: Level | null = null;
@@ -72,7 +75,9 @@ export class Room extends DurableObject<Env> {
     const seat: Seat = { socket, pending: null, pendingSeq: 0, held: idleInput(playerId), ack: 0, hasLevel: false };
     this.seats.set(playerId, seat);
     const game = this.startGame();
-    addPlayer(game, playerId);
+    // Coming into a room whose run is over starts the next one, with everyone in it.
+    if (game.waves.phase === 'lost') this.restart(FIRST_FLOOR);
+    else addPlayer(game, playerId);
     send(socket, { type: 'welcome', room: code, playerId });
 
     socket.addEventListener('message', (event) => {
@@ -80,6 +85,10 @@ export class Room extends DurableObject<Env> {
       if (!message) return;
       if (message.type === 'restart') {
         this.restart(message.floor);
+        return;
+      }
+      if (message.type === 'start') {
+        this.started = true;
         return;
       }
       if (message.seq <= seat.pendingSeq) return;
@@ -106,6 +115,7 @@ export class Room extends DurableObject<Env> {
     // A run starts at the first level of the prologue.
     startOnFloor(game, FIRST_FLOOR);
     this.game = game;
+    this.started = false;
     this.lastTime = Date.now();
     this.leftover = 0;
     this.sentLevel = null;
@@ -120,6 +130,8 @@ export class Room extends DurableObject<Env> {
     game.players = [];
     game.points = [];
     if (floor !== 0) startOnFloor(game, floor);
+    else game.practice = true;
+    this.started = true;
     for (const [id, seat] of this.seats) {
       addPlayer(game, id);
       seat.pending = null;
@@ -141,6 +153,12 @@ export class Room extends DurableObject<Env> {
     const now = Date.now();
     this.leftover += Math.min(now - this.lastTime, MAX_CATCH_UP_MS);
     this.lastTime = now;
+    if (!this.started) {
+      // Waiting for someone to come in: nothing moves, but newcomers still get the game to show.
+      this.leftover = 0;
+      if (++this.waits % 2 === 0) this.sendSnapshots(game);
+      return;
+    }
     while (this.leftover >= TICK_MS) {
       this.leftover -= TICK_MS;
       const inputs: InputMessage[] = [];

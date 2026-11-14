@@ -21,6 +21,8 @@ export interface Coop {
   sendInput(input: InputMessage): void;
   // Asks the server to start the room's game again, from the garage (0) or on a floor.
   restart(floor: number): void;
+  // Tells the server someone is in: the room's run waits for this before it begins.
+  start(): void;
   // Turning already sent that the newest state does not include yet.
   unappliedLook(): { yaw: number; pitch: number };
 }
@@ -73,6 +75,9 @@ export function joinRoom(room: string): Coop {
     },
     restart(floor) {
       if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'restart', floor }));
+    },
+    start() {
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'start' }));
     },
     unappliedLook() {
       let yaw = 0;

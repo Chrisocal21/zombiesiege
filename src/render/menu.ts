@@ -27,6 +27,8 @@ export interface RunStats {
   points: number;
   lives: number;
   seconds: number;
+  // Set when the run ended with nobody standing, with the floor it ended on.
+  lost?: { floor: number };
 }
 
 export type MenuSound = 'move' | 'select' | 'back' | 'start';
@@ -694,9 +696,11 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         if (current === 'main') {
           drawLogo(left, 70 * unit, 0.42);
         } else {
-          text(context, current === 'pause' ? 'OPERATION 001  ·  THE TOWER' : 'OPERATION 001  ·  COMPLETE', left, 130 * unit, { size: 15 * unit, weight: 700, spacing: 6 * unit, color: COLOR.accent });
-          text(context, current === 'pause' ? 'PAUSED' : 'EXTRACTED', left - 4 * unit, 230 * unit, { size: 104 * unit, weight: 800, spacing: 10 * unit });
-          context.fillStyle = COLOR.accent;
+          const lost = current === 'victory' && stats.lost;
+          const kicker = current === 'pause' ? 'OPERATION 001  ·  THE TOWER' : lost ? 'NOBODY LEFT STANDING' : 'OPERATION 004  ·  DAYBREAK';
+          text(context, kicker, left, 130 * unit, { size: 15 * unit, weight: 700, spacing: 6 * unit, color: lost ? COLOR.danger : COLOR.accent });
+          text(context, current === 'pause' ? 'PAUSED' : lost ? 'RUN OVER' : 'EXTRACTED', left - 4 * unit, 230 * unit, { size: 104 * unit, weight: 800, spacing: 10 * unit });
+          context.fillStyle = lost ? COLOR.danger : COLOR.accent;
           context.fillRect(left, 258 * unit, 120 * unit, 4 * unit);
         }
         context.restore();
@@ -726,10 +730,11 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           if (!bindings.pause.startsWith('Mouse')) prompts.push([keyLabel(bindings.pause), 'RESUME']);
           promptBar(prompts);
         } else {
-          text(context, 'THE AIR AMBULANCE IS HERE. YOU MADE IT OUT', left, 300 * unit, { size: 19 * unit, color: COLOR.dim, spacing: 4 * unit });
+          const lost = stats.lost;
+          text(context, lost ? 'THE CREW WAS OVERRUN. THE RUN STARTS AGAIN FROM THE ROAD' : 'OUTSKIRTS CAMP. SAFE, FOR NOW', left, 300 * unit, { size: 19 * unit, color: COLOR.dim, spacing: 4 * unit });
           const minutes = Math.floor(stats.seconds / 60);
           const rows: [string, string][] = [
-            ['FLOORS CLEARED', String(stats.floors)],
+            lost ? ['FELL ON', floorTitle(lost.floor).toUpperCase()] : ['FLOORS CLEARED', String(stats.floors)],
             ['POINTS', String(stats.points)],
             ['LIVES LEFT', String(stats.lives)],
             ['TIME', `${minutes}:${String(Math.floor(stats.seconds % 60)).padStart(2, '0')}`],
@@ -742,7 +747,9 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             text(context, value, left + 420 * unit, rowY, { size: 30 * unit, weight: 800, align: 'right' });
           });
           list([
-            { label: 'PLAY AGAIN', detail: 'Back to the start of the road for another run.', action: () => callbacks.restart() },
+            lost
+              ? { label: 'TRY AGAIN', detail: 'A new run from mile nine, everyone with three lives.', action: () => callbacks.restart() }
+              : { label: 'PLAY AGAIN', detail: 'Back to the start of the road for another run.', action: () => callbacks.restart() },
             { label: 'MAIN MENU', detail: 'Back to the title screen.', action: () => callbacks.toTitle() },
           ], left, height * 0.68, 0.2);
           promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);

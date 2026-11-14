@@ -66,17 +66,16 @@ const shoot = (s) => tick(s, { ...idleInput(0), fire: true });
   // Another shot straight away brings no more; one after the gap brings a few.
   shoot(s);
   assert.equal(s.waves.alarms, 1, 'shots close together are one loud moment');
-  run(s, 12);
+  run(s, 12, heal);
   shoot(s);
   assert.equal(s.waves.alarms, 2);
   assert.ok(s.waves.reinforce >= s.level.flow.loud - 1, 'a later loud moment brings a few more');
 
   // Everyone down: a life goes, the crew is back in the stockroom, the shop's dead are back where they
   // stood, and it is still the same floor.
-  const lives = s.lives;
-  for (const player of s.players) player.health = 0;
+  for (const player of s.players) Object.assign(player, { health: 0, lives: 1 });
   tick(s);
-  assert.equal(s.lives, lives - 1);
+  assert.ok(s.practice && s.players.every((p) => p.health > 0 && p.lives === 1), 'practice: everyone is back up, no life lost');
   assert.equal(s.waves.phase, 'search');
   assert.equal(asleep(s), residents, 'the residents are back, asleep');
   assert.equal(living(s).length, residents, 'and the crowd is gone');

@@ -1,4 +1,3 @@
-import { config } from '../config';
 import { stepsOf, type GameState, type Player } from '../game/state';
 import { charging } from '../game/objectives';
 import { helicopterPose } from '../render/helicopterPath';
@@ -617,7 +616,7 @@ export function createAudio(): Audio {
         if (player.carrying >= 0 && carrying < 0) pickup();
         if (player.carrying < 0 && carrying >= 0 && delivered === deliveredCount) setDown();
         if (delivered > deliveredCount) nailing();
-        if (state.lives < lives && state.lives < config.player.lives) sting(true);
+        if (player.lives < lives || (state.waves.phase === 'lost' && phase !== 'lost')) sting(true);
       }
       thrownCount = thrown;
       stepSeen = state.objective.step;
@@ -656,7 +655,7 @@ export function createAudio(): Audio {
       wasAlive = alive;
       phase = state.waves.phase;
       liftOpen = state.lift.open;
-      lives = state.lives;
+      lives = player.lives;
       gateClosed = state.gate.closed;
       boardedCount = boarded;
       takenCount = taken;

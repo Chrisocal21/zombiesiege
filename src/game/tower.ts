@@ -106,9 +106,21 @@ export function crowdAt(floor: number): string[] {
 }
 
 // Zombies in a wave. A floor with fewer waves still ends on the biggest one in the table.
-export function waveSize(floor: number, wave: number): number {
+// How hard a floor is, for the size of its waves and the pace of its dead. It climbs a whole step a
+// floor through the hospital, then much more slowly through Acts 2 to 4 (config.waves.laterFloorStep),
+// so the last floors are a little harder than the hospital roof rather than several times over.
+// The prologue counts as the garage.
+export function depth(floor: number): number {
+  if (floor <= 0) return 0;
+  if (floor <= ROOF) return floor;
+  return ROOF + (floor - ROOF) * config.waves.laterFloorStep;
+}
+
+// Zombies in a wave: the floor's share of the table, grown with depth, and more for each extra player.
+export function waveSize(floor: number, wave: number, players = 1): number {
   const table = config.waves.zombiesPerWave;
   const count = wavesOnFloor(floor);
   const index = count <= 1 ? table.length - 1 : Math.round(((wave - 1) * (table.length - 1)) / (count - 1));
-  return Math.round(table[index] * (1 + config.elevator.extraZombiesPerFloor * Math.max(0, floor)));
+  const crew = 1 + config.waves.extraPerPlayer * Math.max(0, players - 1);
+  return Math.round(table[index] * (1 + config.elevator.extraZombiesPerFloor * depth(floor)) * crew);
 }

@@ -23,6 +23,7 @@ export function inCab(state: GameState, player: Player): boolean {
 
 // True once every player still standing is in the cab.
 export function everyoneInCab(state: GameState): boolean {
-  const alive = state.players.filter((player) => player.health > 0);
+  // Downed players crawl in too; only those out of it are left behind.
+  const alive = state.players.filter((player) => !player.out);
   return alive.length > 0 && alive.every((player) => inCab(state, player));
 }

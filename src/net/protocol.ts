@@ -3,6 +3,7 @@ import type { GameState } from '../game/state';
 import { ITEM_IDS } from '../game/items';
 import { WEAPON_IDS } from '../game/weapons';
 import type { Level } from '../levels/types';
+import { FIRST_FLOOR, LAST_FLOOR } from '../game/tower';
 
 // What a browser and the co-op server say to each other: JSON over one WebSocket per player.
 // Shared by both sides, so it must not touch the browser or the server's own APIs.
@@ -26,14 +27,17 @@ export type ClientMessage =
   // `seq` counts up with each input, so the server can say which it has used.
   | { type: 'input'; seq: number; input: SentInput }
   // Start the room's game again, from the garage (0) or straight onto a floor, for everyone.
-  | { type: 'restart'; floor: number };
+  | { type: 'restart'; floor: number }
+  // Someone pressed DEPLOY: the room's run, waiting since the first player came in, begins.
+  | { type: 'start' };
 
-// The highest floor a restart can start on: the roof.
-export const TOP_FLOOR = 5;
+// The highest floor a restart can start on: the last one built.
+export const TOP_FLOOR = LAST_FLOOR;
 
 export type ReadMessage =
   | { type: 'input'; seq: number; input: InputMessage }
-  | { type: 'restart'; floor: number };
+  | { type: 'restart'; floor: number }
+  | { type: 'start' };
 
 export type ServerMessage =
   // Sent once on joining: which player this browser is.
@@ -56,9 +60,10 @@ export function readClientMessage(data: unknown, playerId: number): ReadMessage 
   } catch {
     return null;
   }
+  if (message?.type === 'start') return { type: 'start' };
   if (message?.type === 'restart') {
     const floor = message.floor;
-    return typeof floor === 'number' && Number.isInteger(floor) && floor >= -5 && floor <= TOP_FLOOR ? { type: 'restart', floor } : null;
+    return typeof floor === 'number' && Number.isInteger(floor) && floor >= FIRST_FLOOR && floor <= TOP_FLOOR ? { type: 'restart', floor } : null;
   }
   if (message?.type !== 'input' || typeof message.seq !== 'number' || typeof message.input !== 'object' || !message.input) return null;
   const raw = message.input;

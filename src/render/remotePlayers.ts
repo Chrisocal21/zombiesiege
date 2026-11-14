@@ -85,9 +85,12 @@ export function createRemotePlayers(scene: THREE.Object3D): RemotePlayers {
           figure = build(player);
           figures.set(player.id, figure);
         }
-        figure.group.visible = player.health > 0;
-        figure.group.position.set(player.x, player.y, player.z);
-        figure.group.rotation.y = player.yaw;
+        // Down, they lie on the floor (face down, head the way they look) until brought back; out, they are gone.
+        const down = player.health <= 0;
+        figure.group.visible = !player.out;
+        figure.group.position.set(player.x, player.y + (down ? 0.22 : 0), player.z);
+        figure.group.rotation.order = 'YXZ';
+        figure.group.rotation.set(down ? -1.4 : 0, player.yaw, 0);
         pose(figure, player, dt);
       }
     },

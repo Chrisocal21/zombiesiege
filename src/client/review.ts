@@ -139,6 +139,8 @@ export function installReview(context: ReviewContext): void {
       context.replace(state);
     },
     raw: () => context.state(),
+    // Into the game view as it stands, without capturing the mouse: for a co-op tab, whose game is the server's.
+    close() { context.menu.close(); },
     run(ticks: number, input: Partial<InputMessage> = {}) {
       const state = context.state();
       for (let i = 0; i < ticks; i++) {

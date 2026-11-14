@@ -38,8 +38,21 @@ export const config = {
     height: 1.8,
     radius: 0.4,
     maxHealth: 100,
-    // Going down costs one. With none left the floor starts over from wave 1.
+    // Each player's own lives. One goes when they bleed out or get up alone. Never more than the cap.
     lives: 3,
+    livesCap: 5,
+    // Down at 0 health: crawling, the gun in hand with what is in it and no reload, bleeding out.
+    down: {
+      bleedSeconds: 45,
+      // A teammate beside them, uninterrupted, brings them back. Alone, a player can get up by
+      // themself, slower, for a life.
+      reviveSeconds: 4,
+      selfReviveSeconds: 6,
+      reach: 1.8,
+      reviveHealth: 30,
+      // Of crouched speed.
+      crawlMultiplier: 0.35,
+    },
     // Health comes back after this many seconds without being hit.
     regenDelaySeconds: 5,
     regenPerSecond: 15,
@@ -207,9 +220,11 @@ export const config = {
     arrivalOpenSeconds: 4,
     // On arriving, the beat in the shut cab before the doors slide open.
     arriveSeconds: 1.6,
-    // Each floor up adds this fraction to every wave's zombie count and to their speed.
+    // Each step of depth (see tower.ts depth) adds this fraction to every wave's zombie count and to
+    // their speed. Speed stops growing at speedDepthCap, so they never outpace a walking player.
     extraZombiesPerFloor: 0.4,
     speedPerFloor: 0.08,
+    speedDepthCap: 6,
   },
 
   zombie: {
@@ -294,6 +309,12 @@ export const config = {
 
   waves: {
     zombiesPerWave: [3, 5, 7, 9, 12],
+    // Past the hospital roof, each floor counts as this much of a floor for depth.
+    laterFloorStep: 0.2,
+    // Each player past the first adds this fraction to every wave.
+    extraPerPlayer: 0.25,
+    // A wave stops coming through the doors while this many are up, and carries on as they fall.
+    maxAlive: 32,
     secondsBetweenSpawns: 1.5,
     // The rest between waves, long enough for buying weapons once there is something to buy.
     breakSeconds: 25,
