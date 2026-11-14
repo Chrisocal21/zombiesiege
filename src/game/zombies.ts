@@ -1,10 +1,10 @@
 import { config } from '../config';
-import type { Level, Vec3 } from '../levels/types';
+import type { Level, Resident, Vec3 } from '../levels/types';
 import { resolveCircle } from './collision';
-import { rayAabb } from './hitscan';
+import { rayAabb, raycastBoxes } from './hitscan';
 import { dropSupply } from './items';
 import { nextStep, routeOf } from './navigation';
-import type { GameState, Player, Zombie, ZombieKind } from './state';
+import { flowOf, type GameState, type Player, type Zombie, type ZombieKind } from './state';
 import { crowdAt } from './tower';
 
 const ticks = (seconds: number): number => Math.round(seconds * config.ticksPerSecond);
@@ -58,10 +58,64 @@ export function spawnZombie(
     lastAttackTick: -1,
     lastHitTick: -1,
     pushing: false,
+    dormant: false,
     entry,
     dead: false,
     deadLeft: 0,
   });
+}
+
+// One of the floor's own dead, standing where the level puts it, not yet aware of anyone.
+export function placeResident(state: GameState, resident: Resident): void {
+  spawnZombie(state, resident.x, resident.z, null, resident.kind ?? 'walker');
+  const zombie = state.zombies[state.zombies.length - 1];
+  zombie.dormant = true;
+  zombie.alertUntil = -1;
+  zombie.yaw = resident.yaw ?? 0;
+}
+
+// Every resident of the level, back where it started.
+export function placeResidents(state: GameState, level: Level): void {
+  for (const resident of level.residents ?? []) placeResident(state, resident);
+}
+
+// Whether a standing resident notices someone: anything that alerted it, a player close enough in
+// plain sight (closer still when crouching, further with a light on), or one right beside it.
+// Sight is only checked every few ticks, staggered, because it casts a ray.
+function noticed(state: GameState, zombie: Zombie, level: Level): boolean {
+  if (state.tick < zombie.alertUntil) return true;
+  const senses = config.zombie.resident;
+  for (const player of state.players) {
+    if (player.health <= 0) continue;
+    const distance = Math.hypot(player.x - zombie.x, player.z - zombie.z);
+    if (distance <= senses.touch) return true;
+    const range = (senses.sight + (player.flashlight ? senses.flashlight : 0)) * (player.crouch > 0.5 ? senses.crouch : 1);
+    if (distance > range || (state.tick + zombie.id) % senses.everyTicks !== 0) continue;
+    const eye = { x: zombie.x, y: 1.5, z: zombie.z };
+    const direction = { x: (player.x - zombie.x) / distance, y: (player.y + 1.4 - 1.5) / distance, z: (player.z - zombie.z) / distance };
+    if (raycastBoxes(level, eye, direction, distance) === null) return true;
+  }
+  return false;
+}
+
+// A resident comes to: it knows where the players are for a while, and those standing near it wake too.
+function wake(state: GameState, zombie: Zombie): void {
+  zombie.dormant = false;
+  zombie.alertUntil = Math.max(zombie.alertUntil, state.tick + ticks(config.zombie.alertSeconds));
+  if (zombie.kind === 'brute') zombie.nextCryTick = state.tick + ticks(1.5);
+  for (const other of state.zombies) {
+    if (other.dormant && !other.dead && Math.hypot(other.x - zombie.x, other.z - zombie.z) <= config.zombie.resident.neighbours) {
+      other.alertUntil = Math.max(other.alertUntil, state.tick + ticks(config.zombie.alertSeconds));
+    }
+  }
+}
+
+// Whether more of them can be coming through the doors now: during a wave or a stand, and the whole
+// time on a floor that has no waves.
+export function underAttack(state: GameState): boolean {
+  const phase = state.waves.phase;
+  if (phase === 'active' || phase === 'hold' || phase === 'evac') return true;
+  return flowOf(state.level).kind !== 'siege' && (phase === 'search' || phase === 'lift');
 }
 
 export function aliveZombies(state: GameState): number {
@@ -124,8 +178,7 @@ function scream(state: GameState, screamer: Zombie): void {
     other.alertUntil = Math.max(other.alertUntil, state.tick + ticks(zombieConfig.alertSeconds));
     if (other.kind !== 'brute') other.enragedUntil = Math.max(other.enragedUntil, state.tick + ticks(zombieConfig.enrageSeconds));
   }
-  const phase = state.waves.phase;
-  if (phase === 'active' || phase === 'hold' || phase === 'evac') state.waves.reinforce += zombieConfig.screamReinforce;
+  if (underAttack(state)) state.waves.reinforce += zombieConfig.screamReinforce;
 }
 
 // Chasing, swinging, and falling over, for every zombie, once per tick.
@@ -137,6 +190,11 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
     if (zombie.dead) {
       zombie.deadLeft -= dt;
       continue;
+    }
+    // A resident stands still until it notices someone.
+    if (zombie.dormant) {
+      if (!noticed(state, zombie, level)) continue;
+      wake(state, zombie);
     }
     const kind = kindOf(zombie);
     const radius = kind.radius;

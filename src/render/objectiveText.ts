@@ -1,6 +1,6 @@
 import { bindings, keyLabel } from '../client/bindings';
-import { charging, inArea } from '../game/objectives';
-import type { GameState, Player } from '../game/state';
+import { charging, inArea, lastStep } from '../game/objectives';
+import { flowOf, type GameState, type Player } from '../game/state';
 import { actOf, isDescent, onFoot, ROOF } from '../game/tower';
 
 // What the way on is called: a gate in the prologue, a lift after.
@@ -55,7 +55,8 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
       return { title: `Find the ${objective.label.toLowerCase()}`, detail: onFoot(state.floor) ? 'Search the street' : shut > 0 ? 'Locked doors open for points' : 'Check the offices' };
     }
     case 'breakers':
-      return { title: `Throw the ${objective.label.toLowerCase()}`, detail: `${objectiveProgress(state) ?? ''}   ·   ${onFoot(state.floor) ? 'The barrier is down' : 'The elevator has no power'}` };
+      // A step before the last says what the breakers are for; the last one powers the way on.
+      return { title: `Throw the ${objective.label.toLowerCase()}`, detail: `${objectiveProgress(state) ?? ''}   ·   ${!lastStep(state) ? objective.part : onFoot(state.floor) ? 'The barrier is down' : 'The elevator has no power'}` };
     case 'charge':
       return onFoot(state.floor)
         ? { title: 'Start the delivery van', detail: 'They will come while it warms up' }
@@ -97,6 +98,14 @@ export function clearedDetail(state: GameState): string {
   }
 }
 
+// The line under the floor's name on arriving: what kind of floor this is.
+export function arrivalDetail(state: GameState): string {
+  const flow = flowOf(state.level);
+  if (flow.kind === 'sweep') return state.waves.alarms > 0 ? 'They heard you. More are on the way' : 'They have not heard you yet. Keep it that way';
+  if (flow.kind === 'run') return 'Do not stop. They are coming up behind';
+  return state.level.objective?.kind === 'breakers' ? 'The power is out. Cage the doors before they come' : 'Cage the doors before they come';
+}
+
 // The banner when the objective is done: which part of the helipad it won.
 export function partBanner(state: GameState): { eyebrow: string; title: string; detail: string } | null {
   const objective = state.level.objective;
@@ -110,7 +119,8 @@ export function partBanner(state: GameState): { eyebrow: string; title: string; 
     return { eyebrow: 'THE ROAD IN', title: objective.part.toUpperCase(), detail: 'The gate opens once the street is clear' };
   }
   if (isDescent(state.floor)) {
-    return { eyebrow: actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail: 'The freight lift opens once the floor is clear' };
+    const detail = flowOf(state.level).kind === 'siege' && state.waves.phase !== 'search' ? 'The freight lift opens once the floor is clear' : 'The freight lift is open. Get to it';
+    return { eyebrow: actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail };
   }
   return {
     eyebrow: `HELIPAD PART ${state.floor} OF ${ROOF - 1}`,

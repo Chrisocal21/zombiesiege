@@ -1,10 +1,15 @@
-import type { Elevator, Level, LevelLight, Lock, Station } from './types';
+import type { Elevator, Level, LevelLight, Lock, Resident, Station } from './types';
+import { CREW, SCIENTIST } from './voices';
 import { DOOR_HEIGHT, doorway, entry, furniture, partition, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 3, the second floor: the street pharmacy. The tunnel's lift comes up into the stockroom at the
 // back. Shelves of medicine, a long dispensing counter across the middle of the shop, and the
 // street doors at the front pressed on by the crowd that came here for help. The manager's office is
 // behind a paid door in the north-east, and the keycard for the lift down to the lab is on their desk.
+// This is a sweep: there are no waves. The shop's own dead stand among the shelves, still, until they
+// see or hear someone. Going in quietly, low and with a blade, gets the card without waking them; the
+// first gunshot brings the crowd in off the street through the front doors, and every one after
+// brings more.
 //
 //   z -9  +--lift----------------------------------+
 //         | STOCK  | STORE | OFFICE (lock)         |
@@ -24,6 +29,22 @@ const doors = [entry(-6, 9.25, 0, -1), entry(6, 9.25, 0, -1), entry(-14.25, 3, 1
 const elevator: Elevator = { position: { x: -9, y: 0, z: -9.25 }, normal: { x: 0, z: 1 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
 
 const locks: Lock[] = [{ position: { x: 10, y: 0, z: -4 }, normal: { x: 0, z: 1 }, width: 2.2, height: DOOR_HEIGHT, cost: 250, label: 'Manager office' }];
+
+// The dead who came in for medicine and never left: in the store, behind the counter, down the aisles,
+// at the front windows, and one shut in the manager's office.
+const residents: Resident[] = [
+  { x: 2.5, z: -6.4, yaw: Math.PI / 2 },
+  { x: 3.8, z: -2.9, yaw: Math.PI },
+  { x: 7.2, z: -2.7, yaw: 0.4 },
+  { x: -6.3, z: 3.8, yaw: Math.PI },
+  { x: 0.2, z: 5.6, kind: 'screamer', yaw: 0 },
+  { x: 6.2, z: 2.8, yaw: -Math.PI / 2 },
+  { x: -11.8, z: 3.2, yaw: Math.PI / 2 },
+  { x: -3.5, z: 7.8, yaw: Math.PI },
+  { x: 4.6, z: 7.9, yaw: Math.PI },
+  { x: 11.8, z: 2.5, yaw: -Math.PI / 2 },
+  { x: 6.6, z: -7.6, yaw: -Math.PI / 2 },
+];
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -13.95, y: 1.25, z: -1 }, normal: { x: 1, z: 0 } },
@@ -88,6 +109,15 @@ export const pharmacy: Level = {
     { text: 'LIFT', sub: 'LABORATORY  /  KEYCARD ONLY', background: '#5b1b1b', position: { x: -6.2, y: 3.0, z: -8.96 }, rotation: 0, width: 2.6, height: 0.5 },
   ],
   objective: { kind: 'keycard', label: 'Manager keycard', part: 'Laboratory lift key', position: { x: 10, y: 0.95, z: -7.2 } },
+  // The street doors are the first two.
+  flow: { kind: 'sweep', loud: 3, first: 8, from: [0, 1] },
+  residents,
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'Pharmacy stockroom. Listen. The street out front is full of them.' },
+    { on: 'start', at: 7.5, speaker: SCIENTIST, text: "The lift to the lab takes the manager's card. Keep it quiet. If the street hears you, all of it comes in.", seconds: 6 },
+    { on: 'area', at: 0, speaker: CREW, text: 'They are just standing there. Stay low, use the blade, and do not fire unless you have to.', seconds: 6, area: { minX: -14, maxX: 14, minZ: -3.6, maxZ: 9 } },
+    { on: 'done', at: 0.6, speaker: SCIENTIST, text: 'That card opens the lift in the stockroom. The lab is under you. I am further down.' },
+  ],
   navBounds: { minX: -19, maxX: 19, minZ: -14, maxZ: 14 },
   ramp: null,
   barricadeBars: [

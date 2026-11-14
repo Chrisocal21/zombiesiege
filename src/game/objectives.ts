@@ -1,6 +1,6 @@
 import { config } from '../config';
 import type { Area, Vec3, WallFitting } from '../levels/types';
-import type { GameState, Player } from './state';
+import { freshProgress, stepsOf, type GameState, type Player } from './state';
 
 // What the use key does with the floor's objective, when it does anything.
 export type ObjectiveTarget =
@@ -62,10 +62,30 @@ export function objectiveTarget(state: GameState, player: Player): ObjectiveTarg
   }
 }
 
-function complete(state: GameState): void {
-  state.objective.done = true;
-  state.objective.doneTick = state.tick;
+// True while the objective being done is the floor's last step, or its only one.
+export function lastStep(state: GameState): boolean {
+  return state.objective.step >= stepsOf(state.level).length - 1;
 }
+
+// The objective being done is finished. On a floor with steps still to come the next one begins,
+// and the game's copy of the level carries it as its objective, so everything that reads the
+// objective follows along. Otherwise the floor's objective is done.
+export function completeStep(state: GameState): void {
+  const progress = state.objective;
+  const steps = stepsOf(state.level);
+  if (progress.step + 1 < steps.length) {
+    const { past, ...record } = progress;
+    past.push({ ...record, done: true, doneTick: state.tick, thrown: [...record.thrown], items: record.items.map((item) => ({ ...item })) });
+    const next = steps[progress.step + 1];
+    state.level = { ...state.level, objective: next };
+    state.objective = { ...freshProgress(next, progress.step + 1), past };
+    return;
+  }
+  progress.done = true;
+  progress.doneTick = state.tick;
+}
+
+const complete = completeStep;
 
 export function useObjective(state: GameState, player: Player, target: ObjectiveTarget): void {
   const progress = state.objective;

@@ -1,11 +1,13 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
+import { CREW, SCIENTIST } from './voices';
 import { DOOR_HEIGHT, entry, furniture, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 3, the first floor: the service tunnel under the street, from the tower's garage toward the
 // pharmacy. A long, narrow concrete run with cable trays and concrete barriers staggered down it,
-// so every fight is along a line. This is a moving floor: three breakers are spread down its
-// length, and the lift at the far end is dead until they are all thrown. The dead come out of
-// maintenance doors in the side walls and down the tunnel from the east.
+// so every fight is along a line. This is a run: there are no waves. Three breakers are spread down
+// its length, and the lift is dead until they are all thrown, so the crew goes to the far end and
+// back. The dead keep coming out of the maintenance doors behind the crew, wherever it is heading,
+// and faster the longer it takes, so standing still only makes it worse.
 //
 //   z -5.5 +-lift--------------------------------------------------+
 //          |  [b]       [b]            [b]      [b]                 |
@@ -78,6 +80,13 @@ export const tunnel: Level = {
       { position: { x: 21.95, y: 1.45, z: 3.5 }, normal: { x: -1, z: 0 } },
     ],
   },
+  flow: { kind: 'run', every: 3.2, max: 14 },
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'This is how they moved him. Under the street, where nobody would see.' },
+    { on: 'start', at: 7.5, speaker: SCIENTIST, text: 'The tunnel lift has no power. Three breakers down the run. Keep moving. They follow noise along those walls.', seconds: 6 },
+    { on: 'area', at: 0, speaker: CREW, text: 'Last breaker. Then straight back to the lift, and do not stop.', area: { minX: 16, maxX: 22, minZ: -5.5, maxZ: 5.5 } },
+    { on: 'done', at: 0.6, speaker: SCIENTIST, text: 'The lift has power. It comes up in the pharmacy stockroom.' },
+  ],
   atmosphere: { fog: '#030508', fogNear: 5, fogFar: 36, ambient: 1 },
   navBounds: { minX: -27, maxX: 27, minZ: -10, maxZ: 10 },
   ramp: null,

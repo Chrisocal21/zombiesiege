@@ -162,6 +162,16 @@ From the master campaign handoff (Nov 14). The crew's ground ambulance runs out 
 | Hidden lab | The lab behind the pharmacy, reached by lift down. Ring corridor round a central lab, cold storage behind a paid door. The power is out | Throw three breakers | 4 |
 | The vault | A cold chamber with the vault door in the north wall | Start the time lock and hold the door for 60 seconds | 5 |
 
+**In the build (Nov 14):** the first three floors now play differently, and the scientist is on the radio, heard but not seen.
+
+| Stop | How it plays now | What it adds to the story |
+|---|---|---|
+| Service tunnel | A run: no waves. The dead keep coming out of the doors behind the crew, faster the longer it takes | The crew sees this is how he was moved, out of sight under the street |
+| Pharmacy | A sweep: no waves. The shop's dead stand still among the shelves until they see or hear someone. A gunshot brings the crowd in off the street | He warns them to keep it quiet, or the whole street comes in |
+| Hidden lab | Still a siege, now in two steps: breakers to put the -80C freezer back on backup power, then two cryo carriers from cold storage to the lift | The carriers are the only safe way to move the sample. His calm starts to go: he can hear them at the vault door |
+
+The vault itself is unchanged until the next build pass (the scientist stepping out, Patient O).
+
 ### Act 4 — Daybreak (the street run) · levels built
 
 - The first time the crew is outside. The sun is coming up.
@@ -178,6 +188,8 @@ From the master campaign handoff (Nov 14). The crew's ground ambulance runs out 
 | Market square | A paved plaza with a fountain and stalls, the town hall on the north side, six side streets | Start the radio relay on the town hall wall and hold the steps for 55 seconds | 4 |
 | The barricades | A road checkpoint torn open, army trucks left where they stopped, generator trailers | Throw the switch on three generators (they light the floodlights) | 4 |
 | The park | Grass, paths, trees, a hedge broken at five gates, a groundskeeper's shed | Throw the signal flares and hold 90 seconds until the air ambulance lands in the smoke, then get aboard | 3 |
+
+**Decided (Nov 14):** the transit kiosks go. The blocks join by shutters, gates and side streets, the way the prologue's blocks do, and the screen cuts (Questions item 12, answer c). Not built yet.
 
 The extraction has no painted pad: five red flares are thrown onto the grass and red smoke goes up. The run ends when everyone is aboard.
 
@@ -196,6 +208,9 @@ Not written yet. See **Places** for what's next.
 | First specials | Runner, Brute, Screamer |
 | Later specials | Crawler, Bloater, Armored, with later places |
 | Bosses | Only at big story moments. Until real bosses are built, big waves led by a Brute or Screamer stand in |
+| First meetings | The first Brute is on Floor 6 and the first Screamer on Floor 9 (handoff canon; the build matches since Nov 14) |
+| Patient O | A Floor 12 subject at the hospital, later transferred. Comes back as a mutation near the pharmacy vault and threatens the extraction (handoff canon) |
+| Patient O's fate in Act 3 | **Decided Nov 14:** driven back and sealed in the vault when its door shuts. Not killed. Its return later is left open. Not built yet |
 
 **In the build:** one kind of zombie, in two body models with mixed skin, hair and clothes. No patient or staff looks yet, and no specials. They come through doors, press against steel cages, and collapse when killed.
 
@@ -511,19 +526,19 @@ New story questions raised by what's in the build. Multiple choice, with room fo
 
 10. **The hospital has 14 storeys but the elevator stops at five.** Are the floors in between part of the story (sealed off, overrun, where survivors are), or just skipped?
 
-11. **Stairs or freight lift in the tower?** The story says the dead come up the stairs and burst out of floors. The build uses a freight lift that needs power, like the hospital.
+11. **Decided Nov 14: a), keep the lift.** The stairwells are packed solid, so the freight lift is the only way down. The quiet detour the handoff asks for is played on the sweep floors (41 and 34). **Stairs or freight lift in the tower?** The story says the dead come up the stairs and burst out of floors. The build uses a freight lift that needs power, like the hospital.
    - a) Keep the lift, and the stairs are full, so the lift is the only way down
    - b) Build real stairwell levels: collapsed flights, locked fire doors, dead coming up
    - c) Both: lift between the story floors, stairs for the short landings
    - d) Your own answer
 
-12. **What carries the crew between street blocks in Act 4?** The build has a transit lift in a kiosk on every block.
+12. **Decided Nov 14: c), shutters and gates, no lift.** **What carries the crew between street blocks in Act 4?** The build has a transit lift in a kiosk on every block.
    - a) A metro or tram entrance, which also ties to the Subway place
    - b) Loading docks and service lifts, so it's a lift everywhere
    - c) No lift: the blocks join by shutters and gates, and the screen cuts
    - d) Your own answer
 
-13. **Who is the scientist when the vault opens?** There's no scene yet. The run just ends on the vault lift, then Act 4 begins.
+13. **Decided Nov 14: a), with a change.** He steps out of the vault with the sample in a short scene, then follows the crew as a companion who can't be hurt and can't make a mission fail, all the way to the air ambulance. Until his name is settled the screen calls him THE SCIENTIST, and he wears the player's body with a lab coat and no gun. **Who is the scientist when the vault opens?** There's no scene yet. The run just ends on the vault lift, then Act 4 begins.
    - a) He steps out, a short scene, and he is carried to the air ambulance in the park
    - b) He's already out of sight and only heard until the park
    - c) Your own answer
@@ -578,3 +593,4 @@ Real-world things worth looking up to ground the story. None of this is decided.
 - **Nov 10, 2026:** Went through the build and wrote down every piece of story it shows: the opening captions, title and menu words, every sign on every floor, the street, the shops, the vehicles and the gear. Brought the Act 1 table in line with the real floors (Admissions, Pharmacy and laboratories, Surgery, Intensive care, the roof at level 14) and the loadout in line with what's built. Listed where the build and the story disagree, new questions the build raises, and research leads, ready for a research pass before more levels.
 - **Nov 13, 2026:** Built the rest of the campaign as levels, ahead of the story: the tower roof and six office floors (Act 2), the tunnel, pharmacy, lab and vault (Act 3), and four outdoor blocks ending at the park (Act 4). Floors, names and objectives here are the build's own and are listed above as in the build. The park extraction is red flares and smoke in place of a pad. Added questions 11 to 13 (stairs or lift, what links the street blocks, the scientist at the vault). Nothing in Acts 2 to 4 has any story delivered yet: no radio, notes or scientist.
 - **Nov 14, 2026:** Received the master campaign handoff (12 acts, five-level prologue). Built the prologue as five levels, P01 to P05, Breakdown, Roadside Station, Checkpoint, Commercial District and Final Push. Acts 5 to 12 are working expansion only and not built.
+- **Nov 14, 2026:** Settled questions 11 to 13 and Patient O's fate (sealed in the vault). The tunnel became a run, the pharmacy a sweep with the shop's own dead standing in it, and the lab a two-step floor (freezer power, then the cryo carriers), with the scientist on the radio through all three. The first Brute and Screamer now come where the handoff puts them, Floors 6 and 9.

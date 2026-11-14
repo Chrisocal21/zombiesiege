@@ -1,5 +1,5 @@
 import { config } from '../config';
-import type { GameState, Player } from '../game/state';
+import { stepsOf, type GameState, type Player } from '../game/state';
 import { charging } from '../game/objectives';
 import { helicopterPose } from '../render/helicopterPath';
 import { settings } from './settings';
@@ -507,6 +507,7 @@ export function createAudio(): Audio {
   let takenCount = 0;
   let objectiveDone = true;
   let thrownCount = 0;
+  let stepSeen = 0;
   let deliveredCount = 0;
   let carrying = -1;
   let startedTick = -1;
@@ -600,6 +601,14 @@ export function createAudio(): Audio {
           else sting(false);
         }
         if (thrown > thrownCount) breakerThrow();
+        // A step of the floor done: the sound of its last action, which its count no longer shows.
+        if (state.objective.step > stepSeen) {
+          const done = stepsOf(state.level)[state.objective.step - 1]?.kind;
+          if (done === 'keycard') pickup();
+          else if (done === 'breakers') breakerThrow();
+          else if (done === 'carry') nailing();
+          sting(false);
+        }
         if (state.objective.startedTick !== startedTick && state.objective.startedTick >= 0) powerUp();
         if (player.carrying >= 0 && carrying < 0) pickup();
         if (player.carrying < 0 && carrying >= 0 && delivered === deliveredCount) setDown();
@@ -607,6 +616,7 @@ export function createAudio(): Audio {
         if (state.lives < lives && state.lives < config.player.lives) sting(true);
       }
       thrownCount = thrown;
+      stepSeen = state.objective.step;
       deliveredCount = delivered;
       carrying = player.carrying;
       startedTick = state.objective.startedTick;

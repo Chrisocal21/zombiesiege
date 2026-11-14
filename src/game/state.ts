@@ -1,5 +1,5 @@
 import { config } from '../config';
-import type { Elevator, Ladder, Level, LevelBox, Lock, Vec3 } from '../levels/types';
+import type { Elevator, Flow, Ladder, Level, LevelBox, Lock, Objective, Vec3 } from '../levels/types';
 import { startingItems, type ItemId, type Items, type Supply } from './items';
 import type { WeaponId, WeaponLoadout } from './weapons';
 
@@ -140,6 +140,8 @@ export interface Zombie {
   lastHitTick: number;
   // True while it is trying to get at a player but a cage, wall or door stops it, so it shoves and reaches.
   pushing: boolean;
+  // One of the floor's own dead, standing where it was until it sees or hears someone.
+  dormant: boolean;
   // While still coming in through a doorway, the spot just inside it to walk to first.
   // Null once it is in the room and chasing.
   entry: { x: number; z: number } | null;
@@ -176,6 +178,13 @@ export interface Waves {
   arrivedTick: number;
   // True when the last time everyone went down was the final life, so the floor started over.
   lostRun: boolean;
+  // On a sweep floor: the tick of the last loud moment that brought more of them, or -1, and how
+  // many loud moments there have been.
+  loudTick: number;
+  alarms: number;
+  // On a run floor: a point that trails the crew by a few seconds, so where it has come from.
+  trailX: number;
+  trailZ: number;
 }
 
 export interface DoorState {
@@ -213,11 +222,23 @@ export interface ObjectiveState {
   startedTick: number;
   // Carry: where each case lies when nobody holds it, and whether it has been brought in.
   items: { x: number; y: number; z: number; delivered: boolean; deliveredTick: number }[];
+  // On a floor with steps, the one being done now, from 0, and how each step before it ended.
+  step: number;
+  past: Omit<ObjectiveState, 'past'>[];
 }
 
-// The objective as it stands when a floor begins.
-export function freshObjective(level: Level): ObjectiveState {
-  const objective = level.objective;
+// A floor's objectives in the order they are done: its steps, or its one objective, or none.
+export function stepsOf(level: Level): Objective[] {
+  return level.steps ?? (level.objective ? [level.objective] : []);
+}
+
+// How a floor plays. A siege of waves when the level does not say.
+export function flowOf(level: Level): Flow {
+  return level.flow ?? { kind: 'siege' };
+}
+
+// An objective as it stands before any of it has been done.
+export function freshProgress(objective: Objective | null, step = 0): ObjectiveState {
   return {
     done: objective === null,
     doneTick: -1,
@@ -225,7 +246,21 @@ export function freshObjective(level: Level): ObjectiveState {
     charge: 0,
     startedTick: -1,
     items: objective?.kind === 'carry' ? objective.items.map((item) => ({ ...item, delivered: false, deliveredTick: -1 })) : [],
+    step,
+    past: [],
   };
+}
+
+// The objective as it stands when a floor begins: the first of its steps.
+export function freshObjective(level: Level): ObjectiveState {
+  return freshProgress(stepsOf(level)[0] ?? null);
+}
+
+// The tick step `index` of the floor was done, or -1 while it is still to do.
+export function stepDoneTick(state: GameState, index: number): number {
+  const progress = state.objective;
+  if (index < progress.step) return progress.past[index]?.doneTick ?? -1;
+  return index === progress.step && progress.done ? progress.doneTick : -1;
 }
 
 // A floor with breakers to throw is dark until they all are, circuit by circuit.
@@ -250,6 +285,8 @@ export interface GameState {
   lift: LiftState;
   // Shared by the players. Going down costs one.
   lives: number;
+  // For each of the level's radio cues, the tick its area was first walked into, or -1.
+  heard: number[];
   // Each player's score, by player id. Spent on doors and weapons once those exist.
   points: number[];
   // Which floor of the tower this is. The ground floor is 0.
@@ -292,7 +329,9 @@ export function lockBox(lock: Lock): LevelBox {
 // Puts the game on a floor: its own copy of the level, with every door open and unboarded, every
 // lock shut, the bundles of boards back on the floor, and the elevator closed.
 export function enterLevel(state: GameState, level: Level): void {
-  state.level = { ...level, boxes: [...level.boxes, liftDoorBox(level.elevator), ...level.locks.map(lockBox)] };
+  const first = stepsOf(level)[0] ?? null;
+  state.level = { ...level, objective: first, boxes: [...level.boxes, liftDoorBox(level.elevator), ...level.locks.map(lockBox)] };
+  state.heard = (level.cues ?? []).map(() => -1);
   state.gate = { closed: false, closedTick: -1 };
   state.lift = { open: false, changedTick: -1 };
   state.doors = level.doors.map(() => ({ boarded: false, boardedTick: -1 }));
@@ -304,7 +343,7 @@ export function enterLevel(state: GameState, level: Level): void {
     player.bars = 0;
     player.carrying = -1;
     // Out of the elevator into the dark, the light comes on by itself.
-    player.flashlight = level.objective?.kind === 'breakers';
+    player.flashlight = first?.kind === 'breakers';
   }
 }
 
@@ -391,10 +430,11 @@ export function createGameState(level: Level): GameState {
     lift: { open: false, changedTick: -1 },
     floor: 0,
     lives: config.player.lives,
+    heard: [],
     points: players.map(() => 0),
     doors: [],
     locks: [],
-    objective: { done: true, doneTick: -1, thrown: [], charge: 0, startedTick: -1, items: [] },
+    objective: freshProgress(null),
     pickups: [],
     supplies: [],
     nextSupplyId: 0,
@@ -413,6 +453,10 @@ export function createGameState(level: Level): GameState {
       diedTick: -1,
       arrivedTick: -1,
       lostRun: false,
+      loudTick: -1,
+      alarms: 0,
+      trailX: 0,
+      trailZ: 0,
     },
   };
   enterLevel(state, level);

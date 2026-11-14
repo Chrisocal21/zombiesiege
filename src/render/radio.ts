@@ -1,16 +1,15 @@
 import { config } from '../config';
-import type { GameState } from '../game/state';
+import { stepDoneTick, type GameState } from '../game/state';
+import type { Cue } from '../levels/types';
+import { CREW, HOSPITAL, SCIENTIST } from '../levels/voices';
 
-// Short radio and crew lines that carry the story of the prologue between objectives. Each one is tied to
-// a moment on its floor: the start, or the objective being done, and shown for a few seconds. They are
-// read straight from the game state, so they need nothing of their own to save.
+// Short radio and crew lines that carry the story between objectives. Each one is tied to a moment on
+// its floor: the start, a step of the objective being done, the whole objective being done, or the
+// first player walking into an area, and shown for a few seconds. They are read straight from the
+// game state, so they need nothing of their own to save. A level's own cues are in its level file;
+// the prologue's are here.
 
-export interface RadioLine { speaker: string; text: string; alpha: number }
-
-interface Cue { on: 'start' | 'done'; at: number; speaker: string; text: string; seconds?: number }
-
-const CREW = 'CREW';
-const HOSPITAL = 'NORTHLINE GENERAL';
+export interface RadioLine { speaker: string; text: string; alpha: number; scientist: boolean }
 
 // By floor index: the prologue is -5 to -1.
 const CUES: Record<number, Cue[]> = {
@@ -42,18 +41,32 @@ const CUES: Record<number, Cue[]> = {
 const SHOWN = 5;
 const FADE = 0.35;
 
-// The line to show now, if any.
+// The tick a cue's moment came, or -1 while it has not.
+function momentOf(state: GameState, cue: Cue, index: number): number {
+  switch (cue.on) {
+    case 'start': return state.waves.arrivedTick;
+    case 'done': return state.objective.done ? state.objective.doneTick : -1;
+    case 'step': return stepDoneTick(state, cue.step ?? 0);
+    case 'area': return state.heard[index] ?? -1;
+  }
+}
+
+// The line to show now, if any. When two overlap, the one that began last cuts in over the other.
 export function radioLine(state: GameState): RadioLine | null {
-  const cues = CUES[state.floor];
+  const cues = state.level.cues ?? CUES[state.floor];
   if (!cues) return null;
   const seconds = (tick: number) => (state.tick - tick) / config.ticksPerSecond;
-  for (const cue of cues) {
-    const tick = cue.on === 'start' ? state.waves.arrivedTick : state.objective.done ? state.objective.doneTick : -1;
+  let line: RadioLine | null = null;
+  let newest = Infinity;
+  for (let index = 0; index < cues.length; index++) {
+    const cue = cues[index];
+    const tick = momentOf(state, cue, index);
     if (tick < 0) continue;
     const age = seconds(tick) - cue.at;
     const length = cue.seconds ?? SHOWN;
-    if (age < 0 || age >= length) continue;
-    return { speaker: cue.speaker, text: cue.text, alpha: Math.min(1, age / FADE, (length - age) / FADE) };
+    if (age < 0 || age >= length || age >= newest) continue;
+    newest = age;
+    line = { speaker: cue.speaker, text: cue.text, alpha: Math.min(1, age / FADE, (length - age) / FADE), scientist: cue.speaker === SCIENTIST };
   }
-  return null;
+  return line;
 }

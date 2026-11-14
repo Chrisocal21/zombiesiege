@@ -1,10 +1,13 @@
 import type { Elevator, Level, LevelLight, Lock, Station } from './types';
+import { CREW, SCIENTIST } from './voices';
 import { DOOR_HEIGHT, doorway, entry, furniture, partition, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 3, the third floor: the hidden lab behind the pharmacy. The power is out. A ring corridor
 // runs round a central laboratory, so there is always a way round a fight, with cold storage
 // in the north-east behind a paid door. One breaker is in each of the corridor's long walls and
-// the third is in cold storage.
+// the third is in cold storage. The work here is in two steps: the breakers put the -80C freezer back
+// on backup power, and then the two cryo carriers in cold storage, the only safe way to move the sample,
+// go to the lift.
 //
 //   z -11 +--------------------------+-----------+
 //         |   RING CORRIDOR          | COLD STORE |
@@ -86,16 +89,35 @@ export const lab: Level = {
     { text: 'COLD STORAGE', sub: 'SAMPLES  /  -80C', background: '#1d3f73', position: { x: 14.4, y: 2.9, z: -4.84 }, rotation: Math.PI, width: 2.0, height: 0.6 },
     { text: 'LIFT', sub: 'NO POWER  /  RESET THE BREAKERS', background: '#5b1b1b', position: { x: -14.96, y: 3.0, z: 3.4 }, rotation: Math.PI / 2, width: 2.4, height: 0.5 },
   ],
-  objective: {
-    kind: 'breakers',
-    label: 'Breakers',
-    part: 'Power to the vault lift',
-    panels: [
-      { position: { x: -1.5, y: 1.45, z: -10.95 }, normal: { x: 0, z: 1 } },
-      { position: { x: -1, y: 1.45, z: 10.95 }, normal: { x: 0, z: -1 } },
-      { position: { x: 14.95, y: 1.45, z: -10.4 }, normal: { x: -1, z: 0 } },
-    ],
-  },
+  objective: null,
+  steps: [
+    {
+      kind: 'breakers',
+      label: 'Breakers',
+      part: 'Freezer on backup power',
+      panels: [
+        { position: { x: -1.5, y: 1.45, z: -10.95 }, normal: { x: 0, z: 1 } },
+        { position: { x: -1, y: 1.45, z: 10.95 }, normal: { x: 0, z: -1 } },
+        { position: { x: 14.95, y: 1.45, z: -10.4 }, normal: { x: -1, z: 0 } },
+      ],
+    },
+    {
+      kind: 'carry',
+      label: 'Cryo carrier',
+      part: 'Cryo carriers at the vault lift',
+      items: [
+        { x: 11.5, y: 0, z: -7.2 },
+        { x: 12.8, y: 0, z: -6.0 },
+      ],
+      dropoff: { x: -13.2, y: 0, z: -1.8 },
+    },
+  ],
+  cues: [
+    { on: 'start', at: 1.5, speaker: SCIENTIST, text: 'That is the lab. The freezer in cold storage is on a failing backup. Get its power back before anything else.', seconds: 6 },
+    { on: 'area', at: 0, speaker: CREW, text: 'Minus eighty. Whatever they kept down here, they wanted it kept.', area: { minX: 9, maxX: 15, minZ: -11, maxZ: -5 } },
+    { on: 'step', step: 0, at: 0.8, speaker: SCIENTIST, text: 'The freezer is holding. Now the two cryo carriers in cold storage. The sample cannot travel without them.', seconds: 6 },
+    { on: 'done', at: 0.6, speaker: SCIENTIST, text: 'Bring them down to me. I can hear them at the vault door. Please. Hurry.' },
+  ],
   atmosphere: { fog: '#05070a', fogNear: 6, fogFar: 38, ambient: 1 },
   navBounds: { minX: -20, maxX: 20, minZ: -16, maxZ: 16 },
   ramp: null,

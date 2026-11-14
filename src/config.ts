@@ -271,6 +271,11 @@ export const config = {
     chargeSpeed: 2.7,
     chargeSeconds: 1.2,
     chargeCooldown: 9,
+    // A floor's own dead stand still until they notice someone: a player within `sight` metres in plain
+    // view (plus `flashlight` with a light on, times `crouch` when crouching), or within `touch` metres
+    // whatever they do, or anything that alerts them. Sight is checked every `everyTicks` ticks. One
+    // waking wakes the others within `neighbours` metres.
+    resident: { sight: 9, flashlight: 4, crouch: 0.5, touch: 1.8, everyTicks: 6, neighbours: 4.5 },
     // Ordinary walkers trip now and then: every stumbleEvery seconds one in three loses stumbleSeconds.
     stumbleEvery: 11,
     stumbleSeconds: 0.7,

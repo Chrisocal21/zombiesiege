@@ -6,11 +6,11 @@ import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
 import { ITEMS } from '../game/items';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
-import type { GameState, Player } from '../game/state';
+import { flowOf, stepsOf, type GameState, type Player } from '../game/state';
 import { floorTitle, goesDown, isDescent, onFoot, stopAt, stops, wavesOnFloor } from '../game/tower';
 import { zombiesInWave } from '../game/waves';
 import { objectiveMarkers } from '../game/objectives';
-import { clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
+import { arrivalDetail, clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
 import { aliveZombies } from '../game/zombies';
 import type { Menu } from './menu';
 import { drawHotbar, drawItemUse, drawWheel } from './itemsHud';
@@ -817,6 +817,14 @@ export function createHud(menu: Menu): Hud {
     const place = state.level.theme === 'garage' ? 'THE GARAGE' : `${floorName(state.floor)}  ·  ${stopAt(state.floor).name}`.toUpperCase();
     text(context, place, right, top + 10 * unit, { size: 13 * unit, align: 'right', spacing: 3 * unit, color: 'rgba(242,244,247,0.86)', weight: 700 });
 
+    const flow = flowOf(state.level);
+    if (flow.kind !== 'siege') {
+      // No waves here: how the floor plays instead.
+      const heard = flow.kind === 'sweep' && state.waves.alarms > 0;
+      const word = flow.kind === 'run' ? 'KEEP MOVING' : heard ? 'THEY HEARD YOU' : 'STAY QUIET';
+      text(context, word, right, top + 62 * unit, { size: 30 * unit, weight: 800, align: 'right', color: heard ? COLOR.danger : COLOR.accent, spacing: 1 * unit });
+      text(context, flow.kind === 'run' ? 'THEY ARE COMING UP BEHIND' : 'GUNFIRE BRINGS MORE OF THEM', right, top + 86 * unit, { size: 12 * unit, align: 'right', spacing: 3 * unit, color: COLOR.dim, weight: 700 });
+    } else {
     // The wave: a big number, out of how many, and a segment for each.
     const totalLabel = `/ ${String(count).padStart(2, '0')}`;
     const totalWidth = measure(context, totalLabel, 20 * unit, 700, 1 * unit);
@@ -837,6 +845,7 @@ export function createHud(menu: Menu): Hud {
       roundedRect(context, sx, top + 80 * unit, segment, 4 * unit, 2 * unit);
       context.fill();
       context.globalAlpha = 1;
+    }
     }
 
     // The score rolls up to its new value.
@@ -936,9 +945,11 @@ export function createHud(menu: Menu): Hud {
     roundedRect(context, x, y, boxW, 66 * unit, 4 * unit);
     context.fillStyle = 'rgba(6,10,14,0.78)';
     context.fill();
-    context.fillStyle = COLOR.accent;
+    // The scientist's voice is a cold blue, the crew's and everyone else's the usual amber.
+    const tone = line.scientist ? '#7fd0ff' : COLOR.accent;
+    context.fillStyle = tone;
     context.fillRect(x, y, 3 * unit, 66 * unit);
-    text(context, line.speaker, x + 22 * unit, y + 24 * unit, { size: 12 * unit, weight: 800, spacing: 3 * unit, color: COLOR.accent, shadow: false });
+    text(context, line.speaker, x + 22 * unit, y + 24 * unit, { size: 12 * unit, weight: 800, spacing: 3 * unit, color: tone, shadow: false });
     text(context, line.text, x + 22 * unit, y + 50 * unit, { size, weight: 600, spacing: 0.3 * unit, shadow: false });
     context.restore();
   }
@@ -953,6 +964,8 @@ export function createHud(menu: Menu): Hud {
     let age = 0;
 
     const part = partBanner(state);
+    const siege = flowOf(state.level).kind === 'siege';
+    const stepDone = state.objective.past[state.objective.step - 1];
     if (state.objective.doneTick >= 0 && seconds(state.objective.doneTick) < BANNER_SECONDS && part) {
       ({ eyebrow, title, detail } = part);
       color = COLOR.good;
@@ -966,7 +979,15 @@ export function createHud(menu: Menu): Hud {
       detail = roof ? 'The air ambulance is coming. Hold out until it lands' : 'Keep someone in the room until it is full';
       color = COLOR.accent;
       age = seconds(state.objective.startedTick);
-    } else if (waves.phase === 'cleared' || waves.phase === 'search') {
+    } else if (stepDone && seconds(stepDone.doneTick) < BANNER_SECONDS) {
+      // A step of the floor done, and the next one begun.
+      const steps = stepsOf(state.level);
+      eyebrow = `${floorName(state.floor).toUpperCase()}  ·  STEP ${state.objective.step} OF ${steps.length}`;
+      title = steps[state.objective.step - 1].part.toUpperCase();
+      detail = clearedDetail(state);
+      color = COLOR.good;
+      age = seconds(stepDone.doneTick);
+    } else if (siege && (waves.phase === 'cleared' || waves.phase === 'search')) {
       eyebrow = floorName(state.floor).toUpperCase();
       title = 'CLEARED';
       detail = clearedDetail(state);
@@ -988,13 +1009,13 @@ export function createHud(menu: Menu): Hud {
     } else if (waves.arrivedTick >= 0 && seconds(waves.arrivedTick) < BANNER_SECONDS) {
       eyebrow = floorName(state.floor).toUpperCase();
       title = stopAt(state.floor).name.toUpperCase();
-      detail = state.level.objective?.kind === 'breakers' ? 'The power is out. Cage the doors before they come' : 'Cage the doors before they come';
+      detail = arrivalDetail(state);
       color = COLOR.accent;
       age = seconds(waves.arrivedTick);
     } else if (waves.diedTick >= 0 && seconds(waves.diedTick) < BANNER_SECONDS) {
       eyebrow = waves.lostRun ? 'NO LIVES LEFT' : `${state.lives} ${state.lives === 1 ? 'LIFE' : 'LIVES'} LEFT`;
       title = waves.lostRun ? 'OUT OF LIVES' : 'OVERRUN';
-      detail = waves.lostRun ? 'Back to wave 1 with fresh lives' : `Restarting wave ${waves.number}`;
+      detail = waves.lostRun ? (siege ? 'Back to wave 1 with fresh lives' : 'The floor starts over with fresh lives') : siege ? `Restarting wave ${waves.number}` : 'Back where you came in. What is done stays done';
       color = COLOR.danger;
       age = seconds(waves.diedTick);
     } else if (state.gate.closed && seconds(state.gate.closedTick) < BANNER_SECONDS) {

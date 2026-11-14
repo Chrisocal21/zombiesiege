@@ -165,6 +165,45 @@ export type Objective =
   | { kind: 'carry'; label: string; part: string; items: Vec3[]; dropoff: Vec3 }
   | { kind: 'signal'; label: string; part: string; device: WallFitting; pad: Vec3; padRadius: number; seconds: number; style?: 'helipad' | 'flares' };
 
+// How a floor plays.
+// 'siege' (the default): waves come through the doors, then the floor goes quiet and the objective
+//   is done, then the way on opens.
+// 'sweep': no waves. The objective is open from the start, and the floor's own dead (residents)
+//   stand where they are until they see or hear someone. Each loud moment (a gunshot) brings `loud`
+//   more through the doors, `first` for the very first one, through the doors listed in `from` (all
+//   of them when left out).
+// 'run': no waves. The objective is open from the start, and the dead keep coming through doors
+//   behind the crew, one every `every` seconds at first and faster the longer they take, never more
+//   than `max` alive. A charge step becomes a short stand.
+export type Flow =
+  | { kind: 'siege' }
+  | { kind: 'sweep'; loud: number; first?: number; from?: number[] }
+  | { kind: 'run'; every: number; max: number };
+
+// One of a floor's own dead, standing somewhere before the crew arrives. It does not move until it
+// sees, hears or is woken by another.
+export interface Resident {
+  x: number;
+  z: number;
+  kind?: 'walker' | 'runner' | 'brute' | 'screamer';
+  // Which way it faces. 0 faces -z.
+  yaw?: number;
+}
+
+// A line of radio or crew talk, shown for a few seconds at a moment on the floor.
+// 'start': after arriving. 'done': once the whole floor's objective is done. 'step': once step
+// `step` of the floor's steps is done. 'area': once the first player walks into `area`.
+// `at` is the seconds after that moment.
+export interface Cue {
+  on: 'start' | 'done' | 'step' | 'area';
+  at: number;
+  speaker: string;
+  text: string;
+  seconds?: number;
+  step?: number;
+  area?: Area;
+}
+
 // A buying point on a wall. Walk up, press use, and pay points.
 export interface Station {
   kind: 'ammo' | 'shotgun';
@@ -229,7 +268,13 @@ export interface Level {
   // Doors that open for points, and the thing to find before leaving, if the floor has them.
   locks: Lock[];
   signs: LevelSign[];
+  // What has to be done before the way on opens. On a floor with `steps`, the steps are done in
+  // order and `objective` is the one being done now (the game sets it), so leave it null there.
   objective: Objective | null;
+  steps?: Objective[];
+  flow?: Flow;
+  residents?: Resident[];
+  cues?: Cue[];
   ramp: Ramp | null;
   // The area zombies find their way around walls in, for floors with rooms.
   navBounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null;

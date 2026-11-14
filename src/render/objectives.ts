@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { settings } from '../client/settings';
 import { config } from '../config';
 import { caseFree, charging } from '../game/objectives';
-import type { GameState } from '../game/state';
+import { stepsOf, type GameState } from '../game/state';
 import type { Level, Objective, WallFitting } from '../levels/types';
 import { buildHelicopter } from './helicopter';
 import { labelTexture } from './streetTextures';
@@ -521,7 +521,30 @@ function flares(scene: THREE.Object3D, objective: Extract<Objective, { kind: 'si
   };
 }
 
-export function buildObjective(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture, environment: THREE.Texture): Sync {
+// Every step of the floor's objective, each in its own group. The steps already done show as they
+// were left, through the record of how each ended, the one being done follows the game, and those
+// still to come are not shown yet.
+export function buildObjectiveSteps(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture, environment: THREE.Texture): Sync {
+  const steps = stepsOf(level);
+  if (steps.length <= 1) return buildObjective(scene, { ...level, objective: steps[0] ?? null }, glowMap, environment);
+  const parts = steps.map((objective) => {
+    const group = new THREE.Group();
+    scene.add(group);
+    return { group, sync: buildObjective(group, { ...level, objective }, glowMap, environment) };
+  });
+  return (state, time, dt) => {
+    const at = state.objective.step;
+    parts.forEach((part, index) => {
+      part.group.visible = index <= at;
+      if (index > at) return;
+      const past = state.objective.past[index];
+      if (index === at || !past) part.sync(state, time, dt);
+      else part.sync({ ...state, level: { ...state.level, objective: steps[index] }, objective: { ...past, past: [] } }, time, dt);
+    });
+  };
+}
+
+function buildObjective(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture, environment: THREE.Texture): Sync {
   const objective = level.objective;
   if (!objective) return () => {};
   switch (objective.kind) {

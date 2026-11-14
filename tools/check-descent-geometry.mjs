@@ -33,10 +33,14 @@ const hit = (level, x, z, what) => {
 };
 for (const level of [breakdown, deadStop, checkpoint, commercial, approach, office41, records34, exec27, servers20, lobby1, garage, towerRoof, tunnel, pharmacy, lab, vaultLevel, mainStreet, market, barricades, park]) {
   for (const p of level.playerSpawns) hit(level, p.x, p.z, 'spawn');
-  const o = level.objective;
-  if (o.kind === 'breakers') o.panels.forEach((p, i) => { const f = fittingFront(p); hit(level, f.x, f.z, `breaker ${i}`); });
-  if (o.kind === 'keycard') hit(level, o.position.x, o.position.z + 1.2, 'keycard');
-  if (o.kind === 'charge') { const f = fittingFront(o.device); hit(level, f.x, f.z, 'device'); }
+  // Every step of the objective, and the floor's own dead where they stand.
+  for (const o of level.steps ?? [level.objective]) {
+    if (o.kind === 'breakers') o.panels.forEach((p, i) => { const f = fittingFront(p); hit(level, f.x, f.z, `breaker ${i}`); });
+    if (o.kind === 'keycard') hit(level, o.position.x, o.position.z + 1.2, 'keycard');
+    if (o.kind === 'charge') { const f = fittingFront(o.device); hit(level, f.x, f.z, 'device'); }
+    if (o.kind === 'carry') { o.items.forEach((p, i) => hit(level, p.x, p.z, `case ${i}`)); hit(level, o.dropoff.x, o.dropoff.z, 'drop-off'); }
+  }
+  (level.residents ?? []).forEach((r, i) => hit(level, r.x, r.z, `resident ${i}`));
   for (const s of level.stations) hit(level, s.position.x + s.normal.x * 0.9, s.position.z + s.normal.z * 0.9, 'station');
   for (const d of level.doors) hit(level, d.position.x + d.normal.x * 1.2, d.position.z + d.normal.z * 1.2, 'door');
   for (const l of level.locks) hit(level, l.position.x + l.normal.x * 1.2, l.position.z + l.normal.z * 1.2, 'lock');

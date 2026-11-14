@@ -18,7 +18,7 @@ import {
 import { buildFurniture } from './furniture';
 import { buildLift } from './lift';
 import { buildLocks, buildWardDressing } from './ward';
-import { buildObjective } from './objectives';
+import { buildObjectiveSteps } from './objectives';
 import { buildCity } from './city';
 import { circuitLive } from '../game/state';
 import { config } from '../config';
@@ -674,7 +674,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const syncLift = buildLift(scene, level, glowMap);
   const syncStations = buildStations(scene, level, glowMap);
   const syncLocks = buildLocks(scene, level, glowMap);
-  const syncObjective = buildObjective(scene, level, glowMap, environment);
+  const syncObjective = buildObjectiveSteps(scene, level, glowMap, environment);
   let lastTime = 0;
 
   return {
