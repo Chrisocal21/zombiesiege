@@ -166,6 +166,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
       if (state.floor < 0) {
         state.floor++;
         startFloor(state, true);
+        state.waves.arrivedTick = state.tick;
         return;
       }
       // The last floor built so far: the run ends here until the next one exists.
@@ -267,7 +268,8 @@ function respawn(old: Player, level: Level, keepGuns: boolean, cab: { x: number;
 export function startOnFloor(state: GameState, floor: number): void {
   state.floor = floor;
   startFloor(state, false);
-  openLift(state);
+  // In the prologue the gate stays shut until the floor is done.
+  if (floor >= 0) openLift(state);
   state.waves.arrivedTick = state.tick;
 }
 

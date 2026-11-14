@@ -5,6 +5,7 @@ import { addPlayer, removePlayer } from '../src/game/roster';
 import { createGameState, type GameState } from '../src/game/state';
 import { step } from '../src/game/update';
 import { startOnFloor } from '../src/game/waves';
+import { FIRST_FLOOR } from '../src/game/tower';
 import type { Level } from '../src/levels/types';
 import { level0 } from '../src/levels/level0';
 import { MAX_PLAYERS, ROOM_CODE, SNAPSHOT_TICKS, readClientMessage, type ServerMessage } from '../src/net/protocol';
@@ -102,6 +103,8 @@ export class Room extends DurableObject<Env> {
     const game = createGameState(level0);
     game.players = [];
     game.points = [];
+    // A run starts at the first level of the prologue.
+    startOnFloor(game, FIRST_FLOOR);
     this.game = game;
     this.lastTime = Date.now();
     this.leftover = 0;
@@ -116,7 +119,7 @@ export class Room extends DurableObject<Env> {
     const game = createGameState(level0);
     game.players = [];
     game.points = [];
-    if (floor > 0) startOnFloor(game, floor);
+    if (floor !== 0) startOnFloor(game, floor);
     for (const [id, seat] of this.seats) {
       addPlayer(game, id);
       seat.pending = null;

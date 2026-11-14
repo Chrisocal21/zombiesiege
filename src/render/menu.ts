@@ -711,7 +711,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         } else if (current === 'pause') {
           const entries: Entry[] = [
             { label: 'RESUME', detail: 'Back into the fight.', action: () => callbacks.resume() },
-            { label: 'RESTART RUN', detail: 'Start again from the garage with fresh lives.', action: () => callbacks.restart() },
+            { label: 'RESTART RUN', detail: 'Start again from the road with fresh lives.', action: () => callbacks.restart() },
             { label: 'CONTROLS', detail: 'See and rebind every key and mouse button.', action: () => (current = 'controls') },
             { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
             { label: 'QUIT TO TITLE', detail: 'Leave this run. Progress is lost.', action: () => callbacks.toTitle() },
@@ -738,7 +738,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             text(context, value, left + 420 * unit, rowY, { size: 30 * unit, weight: 800, align: 'right' });
           });
           list([
-            { label: 'PLAY AGAIN', detail: 'Back to the garage for another run.', action: () => callbacks.restart() },
+            { label: 'PLAY AGAIN', detail: 'Back to the start of the road for another run.', action: () => callbacks.restart() },
             { label: 'MAIN MENU', detail: 'Back to the title screen.', action: () => callbacks.toTitle() },
           ], left, height * 0.68, 0.2);
           promptBar([['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']]);

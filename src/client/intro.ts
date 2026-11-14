@@ -77,8 +77,8 @@ export function introWalker(index: number, t: number, level: Level): { x: number
 
 interface Caption { from: number; to: number; title?: string; line: string }
 const CAPTIONS: Caption[] = [
-  { from: 0.8, to: 4.2, title: 'LEVEL 0', line: 'The hospital parking garage' },
-  { from: 5.2, to: 8.8, line: 'The crew drove in to bring survivors out.' },
+  { from: 0.8, to: 4.4, title: 'NIGHTFALL', line: 'Operation 001  ·  Northline General, the parking garage' },
+  { from: 5.2, to: 8.8, line: 'The ambulance died nine miles out. They fought the rest of the way.' },
   { from: 9.6, to: 13.0, line: 'The garage is already overrun.' },
 ];
 

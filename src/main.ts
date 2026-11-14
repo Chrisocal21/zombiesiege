@@ -9,6 +9,7 @@ import { config } from './config';
 import { createGameState, eyeY, type GameState } from './game/state';
 import { MAX_PITCH } from './game/update';
 import { startOnFloor } from './game/waves';
+import { FIRST_FLOOR } from './game/tower';
 import { spawnZombie } from './game/zombies';
 import { level0 } from './levels/level0';
 import { createEffects } from './render/effects';
@@ -40,6 +41,13 @@ let dressed = false;
 // everyone in it. A host and join menu replaces this later.
 const roomCode = new URLSearchParams(location.search).get('room');
 const coop = roomCode ? joinRoom(roomCode) : null;
+// A new run starts at the first level of the prologue, P01, nine miles out.
+function newRun(): GameState {
+  const next = createGameState(level);
+  startOnFloor(next, FIRST_FLOOR);
+  return next;
+}
+
 const session = coop ? createRemoteSession(coop, createGameState(level)) : createLocalSession(dressTitle(createGameState(level)));
 const view = createView(level);
 const input = createLocalInput(view.renderer.domElement);
@@ -128,13 +136,12 @@ async function enterGame(withIntro = false): Promise<void> {
 
 const menu = createMenu({
   play() {
-    // A game not yet started still has the title's zombies standing in it.
+    // A game not yet started still has the title's zombies standing in it. The run itself starts at P01.
     if (dressed) {
-      session.state.zombies = [];
-      session.state.tick = 0;
+      session.replace(newRun());
       dressed = false;
     }
-    enterGame(true);
+    enterGame(false);
   },
   sound: (kind) => audio.ui(kind),
   playFloor(floor) {
@@ -153,8 +160,8 @@ const menu = createMenu({
   resume: enterGame,
   gameState: () => session.state,
   restart() {
-    if (coop) coop.restart(0);
-    else session.replace(createGameState(level));
+    if (coop) coop.restart(FIRST_FLOOR);
+    else session.replace(newRun());
     enterGame();
   },
   toTitle() {
@@ -182,9 +189,12 @@ view.renderer.setAnimationLoop((now) => {
   lastTime = now;
   const paused = menu.isOpen();
 
+  const floorBefore = session.state.floor;
   if (!paused && !reviewing && !intro) session.advance(frameSeconds, input.poll);
   else session.hold();
   const state = session.state;
+  // Coming through the last gate of the prologue into the hospital garage plays the Nightfall opening.
+  if (!coop && floorBefore === -1 && state.floor === 0 && !intro) startIntro(now);
   // The run is over: show the victory screen and let go of the mouse.
   if (state.waves.phase === 'won' && !menu.isOpen()) {
     menu.open('victory', {

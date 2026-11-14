@@ -16,6 +16,7 @@ import type { Menu } from './menu';
 import { drawHotbar, drawItemUse, drawWheel } from './itemsHud';
 import type { WheelState } from '../client/wheel';
 import { COLOR, clamp, keycap, measure, roundedRect, text } from './ui';
+import { radioLine } from './radio';
 
 const floorName = floorTitle;
 
@@ -207,6 +208,7 @@ export function createHud(menu: Menu): Hud {
     drawPrompt(width, height, unit, state, player);
     if (wheel) drawWheel(context, width, height, unit, player, wheel);
     drawBanner(width, height, unit, state, time);
+    drawRadio(width, height, unit, state);
 
     if (state.frozen) {
       // A pill under the compass.
@@ -920,6 +922,25 @@ export function createHud(menu: Menu): Hud {
       text(context, costText, cursor + 11 * unit, y + 6 * unit, { size: 17 * unit, weight: 800, color: tone, spacing: 1 * unit, shadow: false });
       text(context, ' PTS', cursor + 11 * unit + amountWidth, y + 6 * unit, { size: 12 * unit, weight: 700, color: tone, spacing: 2 * unit, shadow: false });
     }
+  }
+
+  // A radio or crew line in a small caption low in the view.
+  function drawRadio(width: number, height: number, unit: number, state: GameState): void {
+    const line = radioLine(state);
+    if (!line) return;
+    const size = 22 * unit;
+    const boxW = Math.min(width * 0.8, measure(context, line.text, size, 600, 0.3 * unit) + 56 * unit);
+    const x = (width - boxW) / 2, y = height - 252 * unit;
+    context.save();
+    context.globalAlpha = line.alpha;
+    roundedRect(context, x, y, boxW, 66 * unit, 4 * unit);
+    context.fillStyle = 'rgba(6,10,14,0.78)';
+    context.fill();
+    context.fillStyle = COLOR.accent;
+    context.fillRect(x, y, 3 * unit, 66 * unit);
+    text(context, line.speaker, x + 22 * unit, y + 24 * unit, { size: 12 * unit, weight: 800, spacing: 3 * unit, color: COLOR.accent, shadow: false });
+    text(context, line.text, x + 22 * unit, y + 50 * unit, { size, weight: 600, spacing: 0.3 * unit, shadow: false });
+    context.restore();
   }
 
   function drawBanner(width: number, height: number, unit: number, state: GameState, time: number): void {
