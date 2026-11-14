@@ -74,7 +74,7 @@ export const vaultLevel: Level = {
     kind: 'charge',
     label: 'Vault time lock',
     part: 'Vault unlocked',
-    device: { position: { x: 3.7, y: 1.45, z: -11.95 }, normal: { x: 0, z: 1 } },
+    device: { position: { x: 3.7, y: 0, z: -11.95 }, normal: { x: 0, z: 1 } },
     room: { minX: -7, maxX: 7, minZ: -11.8, maxZ: -2 },
     roomName: 'Vault door',
     seconds: 60,

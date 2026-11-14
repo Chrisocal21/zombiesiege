@@ -9,12 +9,15 @@ import type { Level } from './types';
 //
 // There is no helipad here, so the hospital roof's lights and landing pad are dropped.
 
-// Where the controls box stands against the east parapet, and where its front is.
-const controls = { position: { x: 17.8, y: 1.45, z: -3 }, normal: { x: -1, z: 0 } };
+// Where the controls cabinet stands, on the roof against the east parapet's inner face, and where its
+// front is.
+const controls = { position: { x: 17.95, y: 0, z: -3 }, normal: { x: -1, z: 0 } };
 
 export const towerRoof: Level = {
   ...roof,
   name: 'Tower roof',
+  // The hospital roof's helipad light box is not here: the controls cabinet stands in its place.
+  boxes: roof.boxes.filter((box) => !(box.surface === 'step' && box.position.x === 17.6 && box.position.z === -3)),
   signs: [{ text: 'ROOF ACCESS', sub: 'FREIGHT LIFT  /  PLANT ROOM', background: '#5b1b1b', position: { x: 0, y: 3.35, z: 9.98 }, rotation: Math.PI, width: 2.6, height: 0.7 }],
   objective: {
     kind: 'charge',

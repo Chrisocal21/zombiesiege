@@ -89,7 +89,7 @@ export const market: Level = {
     kind: 'charge',
     label: 'Radio relay',
     part: 'Transit signal',
-    device: { position: { x: 0, y: 1.45, z: -15.95 }, normal: { x: 0, z: 1 } },
+    device: { position: { x: 0, y: 0, z: -15.95 }, normal: { x: 0, z: 1 } },
     room: { minX: -8, maxX: 8, minZ: -15.8, maxZ: -8 },
     roomName: 'Town hall steps',
     seconds: 55,

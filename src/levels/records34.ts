@@ -74,7 +74,7 @@ export const records34: Level = {
     kind: 'charge',
     label: 'Generator',
     part: 'Backup power',
-    device: { position: { x: 10, y: 1.45, z: 10.95 }, normal: { x: 0, z: -1 } },
+    device: { position: { x: 10, y: 0, z: 10.95 }, normal: { x: 0, z: -1 } },
     room: { minX: 6.2, maxX: 14, minZ: 3.2, maxZ: 11 },
     roomName: 'Generator room',
     seconds: 45,

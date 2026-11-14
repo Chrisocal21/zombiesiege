@@ -69,6 +69,8 @@ interface ZombieView {
   // How far into a crawl it is, and how far into a stagger, from 0 to 1, eased so they don't snap.
   crawl: number;
   stagger: number;
+  // How far slumped it stands, 1 for one of the floor's own dead not yet woken.
+  slump: number;
 }
 // The height of the ground a zombie stands on: the garage floor, the slope of the ramp, or the street.
 function surfaceHeight(level: GameState['level'], x: number, z: number): number {
@@ -323,7 +325,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     group.scale.set(sx * height, sy * height, sz * height);
     scene.add(group);
     return { group, ...joints, material: null, geometries: [], rig,
-      phase: zombie.id * 1.77, gait: 0, initialised: false, crawl: 0, stagger: 0 };
+      phase: zombie.id * 1.77, gait: 0, initialised: false, crawl: 0, stagger: 0, slump: zombie.dormant ? 1 : 0 };
   }
   function build(zombie: Zombie): ZombieView {
     if (zombieModelsReady()) return buildRigged(zombie);
@@ -455,7 +457,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     }
     scene.add(group);
     return { group, hips: body.group, torso: chest.group, head: head.group, arms, elbows, wrists, legs, knees, ankles,
-      material, geometries, rig: null, phase: zombie.id * 1.77, gait: 0, initialised: false, crawl: 0, stagger: 0 };
+      material, geometries, rig: null, phase: zombie.id * 1.77, gait: 0, initialised: false, crawl: 0, stagger: 0, slump: zombie.dormant ? 1 : 0 };
   }
   // A body going down: the knees give first and the hips drop, then it topples, gathering speed,
   // and lands with a small bounce, limp, arms flung out and head turned aside. Most fall on their
@@ -615,6 +617,27 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
       });
     } else if (!dead) {
       view.group.rotation.x = 0;
+    }
+    // One of the floor's own dead, not yet woken: chin on its chest, shoulders rolled forward, arms
+    // hanging and knees gone soft, swaying a little where it stands. Waking, it lifts its head.
+    view.slump += ((zombie.dormant && !dead ? 1 : 0) - view.slump) * Math.min(1, dt * (zombie.dormant ? 2 : 5));
+    if (view.slump > 0.01 && view.crawl < 0.5) {
+      const slump = view.slump;
+      const time = tick / ticksPerSecond;
+      const breathe = Math.sin(time * 0.9 + zombie.id * 1.3);
+      view.torso.rotation.x = blend(view.torso.rotation.x, -0.42 + breathe * 0.03, slump);
+      view.torso.rotation.z = blend(view.torso.rotation.z, (zombie.id % 2 ? 0.08 : -0.08) + Math.sin(time * 0.35 + zombie.id) * 0.04, slump);
+      view.head.rotation.x = blend(view.head.rotation.x, -0.8 + breathe * 0.04, slump);
+      view.head.rotation.z = blend(view.head.rotation.z, zombie.id % 3 === 0 ? 0.3 : -0.12, slump);
+      view.hips.rotation.y += Math.sin(time * 0.3 + zombie.id * 2) * 0.06 * slump;
+      view.hips.position.y -= 0.05 * slump;
+      view.arms.forEach((arm, side) => {
+        arm.rotation.x = blend(arm.rotation.x, 0.08 + 0.04 * Math.sin(time * 0.5 + side + zombie.id), slump);
+        arm.rotation.z = blend(arm.rotation.z, out(side) * 0.06, slump);
+        view.elbows[side].rotation.x = blend(view.elbows[side].rotation.x, 0.18, slump);
+        view.wrists[side].rotation.x = blend(view.wrists[side].rotation.x, 0.1, slump);
+      });
+      view.knees.forEach((knee) => { knee.rotation.x = blend(knee.rotation.x, -0.16, slump); });
     }
     // A swing carries the body forward, and a walker's lean goes with it.
     if (view.rig) view.rig.object.position.z = -0.24 * attack * (zombie.kind === 'brute' ? 1.4 : 1);

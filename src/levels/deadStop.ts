@@ -77,7 +77,7 @@ export const deadStop: Level = {
     kind: 'charge',
     label: 'Delivery van',
     part: 'Survivors away',
-    device: { position: { x: -3, y: 1.45, z: -9.95 }, normal: { x: 0, z: 1 } },
+    device: { position: { x: -3, y: 0, z: -9.95 }, normal: { x: 0, z: 1 } },
     room: { minX: -10, maxX: 6, minZ: -9.8, maxZ: 2 },
     roomName: 'The forecourt',
     seconds: 45,
