@@ -31,6 +31,7 @@ function kindForSpawn(state: GameState, leader: boolean): ZombieKind {
   const floor = state.floor;
   if (floor <= 0) return waves.number >= 4 && chance(state.nextZombieId) < 0.12 ? 'runner' : 'walker';
   const last = waves.number >= wavesOnFloor(floor);
+  if (leader && last && state.level.leads && aliveOfKind(state, state.level.leads) === 0) return state.level.leads;
   if (leader && last && floor >= 2) {
     if (floor % 2 === 0 && aliveOfKind(state, 'brute') === 0) return 'brute';
     if (floor >= 3 && aliveOfKind(state, 'screamer') === 0) return 'screamer';

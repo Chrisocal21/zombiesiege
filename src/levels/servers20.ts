@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Lock, Station } from './types';
+import { CREW } from './voices';
 import { DOOR_HEIGHT, entry, furniture, partition, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 2, fourth floor down: the server floor, floor 20. Rows of racks make long, narrow aisles in
@@ -88,6 +89,12 @@ export const servers20: Level = {
       { position: { x: 15.95, y: 1.45, z: -5.5 }, normal: { x: -1, z: 0 } },
     ],
   },
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'The server floor. Dark, and the racks are warm. Something is still running.' },
+    // When the power returns, one monitor comes up on a camera somewhere below: the first sight of him.
+    { on: 'done', at: 1, speaker: CREW, text: 'Wait. That monitor. Someone just walked past the camera.', seconds: 7, feed: 'CAM 14  ·  LOWER CORRIDOR' },
+    { on: 'done', at: 8.5, speaker: CREW, text: 'White coat. A steel case in his hand. He did not look up.', seconds: 5.5 },
+  ],
   atmosphere: { fog: '#04060a', fogNear: 5, fogFar: 36, ambient: 1 },
   navBounds: { minX: -21, maxX: 21, minZ: -15, maxZ: 15 },
   ramp: null,

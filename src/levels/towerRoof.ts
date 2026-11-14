@@ -1,5 +1,6 @@
 import { roof } from './roof';
 import type { Level } from './types';
+import { CREW, SCIENTIST } from './voices';
 
 // Act 2, the start: the roof of the office tower. The air ambulance has set the crew down, and
 // the streets below are too overrun to land on. It is the hospital roof's shape under a new
@@ -28,6 +29,12 @@ export const towerRoof: Level = {
     roomName: 'Roof controls',
     seconds: 40,
   },
+  // The scientist's first call, on the roof's intercom. Calm, exact, and he does not say where he is.
+  cues: [
+    { on: 'start', at: 2, speaker: CREW, text: 'Tower roof. The lift is dead, and the controls are in the box on the east parapet.' },
+    { on: 'start', at: 9, speaker: SCIENTIST, text: 'Roof, can you hear me? Good. Do not take the stairs. Power the lift and come down.', seconds: 6.5 },
+    { on: 'done', at: 0.6, speaker: SCIENTIST, text: 'Forty-one next. Keep your voices down. The ones on the way are asleep.', seconds: 6 },
+  ],
   // They come down from the helicopter beside the lift, as the crew did on the hospital roof.
   playerSpawns: [{ x: -4, y: 0, z: 8 }],
   checkpoint: { x: -4, y: 0, z: 8 },

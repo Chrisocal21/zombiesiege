@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
+import { CREW, SCIENTIST } from './voices';
 import { DOOR_HEIGHT, doorway, entry, furniture, partition, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 2, second floor down: the records floor, floor 34. Tall shelving makes aisles to fight
@@ -70,15 +71,54 @@ export const records34: Level = {
     { text: 'STANDBY GENERATOR', sub: 'STAFF ONLY', background: '#6b4a12', position: { x: 10, y: 2.9, z: 3.16 }, rotation: 0, width: 2.4, height: 0.5 },
     { text: 'FREIGHT LIFT', sub: 'GENERATOR POWER ONLY', background: '#5b1b1b', position: { x: -12.6, y: 3.0, z: -10.96 }, rotation: 0, width: 2.4, height: 0.5 },
   ],
-  objective: {
-    kind: 'charge',
-    label: 'Generator',
-    part: 'Backup power',
-    device: { position: { x: 10, y: 0, z: 10.95 }, normal: { x: 0, z: -1 } },
-    room: { minX: 6.2, maxX: 14, minZ: 3.2, maxZ: 11 },
-    roomName: 'Generator room',
-    seconds: 45,
-  },
+  // Two steps: the transfer file from the front desk (it says where the generator's keys are kept, and
+  // opens the generator room's panel), then the generator, held while it fills. The hold brings the dead.
+  objective: null,
+  steps: [
+    { kind: 'keycard', label: 'Transfer file', part: 'Generator access code', position: { x: -4, y: 0.95, z: 9 } },
+    {
+      kind: 'charge',
+      label: 'Generator',
+      part: 'Backup power',
+      device: { position: { x: 10, y: 0, z: 10.95 }, normal: { x: 0, z: -1 } },
+      room: { minX: 6.2, maxX: 14, minZ: 3.2, maxZ: 11 },
+      roomName: 'Generator room',
+      seconds: 45,
+    },
+  ],
+  // A sweep: the records staff stand between the shelves. The hold at the generator is the only time
+  // the dead are sent for.
+  flow: { kind: 'sweep', loud: 3, first: 6 },
+  residents: [
+    { x: -5.5, z: -8, yaw: 0 },
+    { x: -5.5, z: -3, yaw: Math.PI },
+    { x: 0, z: -8.5, yaw: Math.PI / 2 },
+    { x: 0, z: -2, yaw: 0 },
+    { x: 5.5, z: -8, yaw: Math.PI },
+    { x: 5.5, z: -3, yaw: -Math.PI / 2 },
+    { x: 10.5, z: -4, yaw: Math.PI },
+    { x: -12, z: 5, yaw: Math.PI / 2 },
+    { x: -7, z: 7.2, yaw: Math.PI },
+    { x: -1, z: 8, yaw: 0 },
+    { x: 9, z: 6, yaw: -Math.PI / 2 },  ],
+  notes: [
+    {
+      position: { x: -12.6, y: 1.08, z: 1.6 },
+      what: 'transfer order',
+      title: 'Transfer order',
+      lines: [
+        'TRANSFER ORDER  /  PRIORITY',
+        'Patient and materials to be moved to the pharmacy facility. Sign-off by the director only.',
+        'Route: freight lift to the garage, then the service tunnel. Not the street.',
+        'No copy to be kept on site.',
+      ],
+    },
+  ],
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'Records. Every shelf is a place to be ambushed. Go slow.' },
+    { on: 'step', step: 0, at: 0.8, speaker: CREW, text: 'Got the file. The generator is in the south-east room. It will make noise.' },
+    { on: 'done', at: 0.6, speaker: SCIENTIST, text: 'Good. That was a long way to send you. Keep going.' },
+  ],
   atmosphere: { fog: '#07080a', fogNear: 8, fogFar: 45, ambient: 1 },
   navBounds: { minX: -19, maxX: 19, minZ: -16, maxZ: 16 },
   ramp: null,

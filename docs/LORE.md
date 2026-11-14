@@ -133,17 +133,23 @@ From the master campaign handoff (Nov 14). The crew's ground ambulance runs out 
   - a fire door stays locked until the breakers are back on
 - The scientist is on the radio or intercom the whole way down: short lines, calm at first. The crew catches one glimpse of him on a security camera near the bottom.
 
-**In the build (Nov 13):** seven levels. The air ambulance drops the crew on the tower roof, and they go down by **freight lift**, not stairs. Every floor's job also gets the lift working, as in the hospital. Nothing comes up the stairs or bursts out of floors yet, and the scientist isn't heard.
+**In the build (Nov 14):** seven levels. The air ambulance drops the crew on the tower roof, and they go down by **freight lift**, not stairs. Every floor's job also gets the lift working, as in the hospital. Nothing comes up the stairs or bursts out of floors yet. The scientist is on the radio from the roof, and the crew sees him once on a security monitor on floor 20. Floors 41, 34 and 27 are **sweeps**: no waves, the floor's own dead slumped at the desks and between the shelves, and a gunshot brings more through the doors.
 
-| Stop | What the floor is | Objective | Waves |
-|---|---|---|---|
-| Tower roof | The hospital roof's shape under a new name: plant room, four stair heads, no helipad | Start the roof controls and hold them for 40 seconds | 2 |
-| Floor 41 | Open-plan offices: desk rows, kitchen, meeting room behind a paid door. The power is out | Throw three breakers | 3 |
-| Floor 34 | Records floor: shelving aisles, standby generator room | Start the generator and hold the room for 45 seconds | 3 |
-| Floor 27 | Executive suites: warm wood, boardroom, the chief executive's suite behind a paid door | Find the executive keycard | 3 |
-| Floor 20 | Server floor: racks, the power out, a UPS room behind a paid door | Throw three breakers | 4 |
-| Lobby | Ground-floor reception: marble hall, columns, a security booth with the lift's service controls | Start the controls and hold the booth for 50 seconds | 4 |
-| Tower garage (B1) | The tower's own parking level, dark and packed, tunnel mouths in the east wall | Throw three breakers | 5 |
+| Stop | What the floor is | How it plays | Objective | Story added |
+|---|---|---|---|---|
+| Tower roof | The hospital roof's shape under a new name: plant room, four stair heads, no helipad | Siege, 2 waves | Start the roof controls and hold them for 40 seconds | The scientist's first call on the roof intercom. He doesn't say where he is |
+| Floor 41 | Open-plan offices: desk rows, kitchen, meeting room behind a paid door. The power is out | Sweep, 13 sleepers | Throw three breakers | Note: the evacuation notice |
+| Floor 34 | Records floor: shelving aisles, standby generator room | Sweep, 11 sleepers | Step 1: take the transfer file from the front desk. Step 2: start the generator and hold the room for 45 seconds (the hold brings the dead) | Note: the transfer order that moved him "to the pharmacy facility" |
+| Floor 27 | Executive suites: warm wood, boardroom, the chief executive's suite behind a paid door | Sweep, 13 sleepers | Find the executive keycard | Note: the board memo (the food-poisoning cover story). The scientist goes quiet when he hears the floor number |
+| Floor 20 | Server floor: racks, the power out, a UPS room behind a paid door | Siege, 4 waves | Throw three breakers | The camera glimpse: when the power returns, a monitor shows a man in a white coat with a steel case |
+| Lobby | Ground-floor reception: marble hall, columns, a security booth with the lift's service controls | Siege, 4 waves; a brute leads the last wave | Start the controls and hold the booth for 50 seconds | The street doors are barricaded and something heavy is leaning on them |
+| Tower garage (B1) | The tower's own parking level, dark and packed, tunnel mouths in the east wall | Siege, 5 waves | Step 1: throw three breakers. Step 2: carry a car battery from a parked car to the dead tunnel lift | "Under the street. That is how they moved me" |
+
+**Notes to read (clues).** Press use beside one for a card, and it goes in the **RUN LOG** on the pause screen. They're optional and never block progress. **These texts are draft wording for you to approve or change:**
+
+- *Evacuation notice* (floor 41): all staff to the lower levels; not the street entrances, not the main stairs; the freight lift is reserved for transfers.
+- *Transfer order* (floor 34): patient and materials to the pharmacy facility; sign-off by the director only; route by freight lift, garage and tunnel, not the street; no copy kept on site.
+- *Board memo* (floor 27): the sample stays with the programme; if the facility needs explaining, the line is food poisoning from a bad canteen batch.
 
 ### Act 3 — The Vault (the pharmacy and lab) · levels built
 
@@ -601,3 +607,4 @@ Real-world things worth looking up to ground the story. None of this is decided.
 - **Nov 14, 2026:** Received the master campaign handoff (12 acts, five-level prologue). Built the prologue as five levels, P01 to P05, Breakdown, Roadside Station, Checkpoint, Commercial District and Final Push. Acts 5 to 12 are working expansion only and not built.
 - **Nov 14, 2026:** Settled questions 11 to 13 and Patient O's fate (sealed in the vault). The tunnel became a run, the pharmacy a sweep with the shop's own dead standing in it, and the lab a two-step floor (freezer power, then the cryo carriers), with the scientist on the radio through all three. The first Brute and Screamer now come where the handoff puts them, Floors 6 and 9.
 - **Nov 14, 2026:** Built the vault's ending: Patient O in two stages, the vault opening scene, and the scientist stepping out and following the crew. Patient O is sealed back in the vault, as decided.
+- **Nov 14, 2026:** Reworked Act 2 for play: floors 41, 34 and 27 are sweeps with sleeping dead, floor 34 is two steps (transfer file, then the generator), floor 20 has the camera glimpse, the lobby's last wave is led by a brute, and the garage needs a car battery for the tunnel lift. Added readable notes (evacuation notice, transfer order, board memo) and a run log on the pause screen. The note texts are draft wording awaiting approval.

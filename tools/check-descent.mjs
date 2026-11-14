@@ -16,10 +16,14 @@ startOnFloor(s, 7);
 assert.equal(s.level.name, 'Floor 41');
 const run = (seconds, stop) => { for (let i = 0; i < seconds * 120; i++) { step(s, [idleInput(0)], 1 / 120); if (stop?.()) return true; } return false; };
 
-// Floor 41: the power is out, waves come, and every zombie reaches the player through the rooms.
-assert.ok(run(60, () => s.waves.phase === 'active' && s.zombies.length > 3), 'a wave starts');
-assert.ok(s.players[0].health > 0 || true);
-console.log('floor 41 wave running, zombies', s.zombies.length);
+// Floor 41: the power is out and the floor's own dead sleep at the desks. A gunshot brings more
+// through the doors, and they find their way to the player through the rooms.
+const asleep = s.zombies.length;
+assert.ok(asleep > 3, 'the floor has its sleepers');
+assert.equal(s.waves.phase, 'search', 'a sweep has no waves');
+s.players[0].lastShotTick = s.tick;
+assert.ok(run(60, () => { s.players[0].health = 100; return s.zombies.length > asleep + 3; }), 'a shot brings more in');
+console.log('floor 41 alarm raised, zombies', s.zombies.length);
 
 // Skip ahead: objective done, in the cab, ride down to 34, then 34's lift ends the run.
 for (let floor = 7; floor <= LAST_FLOOR; floor++) {

@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Lock, Station } from './types';
+import { CREW, SCIENTIST } from './voices';
 import { DOOR_HEIGHT, doorway, entry, furniture, partition, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 2, first floor down: the open-plan offices on floor 41 of the office tower. The power is out.
@@ -96,6 +97,42 @@ export const office41: Level = {
       { position: { x: 15.95, y: 1.45, z: -5 }, normal: { x: -1, z: 0 } },
     ],
   },
+  // A sweep: the floor's own dead sit slumped over the desks, in the kitchen and in the meeting room,
+  // and stay there until someone gives them a reason.
+  flow: { kind: 'sweep', loud: 3, first: 6 },
+  residents: [
+    { x: 1, z: 5.5, yaw: Math.PI },
+    { x: 7, z: 1, yaw: -Math.PI / 2 },
+    { x: 1, z: 1, yaw: Math.PI / 2 },
+    { x: -2, z: 8.5, yaw: 0.6 },
+    { x: -1, z: -6, yaw: 0 },
+    { x: 4, z: -7.5, yaw: Math.PI / 2 },
+    { x: 1.5, z: -3.5, yaw: Math.PI },
+    { x: -10.5, z: -8.5, yaw: 0.4 },
+    { x: -10.5, z: -5.5, yaw: Math.PI },
+    { x: 9.6, z: -8.5, yaw: -Math.PI / 2 },
+    { x: 13.8, z: -4.3, yaw: Math.PI },
+    { x: 10, z: 8, yaw: 0 },
+    { x: -3, z: 9, yaw: Math.PI },  ],
+  notes: [
+    {
+      position: { x: -15.9, y: 1.5, z: -8 },
+      wall: { x: 1, z: 0 },
+      what: 'notice',
+      title: 'Evacuation notice',
+      lines: [
+        'ALL STAFF',
+        'Effective immediately, please make your way to the lower levels and wait there for instruction.',
+        'Do not use the street entrances. Do not use the main stairs.',
+        'The freight lift is reserved for transfers.',
+      ],
+    },
+  ],
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'Forty-one. Power is out, and the desks are full. Nobody is moving.' },
+    { on: 'start', at: 7.5, speaker: SCIENTIST, text: 'Three breakers for the lift. They are not awake. Let us keep it that way.', seconds: 6 },
+    { on: 'done', at: 0.6, speaker: CREW, text: 'Lift is live. Down we go.' },
+  ],
   atmosphere: { fog: '#05070a', fogNear: 6, fogFar: 40, ambient: 1 },
   navBounds: { minX: -21, maxX: 21, minZ: -15, maxZ: 15 },
   ramp: null,

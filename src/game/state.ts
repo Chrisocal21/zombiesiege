@@ -303,6 +303,13 @@ export interface BarPickup {
   taken: boolean;
 }
 
+// A note read in the run, kept for the log.
+export interface LogEntry {
+  floor: number;
+  title: string;
+  lines: string[];
+}
+
 export interface GameState {
   tick: number;
   // This game's own copy of the level, because boarded doors add solid boxes to it.
@@ -315,6 +322,12 @@ export interface GameState {
   lives: number;
   // For each of the level's radio cues, the tick its area was first walked into, or -1.
   heard: number[];
+  // For each of the level's notes, the tick someone first read it, or -1.
+  read: number[];
+  // Everything read so far this run, in order, for the pause screen's log.
+  log: LogEntry[];
+  // The note being read now: its words, who is reading it, and when they began.
+  card: { tick: number; player: number; title: string; lines: string[] } | null;
   // The scientist, from the moment he steps out of the vault, or null.
   scientist: Companion | null;
   // The floor's boss, once it has come, or null.
@@ -368,6 +381,8 @@ export function enterLevel(state: GameState, level: Level): void {
   const first = stepsOf(level)[0] ?? null;
   state.level = { ...level, objective: first, boxes: [...level.boxes, liftDoorBox(level.elevator), ...level.locks.map(lockBox)] };
   state.heard = (level.cues ?? []).map(() => -1);
+  state.read = (level.notes ?? []).map(() => -1);
+  state.card = null;
   state.boss = null;
   state.scene = null;
   state.vault = { openTick: -1, shutTick: -1 };
@@ -470,6 +485,9 @@ export function createGameState(level: Level): GameState {
     floor: 0,
     lives: config.player.lives,
     heard: [],
+    read: [],
+    log: [],
+    card: null,
     scientist: null,
     boss: null,
     scene: null,

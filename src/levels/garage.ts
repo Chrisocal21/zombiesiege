@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelBox, LevelLight, Station } from './types';
+import { CREW, SCIENTIST } from './voices';
 import { DOOR_HEIGHT, entry, furniture, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 2, the bottom: the office tower's own parking level, under the lobby. It is dark and packed.
@@ -89,16 +90,34 @@ export const garage: Level = {
     { text: 'TUNNEL ACCESS', sub: 'SERVICE LIFT  /  NO POWER', background: '#5b1b1b', position: { x: -17.5, y: 3.0, z: -11.96 }, rotation: 0, width: 2.4, height: 0.5 },
     { text: 'EXIT', sub: 'RAMP TO STREET', background: '#1b5b4d', position: { x: -19.96, y: 2.9, z: 1.5 }, rotation: Math.PI / 2, width: 1.6, height: 0.5 },
   ],
-  objective: {
-    kind: 'breakers',
-    label: 'Breakers',
-    part: 'Power to the service lift',
-    panels: [
-      { position: { x: -19.95, y: 1.45, z: 2 }, normal: { x: 1, z: 0 } },
-      { position: { x: 12, y: 1.45, z: -11.95 }, normal: { x: 0, z: 1 } },
-      { position: { x: -2, y: 1.45, z: 11.95 }, normal: { x: 0, z: -1 } },
-    ],
-  },
+  // Two steps: the breakers light the level, and then the service lift needs a battery, and the only
+  // one to be had is in one of the parked cars. It comes to the lift on foot, both hands on it.
+  objective: null,
+  steps: [
+    {
+      kind: 'breakers',
+      label: 'Breakers',
+      part: 'Light on the level',
+      panels: [
+        { position: { x: -19.95, y: 1.45, z: 2 }, normal: { x: 1, z: 0 } },
+        { position: { x: 12, y: 1.45, z: -11.95 }, normal: { x: 0, z: 1 } },
+        { position: { x: -2, y: 1.45, z: 11.95 }, normal: { x: 0, z: -1 } },
+      ],
+    },
+    {
+      kind: 'carry',
+      label: 'Car battery',
+      part: 'Power to the service lift',
+      items: [{ x: -3, y: 0, z: 7.9 }],
+      dropoff: { x: -14, y: 0, z: -10.6 },
+    },
+  ],
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'Parking level. Pitch black, and the ramp is wide open.' },
+    { on: 'step', step: 0, at: 0.8, speaker: CREW, text: 'Lights are up. The service lift is still dead. It wants a battery.' },
+    { on: 'step', step: 0, at: 7, speaker: SCIENTIST, text: 'Take one from a car. Any one that starts. Under the street. That is how they moved me.', seconds: 6.5 },
+    { on: 'done', at: 0.6, speaker: SCIENTIST, text: 'Good. The tunnel is long, and straight. Do not stop in it.' },
+  ],
   atmosphere: { fog: '#030508', fogNear: 4, fogFar: 34, ambient: 1 },
   navBounds: { minX: -25, maxX: 25, minZ: -17, maxZ: 17 },
   ramp: null,

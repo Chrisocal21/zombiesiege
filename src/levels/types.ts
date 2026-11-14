@@ -228,6 +228,7 @@ export interface Resident {
 // `step` of the floor's steps is done. 'area': once the first player walks into `area`. 'boss':
 // once the floor's boss arrives.
 // `at` is the seconds after that moment.
+// `feed` puts a security-camera monitor on screen while the line shows, with that label on it.
 export interface Cue {
   on: 'start' | 'done' | 'step' | 'area' | 'boss';
   at: number;
@@ -236,6 +237,19 @@ export interface Cue {
   seconds?: number;
   step?: number;
   area?: Area;
+  feed?: string;
+}
+
+// Something to read on a floor: a memo, an order, a page of notes. Press use beside it for a card
+// with its words, and it goes into the run's log. Reading is never needed to go on.
+export interface Note {
+  position: Vec3;
+  // What it is, for the prompt ("Read the memo").
+  what: string;
+  title: string;
+  lines: string[];
+  // How the paper lies on the surface it is on: flat on a desk, or upright on a wall.
+  wall?: { x: number; z: number };
 }
 
 // A buying point on a wall. Walk up, press use, and pay points.
@@ -307,8 +321,11 @@ export interface Level {
   objective: Objective | null;
   steps?: Objective[];
   flow?: Flow;
+  // Who leads the last wave of a siege floor, when it should not be left to the floor's number.
+  leads?: 'brute' | 'screamer';
   residents?: Resident[];
   cues?: Cue[];
+  notes?: Note[];
   boss?: Boss;
   scene?: Scene;
   ramp: Ramp | null;

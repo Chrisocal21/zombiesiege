@@ -20,6 +20,7 @@ import { buildLift } from './lift';
 import { buildLocks, buildWardDressing } from './ward';
 import { buildObjectiveSteps } from './objectives';
 import { buildVaultDoor } from './vaultDoor';
+import { buildNotes } from './notes';
 import { buildCity } from './city';
 import { circuitLive } from '../game/state';
 import { config } from '../config';
@@ -677,6 +678,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const syncLocks = buildLocks(scene, level, glowMap);
   const syncObjective = buildObjectiveSteps(scene, level, glowMap, environment);
   const syncVaultDoor = buildVaultDoor(scene, level);
+  const syncNotes = buildNotes(scene, level);
   let lastTime = 0;
 
   return {
@@ -692,6 +694,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
       syncLocks(state, time);
       syncObjective(state, time, dt);
       syncVaultDoor(state);
+      syncNotes(state, time);
       const breakers = state.level.objective?.kind === 'breakers';
       const blackout = breakers && !state.objective.done;
       for (const lamp of lamps) {

@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Lock, Station } from './types';
+import { CREW, SCIENTIST } from './voices';
 import { DOOR_HEIGHT, doorway, entry, furniture, partition, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 2, third floor down: the executive suites on floor 27. Warm wood and quiet carpet, with the
@@ -96,6 +97,41 @@ export const exec27: Level = {
   ],
   // The chief executive's keycard, on the desk in the suite behind the second paid door.
   objective: { kind: 'keycard', label: 'Executive keycard', part: 'Freight lift override', position: { x: 11, y: 0.95, z: 7.2 } },
+  // The clue floor, and a sweep: the board stayed at their desks, and the lights are still on.
+  flow: { kind: 'sweep', loud: 3, first: 6 },
+  residents: [
+    { x: -1, z: -1.2, yaw: Math.PI },
+    { x: 4, z: 0.6, yaw: -Math.PI / 2 },
+    { x: 9, z: -0.5, yaw: 0 },
+    { x: 13, z: 1, yaw: Math.PI },
+    { x: -9, z: -9, yaw: 0.5 },
+    { x: 1.8, z: -8.5, yaw: Math.PI },
+    { x: -4, z: -9, yaw: 0 },
+    { x: 6.5, z: -6, yaw: Math.PI / 2 },
+    { x: -8, z: 8.5, yaw: -Math.PI / 2 },
+    { x: -13.5, z: 9, yaw: Math.PI },
+    { x: 0, z: 4, yaw: Math.PI },
+    { x: 8, z: 4.5, yaw: -Math.PI / 2 },
+    { x: 13, z: 4, yaw: Math.PI },  ],
+  notes: [
+    {
+      position: { x: -2.5, y: 0.83, z: -6.2 },
+      what: 'memo',
+      title: 'Board memo',
+      lines: [
+        'BOARD  /  EYES ONLY',
+        'Re: the sample. It stays with the programme. No one outside this room is to learn what it is.',
+        'Should the facility need to be explained, the line is food poisoning. A bad batch from the canteen. Nothing more.',
+        'Copies to be destroyed after the meeting.',
+      ],
+    },
+  ],
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'Twenty-seven. Carpet, wood, and a board still at the table.' },
+    { on: 'start', at: 7.5, speaker: SCIENTIST, text: 'Which floor is that? Say it again.', seconds: 4 },
+    { on: 'start', at: 13, speaker: CREW, text: 'Doc? ... He went quiet.', seconds: 4 },
+    { on: 'done', at: 0.6, speaker: SCIENTIST, text: 'Take the lift. Keep going down. I will tell you when you reach me.', seconds: 5.5 },
+  ],
   navBounds: { minX: -20, maxX: 20, minZ: -15, maxZ: 15 },
   ramp: null,
   barricadeBars: [

@@ -4,6 +4,7 @@ import { settings } from '../client/settings';
 import { config } from '../config';
 import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
 import { ITEMS } from '../game/items';
+import { CARD_SECONDS, cardFor } from '../game/notes';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
 import { flowOf, stepsOf, type GameState, type Player } from '../game/state';
@@ -214,6 +215,8 @@ export function createHud(menu: Menu): Hud {
     if (wheel) drawWheel(context, width, height, unit, player, wheel);
     drawBanner(width, height, unit, state, time);
     drawRadio(width, height, unit, state);
+    drawFeed(width, unit, state, time);
+    drawCard(width, height, unit, state, player);
     drawBoss(width, unit, state);
 
     if (state.frozen) {
@@ -888,6 +891,8 @@ export function createHud(menu: Menu): Hud {
       prompt = offer.status === 'ok'
         ? { keys: [bindings.use], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost }
         : { keys: [], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost, short: true };
+    } else if (interaction?.kind === 'note') {
+      prompt = { keys: [bindings.use], label: `Read the ${state.level.notes![interaction.index].what}` };
     } else if (interaction && objectivePrompt(state, interaction.kind)) prompt = { keys: [bindings.use], label: objectivePrompt(state, interaction.kind)! };
     else if (player.carrying >= 0) prompt = { keys: [bindings.fire], label: 'Put the case down' };
     else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
@@ -990,6 +995,87 @@ export function createHud(menu: Menu): Hud {
     context.fillRect(x, y, 3 * unit, 66 * unit);
     text(context, line.speaker, x + 22 * unit, y + 24 * unit, { size: 12 * unit, weight: 800, spacing: 3 * unit, color: tone, shadow: false });
     text(context, line.text, x + 22 * unit, y + 50 * unit, { size, weight: 600, spacing: 0.3 * unit, shadow: false });
+    context.restore();
+  }
+
+  // A note being read: the paper in the middle of the view, its title and its lines.
+  function drawCard(width: number, height: number, unit: number, state: GameState, player: Player): void {
+    const card = cardFor(state, player);
+    if (!card) return;
+    const age = (state.tick - card.tick) / config.ticksPerSecond;
+    const alpha = Math.min(1, age / 0.25, (CARD_SECONDS - age) / 0.5);
+    const lineSize = 21 * unit, lineGap = 30 * unit;
+    const w = Math.min(width * 0.7, 760 * unit);
+    // Wrap each line to the card's width.
+    const wrapped: string[] = [];
+    for (const line of card.lines) {
+      if (line === '') { wrapped.push(''); continue; }
+      let current = '';
+      for (const word of line.split(' ')) {
+        const next = current ? `${current} ${word}` : word;
+        if (current && measure(context, next, lineSize, 500, 0.2 * unit) > w - 90 * unit) { wrapped.push(current); current = word; } else current = next;
+      }
+      wrapped.push(current);
+    }
+    const h = 110 * unit + wrapped.length * lineGap;
+    const x = (width - w) / 2, y = Math.max(40 * unit, (height - h) / 2 - 20 * unit);
+    context.save();
+    context.globalAlpha = alpha;
+    roundedRect(context, x, y, w, h, 4 * unit);
+    context.fillStyle = 'rgba(232,226,208,0.94)';
+    context.fill();
+    context.fillStyle = '#7a1f18';
+    context.fillRect(x, y, w, 5 * unit);
+    text(context, card.title.toUpperCase(), x + 44 * unit, y + 52 * unit, { size: 17 * unit, weight: 800, spacing: 4 * unit, color: '#7a1f18', shadow: false });
+    wrapped.forEach((line, i) => text(context, line, x + 44 * unit, y + 96 * unit + i * lineGap, { size: lineSize, weight: 500, spacing: 0.2 * unit, color: '#1c1f22', shadow: false }));
+    context.restore();
+  }
+
+  // A security monitor in the corner while a line from a camera is on: a dim room, a figure in a coat
+  // crossing it with a case in hand, scan lines and a little tracking noise.
+  function drawFeed(width: number, unit: number, state: GameState, time: number): void {
+    const line = radioLine(state);
+    if (!line?.feed) return;
+    const w = 330 * unit, h = 210 * unit;
+    const x = width - 28 * unit - w, y = 250 * unit;
+    context.save();
+    context.globalAlpha = line.alpha;
+    context.fillStyle = '#0a0d0c';
+    context.fillRect(x - 8 * unit, y - 8 * unit, w + 16 * unit, h + 16 * unit);
+    context.beginPath();
+    context.rect(x, y, w, h);
+    context.clip();
+    context.fillStyle = '#16231d';
+    context.fillRect(x, y, w, h);
+    // The corridor on the feed: a floor, a far wall, and a door at the end.
+    context.fillStyle = '#1f332a';
+    context.fillRect(x, y + h * 0.62, w, h * 0.38);
+    context.fillStyle = '#0f1a15';
+    context.fillRect(x + w * 0.38, y + h * 0.2, w * 0.24, h * 0.42);
+    context.fillStyle = '#2a4538';
+    context.fillRect(x + w * 0.44, y + h * 0.3, w * 0.12, h * 0.32);
+    // The figure walks across, carrying a case.
+    const k = ((time * 0.18) % 1);
+    const fx = x + w * (0.12 + 0.76 * k), base = y + h * 0.9;
+    context.fillStyle = '#d7e6dc';
+    context.fillRect(fx - 9 * unit, base - 92 * unit, 18 * unit, 62 * unit);
+    context.beginPath(); context.arc(fx, base - 102 * unit, 9 * unit, 0, Math.PI * 2); context.fill();
+    context.fillStyle = '#3a4a42';
+    context.fillRect(fx - 7 * unit, base - 30 * unit, 5 * unit, 30 * unit);
+    context.fillRect(fx + 2 * unit, base - 30 * unit, 5 * unit, 30 * unit);
+    context.fillStyle = '#9fb1a8';
+    context.fillRect(fx + 11 * unit, base - 46 * unit, 16 * unit, 12 * unit);
+    // Scan lines and the odd line of tracking noise.
+    context.fillStyle = 'rgba(0,0,0,0.22)';
+    for (let row = 0; row < h; row += 4 * unit) context.fillRect(x, y + row, w, 1.5 * unit);
+    const glitch = Math.floor(time * 7) % 11 === 0 && !settings.reducedFlashing;
+    if (glitch) { context.fillStyle = 'rgba(190,230,210,0.22)'; context.fillRect(x, y + ((time * 83) % h), w, 6 * unit); }
+    context.restore();
+    context.save();
+    context.globalAlpha = line.alpha;
+    text(context, line.feed, x, y - 16 * unit, { size: 13 * unit, weight: 800, spacing: 3 * unit, color: '#9fd8b8', shadow: false });
+    context.fillStyle = Math.floor(time * 2) % 2 ? COLOR.danger : '#7c3330';
+    context.beginPath(); context.arc(x + w - 10 * unit, y - 21 * unit, 4 * unit, 0, Math.PI * 2); context.fill();
     context.restore();
   }
 

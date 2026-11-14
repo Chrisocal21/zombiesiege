@@ -9,7 +9,7 @@ import { CREW, HOSPITAL, SCIENTIST, SCIENTIST_HERE } from '../levels/voices';
 // game state, so they need nothing of their own to save. A level's own cues are in its level file;
 // the prologue's are here.
 
-export interface RadioLine { speaker: string; text: string; alpha: number; scientist: boolean }
+export interface RadioLine { speaker: string; text: string; alpha: number; scientist: boolean; feed?: string }
 
 // By floor index: the prologue is -5 to -1.
 const CUES: Record<number, Cue[]> = {
@@ -67,7 +67,7 @@ export function radioLine(state: GameState): RadioLine | null {
     const length = cue.seconds ?? SHOWN;
     if (age < 0 || age >= length || age >= newest) continue;
     newest = age;
-    line = { speaker: cue.speaker, text: cue.text, alpha: Math.min(1, age / FADE, (length - age) / FADE), scientist: cue.speaker === SCIENTIST || cue.speaker === SCIENTIST_HERE };
+    line = { speaker: cue.speaker, text: cue.text, alpha: Math.min(1, age / FADE, (length - age) / FADE), scientist: cue.speaker === SCIENTIST || cue.speaker === SCIENTIST_HERE, feed: cue.feed };
   }
   return line;
 }

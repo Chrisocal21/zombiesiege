@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
+import { CREW, SCIENTIST } from './voices';
 import { DOOR_HEIGHT, doorway, entry, furniture, partition, shell, stationBoxes, type WardStyle } from './wardKit';
 
 // Act 2, fifth floor down: the ground lobby. A wide marble hall with a reception desk, columns and
@@ -86,6 +87,13 @@ export const lobby1: Level = {
     roomName: 'Security booth',
     seconds: 50,
   },
+  // The street doors are barricaded, and the last wave comes at them led by a brute.
+  leads: 'brute',
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'The lobby. Street doors are barricaded, and something heavy is leaning on them.' },
+    { on: 'start', at: 8, speaker: SCIENTIST, text: 'Those doors will not hold forever. Get the service controls running and keep the booth.', seconds: 6 },
+    { on: 'done', at: 0.6, speaker: CREW, text: 'Lift is awake. Garage is the way down.' },
+  ],
   navBounds: { minX: -23, maxX: 23, minZ: -17, maxZ: 17 },
   ramp: null,
   barricadeBars: [

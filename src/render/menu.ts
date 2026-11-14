@@ -19,7 +19,7 @@ const ACTS = [
   { kicker: 'OPERATION 004', name: 'DAYBREAK', blurb: 'Out into the open: block by block to the park.', floors: Array.from({ length: LAST_FLOOR - LAST_VAULT }, (_, k) => LAST_VAULT + 1 + k) },
 ];
 
-export type Screen = 'title' | 'main' | 'pause' | 'controls' | 'settings' | 'admin' | 'character' | 'victory' | 'floors';
+export type Screen = 'title' | 'main' | 'pause' | 'controls' | 'settings' | 'admin' | 'character' | 'victory' | 'floors' | 'log';
 
 // What the victory screen reports about the run that just ended.
 export interface RunStats {
@@ -230,6 +230,8 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
   let focusedItem = 0;
   // Which act's floors the level select page shows.
   let floorAct = 0;
+  // The note chosen on the run log screen.
+  let logScroll = 0;
   let itemCount = 3;
   let keyboardMode = false;
   let activate = false;
@@ -461,7 +463,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         sound('select');
         callbacks.play();
       }
-      if (event.code === 'Escape' && (current === 'controls' || current === 'settings' || current === 'character' || current === 'floors')) back();
+      if (event.code === 'Escape' && (current === 'controls' || current === 'settings' || current === 'character' || current === 'floors' || current === 'log')) back();
     },
     true,
   );
@@ -716,7 +718,9 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
             { label: 'QUIT TO TITLE', detail: 'Leave this run. Progress is lost.', action: () => callbacks.toTitle() },
           ];
-          if (config.testing.adminMenu) entries.splice(4, 0, { label: 'ADMIN MENU', detail: 'Testing: change points or spawn weapons and ammo.', action: openAdmin });
+          const found = callbacks.gameState().log.length;
+          if (found > 0) entries.splice(2, 0, { label: 'RUN LOG', detail: `${found} ${found === 1 ? 'note' : 'notes'} found so far.`, action: () => { logScroll = 0; current = 'log'; } });
+          if (config.testing.adminMenu) entries.splice(entries.length - 1, 0, { label: 'ADMIN MENU', detail: 'Testing: change points or spawn weapons and ammo.', action: openAdmin });
           list(entries, left, height * 0.42, 0.05);
           const prompts: [string, string][] = [['↑ ↓', 'NAVIGATE'], ['ENTER', 'SELECT']];
           if (!bindings.pause.startsWith('Mouse')) prompts.push([keyLabel(bindings.pause), 'RESUME']);
@@ -759,7 +763,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         context.fillStyle = COLOR.accent;
         context.fillRect(px, py, panelWidth, 3 * unit);
         text(context, (parent === 'main' ? 'MAIN MENU' : 'PAUSED') + '  /', px + 44 * unit, py + 40 * unit, { size: 13 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint, shadow: false });
-        text(context, current === 'controls' ? 'CONTROLS' : current === 'floors' ? 'LEVEL SELECT' : current === 'character' ? 'YOUR SURVIVOR' : current === 'admin' ? 'ADMIN MENU' : 'SETTINGS', px + 44 * unit, py + 86 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
+        text(context, current === 'controls' ? 'CONTROLS' : current === 'floors' ? 'LEVEL SELECT' : current === 'character' ? 'YOUR SURVIVOR' : current === 'admin' ? 'ADMIN MENU' : current === 'log' ? 'RUN LOG' : 'SETTINGS', px + 44 * unit, py + 86 * unit, { size: 40 * unit, weight: 800, spacing: 6 * unit });
 
         const buttonHeight = 54 * unit;
         const buttonY = py + panelHeight - buttonHeight - 30 * unit;
@@ -966,6 +970,36 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           text(context, selectedOutfit().description + '.', px + 44 * unit, py + 541 * unit, { size: 16 * unit, color: COLOR.dim });
           text(context, 'Left and right change camouflage, up and down change gloves. Enter to deploy.', px + 44 * unit, buttonY - 40 * unit, { size: 20 * unit, color: COLOR.dim });
           if (button('DEPLOY', px + 44 * unit, buttonY, 370 * unit, buttonHeight, true)) callbacks.play();
+        } else if (current === 'log') {
+          // The notes found so far: a list down the left, the chosen one open on the right.
+          const log = callbacks.gameState().log;
+          const x0 = px + 44 * unit, listW = 330 * unit, top = py + 130 * unit;
+          logScroll = Math.max(0, Math.min(log.length - 1, logScroll));
+          log.forEach((entry, i) => {
+            const ty = top + i * 62 * unit, on = i === logScroll;
+            const hover = inside(x0, ty, listW, 54 * unit);
+            if (hover) hovering = true;
+            roundedRect(context, x0, ty, listW, 54 * unit, 4 * unit);
+            context.fillStyle = on ? 'rgba(232,184,102,0.16)' : hover ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)';
+            context.fill();
+            text(context, entry.title.toUpperCase(), x0 + 16 * unit, ty + 33 * unit, { size: 15 * unit, weight: 800, spacing: 2 * unit, color: on ? COLOR.accent : COLOR.text, shadow: false });
+            if (hover && mouse.clicked) { logScroll = i; sound('move'); }
+          });
+          const entry = log[logScroll];
+          if (entry) {
+            const cx = x0 + listW + 40 * unit, cw = panelWidth - 88 * unit - listW - 40 * unit;
+            text(context, entry.title.toUpperCase(), cx, top + 24 * unit, { size: 22 * unit, weight: 800, spacing: 4 * unit, color: COLOR.accent, shadow: false });
+            let ty = top + 70 * unit;
+            for (const line of entry.lines) {
+              let row = '';
+              for (const word of (line || ' ').split(' ')) {
+                const next = row ? `${row} ${word}` : word;
+                if (row && measure(context, next, 20 * unit, 500, 0.2 * unit) > cw) { text(context, row, cx, ty, { size: 20 * unit, weight: 500, spacing: 0.2 * unit, shadow: false }); ty += 30 * unit; row = word; } else row = next;
+              }
+              text(context, row, cx, ty, { size: 20 * unit, weight: 500, spacing: 0.2 * unit, shadow: false });
+              ty += 30 * unit;
+            }
+          }
         } else if (current === 'controls') {
           const columnWidth = (panelWidth - 132 * unit) / 2;
           const rowHeight = 34 * unit;

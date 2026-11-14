@@ -99,7 +99,7 @@ export function clearedDetail(state: GameState): string {
   const objective = state.level.objective;
   if (state.objective.done || !objective) return `${onFoot(state.floor) ? 'The gate is' : 'The elevator is'} opening`;
   switch (objective.kind) {
-    case 'keycard': return 'Find the keycard to wake the elevator';
+    case 'keycard': return `Find the ${objective.label.toLowerCase()} to wake the elevator`;
     case 'breakers': return `Throw the ${objective.label.toLowerCase()} to power ${exit(state)}`;
     case 'charge': return `Start the charger in ${objective.roomName.toLowerCase()}`;
     case 'carry': return `Bring the ${objective.label.toLowerCase()}s to ${exit(state)}`;

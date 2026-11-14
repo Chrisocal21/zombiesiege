@@ -273,3 +273,42 @@ Each phase ends with a stop for you to compact, as usual.
 - **Wave size this deep is very large.** `waveSize` grows 40% per floor index, so the vault's wave 5 is about 89 zombies, and the deep Act 3–4 floors are similar. It needs a balance pass, best done with Phase 5.
 - **Patient O doesn't break the pillars** (the plan's "breaks cover"). Destructible cover is a later job.
 - **No two-browser co-op run yet.** It's planned for Phase 5.
+
+---
+
+## 9. Phase 4a: what was built (Act 2)
+
+**New engine piece, E5 clues:** `Level.notes` (`Note`: position, what it is, title, lines, optional `wall` normal).
+
+- Press use beside one (1.6 m, `src/game/notes.ts`) and a paper card goes up for 9 s, for that player only. It goes away early if they walk off.
+- The first read of each puts it in `state.log`, which the pause menu shows as **RUN LOG** (a title list and the chosen note's text).
+- Drawn as a sheet of paper on the desk or wall with a faint warm glow until it's read (`src/render/notes.ts`).
+- `state.read`, `state.log` and `state.card` are all plain data, so co-op syncs them.
+
+**Other new pieces:**
+
+- `Cue.feed`: a security monitor appears in the corner while that line shows (floor 20's glimpse).
+- `Level.leads`: who leads the last wave of a siege floor (the lobby's brute).
+- A keycard step's marker and brief now use its label (so it can be a "transfer file").
+
+**Floors, as built:**
+
+| Floor | Flow | What changed |
+|---|---|---|
+| Tower roof | Siege, as before | Radio: the crew, then the scientist's first call, then his line to go down quietly |
+| 41 | Sweep, 13 residents, `first: 6` | Notice note, radio lines |
+| 34 | Sweep, 11 residents | Steps: transfer file, then the generator hold (this brings the dead). Transfer order note |
+| 27 | Sweep, 13 residents | Board memo note, "say it again" radio beat where the scientist goes quiet |
+| 20 | Siege, as before | Camera glimpse on the breakers' `done` cue |
+| Lobby | Siege, brute leads the last wave | Radio lines |
+| Garage | Siege | Steps: breakers, then a car battery (a carry step) to the tunnel lift |
+
+**Residents are kept well away from where the crew arrives.** They notice by line of sight, up to 9 m, and 13 m with the flashlight on (the dark floors), so each sweep floor's nearest sleeper is at least that far from the spawn or behind a wall.
+
+**Checks:** `tools/check-act2.mjs` (new). `check-descent.mjs` now expects floor 41 to be a sweep and raises the alarm with a shot. `check-coop-server` fails the same way on the commit before this phase (walking doesn't move a player there), so it isn't from this work.
+
+**Open:**
+
+- The car battery is drawn as the steel case. A proper battery model is a small art job.
+- The lock prices on the sweep floors (250, 500) rely on points from the sleepers and from earlier floors. It needs play-testing.
+- Floor 20's monitor is a drawn overlay in the corner, not a screen in the room.

@@ -159,7 +159,7 @@ export function objectiveMarkers(state: GameState, player: Player): { at: Vec3; 
   }
   switch (objective.kind) {
     case 'keycard':
-      return [{ at: objective.position, label: 'KEYCARD' }];
+      return [{ at: objective.position, label: objective.label.toUpperCase().includes('KEYCARD') ? 'KEYCARD' : objective.label.toUpperCase() }];
     case 'breakers':
       return objective.panels.filter((_, i) => state.objective.thrown[i] < 0).map((panel) => ({ at: panel.position, label: 'BREAKER' }));
     case 'charge':
