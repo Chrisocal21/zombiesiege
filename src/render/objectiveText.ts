@@ -40,6 +40,7 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
     const left = objective.seconds - state.objective.charge;
     if (objective.kind === 'signal') return { title: 'Hold out for the helicopter', detail: 'Lights on. It is on its way', timer: left, total: objective.seconds };
     const inside = state.players.some((each) => each.health > 0 && inArea(each, objective.room));
+    if (objective.stand) return { title: `Hold the ${objective.roomName.toLowerCase()}`, detail: inside ? 'Holding. Stay inside it' : `Paused. Get back to the ${objective.roomName.toLowerCase()}`, timer: left, total: objective.seconds };
     if (onFoot(state.floor)) return { title: `Hold ${objective.roomName.toLowerCase()}`, detail: inside ? 'The van is warming. Cover the survivors' : 'Get back to the forecourt', timer: left, total: objective.seconds };
     return {
       title: `Hold ${objective.roomName.toLowerCase()}`,
@@ -60,13 +61,14 @@ export function objectiveBrief(state: GameState, player: Player): Brief | null {
       // A step before the last says what the breakers are for; the last one powers the way on.
       return { title: `Throw the ${objective.label.toLowerCase()}`, detail: `${objectiveProgress(state) ?? ''}   ·   ${!lastStep(state) ? objective.part : onFoot(state.floor) ? 'The barrier is down' : state.level.exitGate ? 'The gate has no power' : 'The elevator has no power'}` };
     case 'charge':
+      if (objective.stand) return { title: objective.label, detail: objective.stand };
       return onFoot(state.floor)
         ? { title: 'Start the delivery van', detail: 'They will come while it warms up' }
         : { title: `Start the charger in ${objective.roomName.toLowerCase()}`, detail: 'They will come while it charges' };
     case 'carry':
       return player.carrying >= 0
-        ? { title: `Load the ${objective.label.toLowerCase()} at ${exit(state)}`, detail: `${keyLabel(bindings.fire)} puts it down and brings the gun up` }
-        : { title: `Bring the ${objective.label.toLowerCase()}s to ${exit(state)}`, detail: objectiveProgress(state) ?? '' };
+        ? { title: `${objective.to ? 'Take' : 'Load'} the ${objective.label.toLowerCase()} ${objective.to ? 'to' : 'at'} ${objective.to ?? exit(state)}`, detail: `${keyLabel(bindings.fire)} puts it down and brings the gun up` }
+        : { title: `Bring the ${objective.label.toLowerCase()}s to ${objective.to ?? exit(state)}`, detail: objectiveProgress(state) ?? '' };
     case 'signal':
       return objective.style === 'flares'
         ? { title: 'Throw the signal flares', detail: 'The flare box is on the groundskeeper\'s shed' }
@@ -87,9 +89,9 @@ export function objectivePrompt(state: GameState, kind: string): string | null {
   switch (kind) {
     case 'objective': return `Take the ${objective?.label.toLowerCase() ?? 'item'}`;
     case 'breaker': return 'Throw the breaker';
-    case 'device': return objective?.kind === 'signal' ? (objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights') : onFoot(state.floor) ? 'Start the delivery van' : 'Start the charger';
+    case 'device': return objective?.kind === 'charge' && objective.stand ? objective.label : objective?.kind === 'signal' ? (objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights') : onFoot(state.floor) ? 'Start the delivery van' : 'Start the charger';
     case 'case': return `Pick up the ${objective?.label.toLowerCase() ?? 'case'}`;
-    case 'deliver': return `Load the ${objective?.label.toLowerCase() ?? 'case'}`;
+    case 'deliver': return `${objective?.kind === 'carry' && objective.to ? 'Set down' : 'Load'} the ${objective?.label.toLowerCase() ?? 'case'}`;
     default: return null;
   }
 }
@@ -101,8 +103,8 @@ export function clearedDetail(state: GameState): string {
   switch (objective.kind) {
     case 'keycard': return `Find the ${objective.label.toLowerCase()} to wake the elevator`;
     case 'breakers': return `Throw the ${objective.label.toLowerCase()} to power ${exit(state)}`;
-    case 'charge': return `Start the charger in ${objective.roomName.toLowerCase()}`;
-    case 'carry': return `Bring the ${objective.label.toLowerCase()}s to ${exit(state)}`;
+    case 'charge': return objective.stand ? objective.label : `Start the charger in ${objective.roomName.toLowerCase()}`;
+    case 'carry': return `Bring the ${objective.label.toLowerCase()}s to ${objective.to ?? exit(state)}`;
     case 'signal': return objective.style === 'flares' ? 'Throw the signal flares' : 'Switch on the helipad lights';
     case 'contain': return `Drive ${state.level.boss?.name ?? 'it'} back into the vault`;
   }

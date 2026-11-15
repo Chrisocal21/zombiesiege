@@ -87,6 +87,7 @@ export const falseInstructions: Level = {
       kind: 'charge',
       label: 'Send the correction',
       part: 'The true instruction, out',
+      stand: 'Start it at the rack. They will come to the noise',
       device: { position: { x: 18, y: 1.35, z: -6.58 }, normal: { x: 0, z: 1 } },
       room: { minX: 13, maxX: 23, minZ: -6.5, maxZ: 0 },
       roomName: 'Transmitter',

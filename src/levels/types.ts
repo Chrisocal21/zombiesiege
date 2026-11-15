@@ -171,8 +171,11 @@ export interface Area {
 export type Objective =
   | { kind: 'keycard'; label: string; part: string; position: Vec3 }
   | { kind: 'breakers'; label: string; part: string; panels: WallFitting[] }
-  | { kind: 'charge'; label: string; part: string; device: WallFitting; room: Area; roomName: string; seconds: number; screen?: string }
-  | { kind: 'carry'; label: string; part: string; items: Vec3[]; dropoff: Vec3 }
+  // `stand`: the thing held is a place and not a machine. The HUD then says the label as it is written,
+  // with this line under it, and "Hold the <roomName>" while it runs, and never speaks of a charger.
+  | { kind: 'charge'; label: string; part: string; device: WallFitting; room: Area; roomName: string; seconds: number; screen?: string; stand?: string }
+  // `to`: what the HUD calls the drop-off ("the clinic line") when it is not the way on.
+  | { kind: 'carry'; label: string; part: string; items: Vec3[]; dropoff: Vec3; to?: string }
   | { kind: 'signal'; label: string; part: string; device: WallFitting; pad: Vec3; padRadius: number; seconds: number; style?: 'helipad' | 'flares' }
   | { kind: 'contain'; label: string; part: string };
 
@@ -298,6 +301,11 @@ export interface TalkChoice {
   opens?: number;
   // It can only be said once another answer has been given: which talk on the floor, and which answer.
   after?: { talk: number; choice: number };
+  // It can only be said if the crew did something earlier in the run: any one of these titles is in the
+  // run's log (an answer given on an earlier floor is logged as "who: label").
+  remembered?: string[];
+  // Seconds taken off the held stand the floor is on now: the other side sends people to the line.
+  shorten?: number;
   // Only a question: the talk stays open for another answer later.
   stay?: boolean;
 }

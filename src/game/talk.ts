@@ -28,7 +28,13 @@ function open(state: GameState, index: number): boolean {
 
 // Whether an answer can be said yet: one that rests on something learned elsewhere waits for that.
 export function sayable(state: GameState, choice: TalkChoice): boolean {
+  if (choice.remembered && !owed(state, choice)) return false;
   return !choice.after || (state.talks[choice.after.talk]?.chosen.includes(choice.after.choice) ?? false);
+}
+
+// Whether the crew did, earlier in the run, what an answer rests on.
+export function owed(state: GameState, choice: TalkChoice): boolean {
+  return !choice.remembered || choice.remembered.some((title) => state.log.some((entry) => entry.title === title));
 }
 
 // The nearest talk this player can open, or -1.
@@ -84,6 +90,11 @@ export function chooseTalk(state: GameState, player: Player, key: WeaponId): boo
     const lock = state.level.locks[choice.opens];
     state.locks[choice.opens] = { open: true, openedTick: state.tick };
     state.level.boxes = state.level.boxes.filter((box) => !(box.surface === 'lock' && box.position.x === lock.position.x && box.position.z === lock.position.z));
+  }
+  if (choice.shorten) {
+    // The game's own copy of the objective is replaced, never the level's, so the stand is shorter this once.
+    const objective = state.level.objective;
+    if (objective?.kind === 'charge') state.level = { ...state.level, objective: { ...objective, seconds: Math.max(10, objective.seconds - choice.shorten) } };
   }
   if (choice.alarm) {
     const flow = flowOf(state.level);

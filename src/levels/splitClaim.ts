@@ -79,7 +79,8 @@ export const splitClaim: Level = {
     {
       kind: 'charge',
       label: 'Settle the claim',
-      part: 'Stand on the load, or talk to both posts',
+      part: 'The claim, settled',
+      stand: 'Stand on the load, or talk to both posts',
       device: { position: { x: 0, y: 1.35, z: -3.98 }, normal: { x: 0, z: 1 } },
       room: { minX: -5, maxX: 5, minZ: -4, maxZ: 3 },
       roomName: 'Depot',

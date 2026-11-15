@@ -214,6 +214,7 @@ export const config = {
     faultLines: [
       { number: 0, name: 'Split Claim', waves: 3 },
       { number: 0, name: 'Doors Shut', waves: 3 },
+      { number: 0, name: 'Shared Wall', waves: 3 },
     ],
     // Act 10, the old town.
     ghostSignal: [

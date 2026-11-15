@@ -5,7 +5,7 @@ import { config } from '../config';
 import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
 import { ITEMS, type SupplyKind } from '../game/items';
 import { CARD_SECONDS, cardFor } from '../game/notes';
-import { CHOOSE_SECONDS, REPLY_SECONDS, sayable } from '../game/talk';
+import { CHOOSE_SECONDS, REPLY_SECONDS, owed, sayable } from '../game/talk';
 import { bleedLeft, canGetUp, isDown, reviveProgress, reviveTarget, revivedBy } from '../game/downed';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
@@ -1250,7 +1250,7 @@ export function createHud(menu: Menu): Hud {
         context.globalAlpha = Math.max(0, alpha) * (used ? 0.35 : 1);
         const keyW = keycap(context, keyLabel(keys[i]), x + 40 * unit, cy, 26 * unit);
         text(context, choice.label, x + 54 * unit + keyW, cy, { size: 19 * unit, weight: 700, color: used ? COLOR.dim : COLOR.text, spacing: 0.3 * unit });
-        if (locked) text(context, 'ASK THE OTHER POST', x + w - 30 * unit, cy, { size: 12 * unit, weight: 800, align: 'right', spacing: 3 * unit, color: COLOR.faint });
+        if (locked) text(context, owed(state, choice) ? 'ASK THE OTHER POST' : 'THEY OWE YOU NOTHING', x + w - 30 * unit, cy, { size: 12 * unit, weight: 800, align: 'right', spacing: 3 * unit, color: COLOR.faint });
         else if (choice.cost) text(context, `${choice.cost} PTS`, x + w - 30 * unit, cy, { size: 15 * unit, weight: 800, align: 'right', spacing: 2 * unit, color: short ? (refused ? '#ffffff' : COLOR.danger) : COLOR.accent });
       });
     }
