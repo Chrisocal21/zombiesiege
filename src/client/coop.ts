@@ -1,5 +1,6 @@
 import type { InputMessage } from '../game/inputs';
 import { createGameState, type GameState } from '../game/state';
+import { level0 } from '../levels/level0';
 import type { Level } from '../levels/types';
 import type { ServerMessage } from '../net/protocol';
 
@@ -55,7 +56,8 @@ export function joinRoom(room: string): Coop {
       // A server deployed from older code sends states without the newest fields. Whatever is missing
       // is filled from a fresh game, so the page keeps running (and the host sees the menu) until the
       // server is redeployed.
-      defaults ??= createGameState(level);
+      // From the garage, which has street spawns: a fresh game on a level without them cannot be made.
+      defaults ??= createGameState(level0);
       before = latest;
       latest = { state: { ...defaults, ...message.state, level }, arrived: performance.now() };
       unapplied = unapplied.filter((each) => each.seq > message.ack);
