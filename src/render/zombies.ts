@@ -255,7 +255,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
   function garment(top: NonNullable<Look['top']>, id: number): THREE.Object3D {
     const group = new THREE.Group();
     const rows = 9, columns = 22;
-    const arc = Math.PI * 2 * (0.78 + 0.08 * ((id * 0.37) % 1));
+    const arc = Math.PI * 2 * (0.9 + 0.07 * ((id * 0.37) % 1));
     const start = (id % 2 ? 1 : -1) * 0.6 + Math.PI * (id % 2 ? 0.1 : -0.1);
     // Wide enough to wrap the body it hangs on, not stand off it as a sheet front and back.
     const geometry = new THREE.CylinderGeometry(0.19, top.coat ? 0.24 : 0.2, top.length, columns, rows, true, start, arc);
@@ -307,7 +307,9 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
       add(new THREE.CylinderGeometry(0.125, 0.14, 0.07, 18), '#1f2a46', 0.2);
       add(new THREE.CylinderGeometry(0.15, 0.15, 0.012, 18), '#111827', 0.17, 0.05);
     } else if (kind === 'scrubs') {
-      add(new THREE.SphereGeometry(0.128, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), id % 2 ? '#4fa89a' : '#7fc6b0', 0.1);
+      // A cloth cap that hugs the skull and comes down over the back of the head, not a bowl on top.
+      const cap = add(new THREE.SphereGeometry(0.135, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), id % 2 ? '#4fa89a' : '#7fc6b0', 0.11, 0.012);
+      cap.scale.set(1, 0.95, 1.08);
     } else {
       add(new THREE.CylinderGeometry(0.12, 0.13, 0.06, 18), '#2a3350', 0.2);
     }
