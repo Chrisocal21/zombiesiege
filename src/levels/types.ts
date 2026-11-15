@@ -296,6 +296,8 @@ export interface TalkChoice {
   alarm?: boolean;
   // A lock on the floor (by its place in Level.locks) is opened.
   opens?: number;
+  // It can only be said once another answer has been given: which talk on the floor, and which answer.
+  after?: { talk: number; choice: number };
   // Only a question: the talk stays open for another answer later.
   stay?: boolean;
 }

@@ -19,7 +19,7 @@ const { LAST_BLACKWATER, actOf } = await import('../src/game/tower.ts');
 const HZ = 120;
 const run = (s, seconds) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_BLACKWATER + 1);
+startOnFloor(s, LAST_BLACKWATER + 2);
 assert.equal(s.level.name, 'Doors Shut');
 assert.equal(actOf(s.floor), 9);
 assert.equal(flowOf(s.level).kind, 'sweep');

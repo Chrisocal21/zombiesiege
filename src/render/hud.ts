@@ -5,7 +5,7 @@ import { config } from '../config';
 import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
 import { ITEMS, type SupplyKind } from '../game/items';
 import { CARD_SECONDS, cardFor } from '../game/notes';
-import { CHOOSE_SECONDS, REPLY_SECONDS } from '../game/talk';
+import { CHOOSE_SECONDS, REPLY_SECONDS, sayable } from '../game/talk';
 import { bleedLeft, canGetUp, isDown, reviveProgress, reviveTarget, revivedBy } from '../game/downed';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
@@ -1244,12 +1244,14 @@ export function createHud(menu: Menu): Hud {
       const keys = [bindings.weapon1, bindings.weapon2, bindings.weapon3];
       talk.choices.forEach((choice, i) => {
         const cy = y + 84 * unit + said.length * lineGap + 22 * unit + i * rowGap;
-        const used = state.talks[current.index].chosen.includes(i);
+        const locked = !sayable(state, choice);
+        const used = locked || state.talks[current.index].chosen.includes(i);
         const short = (choice.cost ?? 0) > points;
         context.globalAlpha = Math.max(0, alpha) * (used ? 0.35 : 1);
         const keyW = keycap(context, keyLabel(keys[i]), x + 40 * unit, cy, 26 * unit);
         text(context, choice.label, x + 54 * unit + keyW, cy, { size: 19 * unit, weight: 700, color: used ? COLOR.dim : COLOR.text, spacing: 0.3 * unit });
-        if (choice.cost) text(context, `${choice.cost} PTS`, x + w - 30 * unit, cy, { size: 15 * unit, weight: 800, align: 'right', spacing: 2 * unit, color: short ? (refused ? '#ffffff' : COLOR.danger) : COLOR.accent });
+        if (locked) text(context, 'ASK THE OTHER POST', x + w - 30 * unit, cy, { size: 12 * unit, weight: 800, align: 'right', spacing: 3 * unit, color: COLOR.faint });
+        else if (choice.cost) text(context, `${choice.cost} PTS`, x + w - 30 * unit, cy, { size: 15 * unit, weight: 800, align: 'right', spacing: 2 * unit, color: short ? (refused ? '#ffffff' : COLOR.danger) : COLOR.accent });
       });
     }
     context.restore();

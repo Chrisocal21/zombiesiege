@@ -869,28 +869,42 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           const x0 = px + 44 * unit;
           const inner = panelWidth - 88 * unit;
           const actColor = ['#d98a6a', '#e8b866', '#7db4e6', '#80d0b0', '#ff9a52'];
-          // One tab for each act.
+          // One tab for each act. The chosen act's tab is wide and carries its name; the rest are narrow
+          // and carry only their number, so thirteen fit on one row. Pointing at one names it below.
+          const tabGap = 8 * unit, tabH = 64 * unit, tabY = py + 118 * unit;
+          const openW = Math.min(inner * 0.4, Math.max(230 * unit, measure(context, ACTS[floorAct].name, 24 * unit, 800, 2 * unit) + 40 * unit));
+          const shutW = Math.min(96 * unit, (inner - openW - tabGap * (ACTS.length - 1)) / (ACTS.length - 1));
+          let pointed = -1;
+          let tabX = x0;
           ACTS.forEach((act, i) => {
-            const tabW = Math.min(360 * unit, (inner - 14 * unit * (ACTS.length - 1)) / ACTS.length), tabH = 64 * unit;
-            const tx = x0 + i * (tabW + 14 * unit), ty = py + 118 * unit;
             const on = i === floorAct;
+            const tabW = on ? openW : shutW;
+            const tx = tabX, ty = tabY;
+            tabX += tabW + tabGap;
+            const tint = actColor[i % actColor.length];
             const hover = inside(tx, ty, tabW, tabH);
-            if (hover) hovering = true;
+            if (hover) { hovering = true; if (!on) pointed = i; }
             roundedRect(context, tx, ty, tabW, tabH, 4 * unit);
             context.fillStyle = on ? 'rgba(255,255,255,0.1)' : hover ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)';
             context.fill();
-            context.strokeStyle = on ? actColor[i] : COLOR.border;
+            context.strokeStyle = on ? tint : COLOR.border;
             context.lineWidth = on ? 2 : 1;
             context.stroke();
-            if (on) { context.fillStyle = actColor[i]; context.fillRect(tx, ty + tabH - 4 * unit, tabW, 4 * unit); }
-            text(context, act.kicker, tx + 18 * unit, ty + 24 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: on ? actColor[i] : COLOR.dim, shadow: false });
-            text(context, act.name, tx + 18 * unit, ty + 50 * unit, { size: 24 * unit, weight: 800, spacing: 2 * unit, color: on ? COLOR.text : COLOR.dim, shadow: false });
+            if (on) {
+              context.fillStyle = tint;
+              context.fillRect(tx, ty + tabH - 4 * unit, tabW, 4 * unit);
+              text(context, act.kicker, tx + 18 * unit, ty + 24 * unit, { size: 12 * unit, weight: 700, spacing: 3 * unit, color: tint, shadow: false });
+              text(context, act.name, tx + 18 * unit, ty + 50 * unit, { size: 24 * unit, weight: 800, spacing: 2 * unit, color: COLOR.text, shadow: false });
+            } else {
+              text(context, i === 0 ? 'PRO' : 'OP', tx + tabW / 2, ty + 22 * unit, { size: 10 * unit, weight: 700, spacing: 3 * unit, color: COLOR.faint, align: 'center', shadow: false });
+              text(context, i === 0 ? '00' : String(i).padStart(2, '0'), tx + tabW / 2, ty + 48 * unit, { size: 22 * unit, weight: 800, spacing: 1 * unit, color: hover ? tint : COLOR.dim, align: 'center', shadow: false });
+            }
             if (hover && mouse.clicked && !on) { floorAct = i; sound('move'); }
           });
           const act = ACTS[floorAct];
-          const accent = actColor[floorAct];
+          const accent = actColor[floorAct % actColor.length];
           const waves = act.floors.reduce((sum, floor) => sum + stopAt(floor).waves, 0);
-          text(context, act.blurb, x0, py + 224 * unit, { size: 20 * unit, weight: 600, color: COLOR.text, shadow: false });
+          text(context, pointed >= 0 ? `${ACTS[pointed].kicker}  /  ${ACTS[pointed].name}` : act.blurb, x0, py + 224 * unit, { size: 20 * unit, weight: 600, color: pointed >= 0 ? COLOR.dim : COLOR.text, shadow: false });
           text(context, `${act.floors.length} FLOORS  ·  ${waves} WAVES`, x0 + inner, py + 224 * unit, { size: 15 * unit, weight: 800, spacing: 3 * unit, color: accent, align: 'right', shadow: false });
           // The floors as big cards, in the order they are played.
           const cols = act.floors.length > 6 ? 4 : act.floors.length > 4 ? 3 : 2;

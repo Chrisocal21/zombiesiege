@@ -2,6 +2,7 @@ import { config } from '../config';
 import { completeStep } from './objectives';
 import { flowOf, type GameState, type Player } from './state';
 import type { WeaponId } from './weapons';
+import type { TalkChoice } from '../levels/types';
 
 // Someone to talk to on a floor (Level.talks): a voice on a radio or an intercom, with a few things to
 // say back. Each answer can cost points and can change the floor: pay for the job to be done from the
@@ -23,6 +24,11 @@ function open(state: GameState, index: number): boolean {
   if (!talk || state.talks[index]?.done) return false;
   if (talk.step !== undefined && (state.objective.step !== talk.step || state.objective.done)) return false;
   return true;
+}
+
+// Whether an answer can be said yet: one that rests on something learned elsewhere waits for that.
+export function sayable(state: GameState, choice: TalkChoice): boolean {
+  return !choice.after || (state.talks[choice.after.talk]?.chosen.includes(choice.after.choice) ?? false);
 }
 
 // The nearest talk this player can open, or -1.
@@ -68,6 +74,7 @@ export function chooseTalk(state: GameState, player: Player, key: WeaponId): boo
   if (!talk || number < 0) return false;
   const choice = talk.choices[number];
   if (!choice || state.talks[current.index].chosen.includes(number)) return true;
+  if (!sayable(state, choice)) return true;
   const cost = choice.cost ?? 0;
   if ((state.points[player.id] ?? 0) < cost) { current.poorTick = state.tick; return true; }
 
