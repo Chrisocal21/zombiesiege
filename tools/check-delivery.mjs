@@ -10,12 +10,12 @@ const { level0 } = await import('../src/levels/level0.ts');
 const { startOnFloor } = await import('../src/game/waves.ts');
 const { step } = await import('../src/game/update.ts');
 const { idleInput } = await import('../src/game/inputs.ts');
-const { LAST_FLOOR, actOf } = await import('../src/game/tower.ts');
+const { LAST_REFUGE, actOf } = await import('../src/game/tower.ts');
 
 const HZ = 120;
 const run = (s, seconds) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_FLOOR - 2);
+startOnFloor(s, LAST_REFUGE - 1);
 assert.equal(s.level.name, 'The Missing Delivery');
 assert.equal(actOf(s.floor), 5);
 assert.equal(flowOf(s.level).kind, 'sweep');

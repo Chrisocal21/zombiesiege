@@ -200,6 +200,10 @@ export const config = {
     roads: [
       { number: 0, name: 'Running on Empty', waves: 3 },
     ],
+    // Act 7, the silence on the air.
+    deadAir: [
+      { number: 0, name: 'High Ground', waves: 3 },
+    ],
     refuge: [
       { number: 0, name: 'Inventory of the Living', waves: 1 },
       { number: 0, name: 'The Missing Delivery', waves: 3 },

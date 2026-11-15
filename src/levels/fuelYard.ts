@@ -40,6 +40,7 @@ const lights: LevelLight[] = [flood(-18, -6), flood(-10, 6, true), flood(0, -6),
 export const fuelYard: Level = {
   name: 'Running on Empty',
   theme: 'street',
+  exitGate: true,
   scenery: { north: 'trees', south: 'trees', east: 'trees', west: 'trees', skyline: false },
   atmosphere: { fog: '#3a3d44', fogNear: 16, fogFar: 78, ambient: 1.4, sky: { horizon: '#9a7a62', zenith: '#202a48', stars: 0.25 } },
   boxes: [

@@ -11,12 +11,12 @@ const { startOnFloor } = await import('../src/game/waves.ts');
 const { step } = await import('../src/game/update.ts');
 const { idleInput } = await import('../src/game/inputs.ts');
 const { useObjective } = await import('../src/game/objectives.ts');
-const { LAST_FLOOR, actOf } = await import('../src/game/tower.ts');
+const { LAST_REFUGE, actOf } = await import('../src/game/tower.ts');
 
 const HZ = 120;
 const run = (s, seconds, at) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) { p.health = 100; if (at) Object.assign(p, at); } step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_FLOOR);
+startOnFloor(s, LAST_REFUGE + 1);
 assert.equal(s.level.name, 'Running on Empty');
 assert.equal(actOf(s.floor), 6);
 assert.equal(flowOf(s.level).kind, 'sweep');

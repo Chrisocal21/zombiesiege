@@ -230,6 +230,10 @@ Not built yet in this act: a real fence breach in the siege, assigning defenders
 
 Running on Empty (06-B, built, draft): the camp has three days of generator fuel and nothing to move a vehicle. The fuel yard on the road out of the valley still has a tanker delivered the night before the roads closed, eleven thousand litres. The crew throws the two power cabinets, hooks up the tanker and holds the bay while it fills. The pumps are loud and call the dead. The message at the end: the camp has fuel, the road east is open. The driving missions (06-A Bay E05 with the scientist's El Cajon car, 06-C Broken Convoy) need a vehicle controller and are not built.
 
+### Act 7: Dead Air (draft, first slice built)
+
+High Ground (07-B, built, draft): the regional broadcast went quiet at a hilltop relay in a rising storm. The crew enters by the service road or the scramble path up the south slope, throws the generator shed and the battery cabinet, then aligns the dish by hand at the equipment hut while the work lights stay on. The lights they need are the lights the dead can see. The engineer's log says the north feed was cut deliberately, which was not the dead. At the end the region is back on the air, other relays answer, and the pilot is out there. Not built: 07-A The Silence (stealth and the evidence journal) and 07-C False Instructions (a dialogue and broadcast choice).
+
 ### After Act 6
 
 Not written yet. See **Places** for what's next.

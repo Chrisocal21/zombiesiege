@@ -12,15 +12,14 @@ const { startOnFloor } = await import('../src/game/waves.ts');
 const { step } = await import('../src/game/update.ts');
 const { idleInput } = await import('../src/game/inputs.ts');
 const { useObjective } = await import('../src/game/objectives.ts');
-const { LAST_FLOOR, actOf, wavesOnFloor } = await import('../src/game/tower.ts');
+const { LAST_REFUGE, actOf, wavesOnFloor } = await import('../src/game/tower.ts');
 
 const HZ = 120;
 const tick = (s) => step(s, [idleInput(0)], 1 / HZ);
 const run = (s, seconds, until) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; tick(s); if (until?.()) return true; } return false; };
 
 const s = createGameState(level0);
-startOnFloor(s, LAST_FLOOR - 1);
-assert.equal(LAST_FLOOR, 24);
+startOnFloor(s, LAST_REFUGE);
 assert.equal(s.level.name, 'Last Refuge');
 assert.equal(actOf(s.floor), 5);
 assert.equal(flowOf(s.level).kind, 'siege');
@@ -49,6 +48,6 @@ run(s, 3);
 assert.equal(s.waves.phase, 'lift', 'the lift opens');
 const e = s.level.elevator;
 Object.assign(p, { x: e.position.x - e.normal.x * 1.7, z: e.position.z - e.normal.z * 1.7 });
-run(s, 8, () => s.floor === LAST_FLOOR);
-assert.equal(s.floor, LAST_FLOOR, 'the gate carries the crew on to the fuel yard');
+run(s, 8, () => s.floor === LAST_REFUGE + 1);
+assert.equal(s.floor, LAST_REFUGE + 1, 'the gate carries the crew on to the fuel yard');
 console.log('ok', s.level.name);
