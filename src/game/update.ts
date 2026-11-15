@@ -5,6 +5,7 @@ import { regenFactor, startItem, thirst, updateItem } from './items';
 import { raycastBoxes } from './hitscan';
 import type { InputMessage } from './inputs';
 import { moveBody } from './movement';
+import { floodHeight } from './flood';
 import { dropCase } from './objectives';
 import { startRevive, updateDowned } from './downed';
 import { eyeY, type GameState, type Player, type Zombie } from './state';
@@ -45,7 +46,7 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     // You can't look down the sights mid-reload, while hanging off a ladder or a ledge, or with
     // both hands round a case.
     player.aiming = input.aim && !isMelee(player.weapon) && player.meleeLeft === 0 && player.reloadLeft === 0 && player.itemLeft === 0 && !player.ladder && !player.mantle && player.carrying < 0;
-    moveBody(player, input, dt, level);
+    moveBody(player, input, dt, level, floodHeight(state));
     player.cameraStyle = input.cameraStyle === 'bodycam' ? 'bodycam' : 'standard';
     const targetDrop = player.cameraStyle === 'bodycam' && !player.aiming && !player.ladder && !player.mantle
       ? config.view.bodycamDrop * (1 - player.crouch * 0.45) : 0;
@@ -83,7 +84,7 @@ function crawl(state: GameState, player: Player, input: InputMessage, dt: number
   moveBody(player, {
     ...input, moveForward: input.moveForward * slow, moveRight: input.moveRight * slow,
     crouch: true, sprint: false, jump: false, toggleCover: false,
-  }, dt, level);
+  }, dt, level, floodHeight(state));
   weapon(state, player, { ...input, aim: false, reload: false, swap: false, selectWeapon: undefined, melee: false }, dt, level);
 }
 

@@ -234,6 +234,10 @@ Running on Empty (06-B, built, draft): the camp has three days of generator fuel
 
 High Ground (07-B, built, draft): the regional broadcast went quiet at a hilltop relay in a rising storm. The crew enters by the service road or the scramble path up the south slope, throws the generator shed and the battery cabinet, then aligns the dish by hand at the equipment hut while the work lights stay on. The lights they need are the lights the dead can see: on this hill a flashlight calls the dead in and speeds up the hold, and the dark is safe but blind. The engineer's log says the north feed was cut deliberately, which was not the dead. At the end the region is back on the air, other relays answer, and the pilot is out there. Not built: 07-A The Silence (stealth and the evidence journal) and 07-C False Instructions (a dialogue and broadcast choice).
 
+### Act 8: Blackwater (draft, first slice built)
+
+High Water (08-A, built, draft): after days of rain the river is over the bank at a survivor community's water intake. The flood channel fills in three stages, to a metre and a tenth, slowing anyone wading in it, the dead included. Two catwalks along the walls stay dry. The crew opens both sluice gates from the catwalks and the channel drains, protecting the clean water supply. The intake log mentions delivery manifests for the plant listing a contractor on no register, a lead to the waste transport records. Not built: 08-B and 08-C, hazard (energised) areas, and the pump station.
+
 ### After Act 6
 
 Not written yet. See **Places** for what's next.

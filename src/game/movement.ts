@@ -4,6 +4,7 @@ import { boxTop, ceilingHeight, groundHeight, ledgeAt, resolveCircle } from './c
 import { raycastBoxHit } from './hitscan';
 import type { InputMessage } from './inputs';
 import type { Player } from './state';
+import { wadeFactor } from './flood';
 
 const SIDES = [
   { x: 1, z: 0 },
@@ -25,7 +26,7 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 
 // Everything about where the body is: crouching, cover, ladders, climbing, walking, jumping and
 // falling. Runs once per tick for each player.
-export function moveBody(player: Player, input: InputMessage, dt: number, level: Level): void {
+export function moveBody(player: Player, input: InputMessage, dt: number, level: Level, water = 0): void {
   if (player.mantle) {
     pullUp(player, dt);
     return;
@@ -40,7 +41,7 @@ export function moveBody(player: Player, input: InputMessage, dt: number, level:
   crouch(player, input, dt);
   if (grabLadder(player, input, level)) return;
 
-  walk(player, input, dt, level);
+  walk(player, input, dt, level, water);
   if (input.jump && grabLedge(player, level)) return;
   fall(player, input, dt, level);
 }
@@ -53,7 +54,7 @@ function crouch(player: Player, input: InputMessage, dt: number): void {
   player.crouch += Math.max(-step, Math.min(step, target - player.crouch));
 }
 
-function walk(player: Player, input: InputMessage, dt: number, level: Level): void {
+function walk(player: Player, input: InputMessage, dt: number, level: Level, water = 0): void {
   const { moveSpeed, aimMoveMultiplier, crouchMoveMultiplier, coverMoveMultiplier } = config.player;
   let targetX = 0;
   let targetZ = 0;
@@ -70,6 +71,7 @@ function walk(player: Player, input: InputMessage, dt: number, level: Level): vo
     speed *= 1 - player.crouch * (1 - crouchMoveMultiplier);
     if (player.cover) speed *= coverMoveMultiplier;
     if (player.carrying >= 0) speed *= config.objectives.carryMoveMultiplier;
+    if (water > 0) speed *= wadeFactor(player.y, water);
     targetX = (-sin * forward + cos * right) * speed;
     targetZ = (-cos * forward + -sin * right) * speed;
   }

@@ -39,6 +39,7 @@ const lights: LevelLight[] = [work(-18, -6), work(-6, 5, true), work(14, -4), wo
 export const highGround: Level = {
   name: 'High Ground',
   theme: 'street',
+  exitGate: true,
   // Light gives them away here: the flashlight is the choice between seeing and being seen.
   lightsCall: true,
   scenery: { north: 'trees', south: 'trees', east: 'trees', west: 'trees', skyline: false },

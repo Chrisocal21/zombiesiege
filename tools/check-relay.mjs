@@ -11,12 +11,12 @@ const { startOnFloor } = await import('../src/game/waves.ts');
 const { step } = await import('../src/game/update.ts');
 const { idleInput } = await import('../src/game/inputs.ts');
 const { useObjective } = await import('../src/game/objectives.ts');
-const { LAST_FLOOR, actOf } = await import('../src/game/tower.ts');
+const { LAST_ROADS, actOf } = await import('../src/game/tower.ts');
 
 const HZ = 120;
 const run = (s, seconds, at) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) { p.health = 100; if (at) Object.assign(p, at); } step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_FLOOR);
+startOnFloor(s, LAST_ROADS + 1);
 assert.equal(s.level.name, 'High Ground');
 assert.equal(actOf(s.floor), 7);
 assert.equal(flowOf(s.level).kind, 'sweep');
@@ -37,8 +37,8 @@ s.zombies = [];
 run(s, 58, { x: d.x, z: d.z + 2 });
 assert.ok(s.objective.done, 'the antenna is aligned');
 // The choice: a flashlight calls the dead, the dark does not.
-const quiet = createGameState(level0); startOnFloor(quiet, LAST_FLOOR);
-const lit = createGameState(level0); startOnFloor(lit, LAST_FLOOR);
+const quiet = createGameState(level0); startOnFloor(quiet, LAST_ROADS + 1);
+const lit = createGameState(level0); startOnFloor(lit, LAST_ROADS + 1);
 for (const g of [quiet, lit]) { g.zombies = []; g.players[0].flashlight = g === lit; }
 run(quiet, 60); run(lit, 60);
 assert.ok(lit.zombies.length > quiet.zombies.length, `flashlight on calls more (${lit.zombies.length} against ${quiet.zombies.length})`);

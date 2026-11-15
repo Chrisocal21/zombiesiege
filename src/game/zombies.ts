@@ -7,6 +7,7 @@ import { dropSupply, silenced } from './items';
 import { nextStep, routeOf } from './navigation';
 import { flowOf, type GameState, type Player, type Zombie, type ZombieKind } from './state';
 import { crowdAt, depth } from './tower';
+import { floodHeight, wadeFactor } from './flood';
 import { bossTarget, hurtBoss, retreatPoint } from './story';
 
 const ticks = (seconds: number): number => Math.round(seconds * config.ticksPerSecond);
@@ -330,6 +331,7 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
         * (1 + zombieConfig.speedPerWave * (state.waves.number - 1) + config.elevator.speedPerFloor * floorPace(state.floor));
       if (!aware && !zombie.entry) pace *= zombieConfig.unawareSpeed;
       if (zombie.crawling) pace *= zombieConfig.crawlSpeed;
+      if (state.level.flood) pace *= wadeFactor(0, floodHeight(state));
       if (state.tick < zombie.staggerUntil) pace *= 0.18;
       if (state.tick < zombie.enragedUntil) pace *= zombieConfig.enrageSpeed;
       if (state.tick < zombie.chargeUntil) pace *= zombieConfig.chargeSpeed;

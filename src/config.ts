@@ -204,6 +204,10 @@ export const config = {
     deadAir: [
       { number: 0, name: 'High Ground', waves: 3 },
     ],
+    // Act 8, water and industry.
+    blackwater: [
+      { number: 0, name: 'High Water', waves: 3 },
+    ],
     refuge: [
       { number: 0, name: 'Inventory of the Living', waves: 1 },
       { number: 0, name: 'The Missing Delivery', waves: 3 },

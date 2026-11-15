@@ -5,6 +5,7 @@ import { buildArchitecture } from './architecture';
 import { buildHospital } from './hospital';
 import { buildHospitalParking } from './parking';
 import { buildPark } from './park';
+import { floodHeight } from '../game/flood';
 import { buildRoofDressing } from './roofDressing';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -752,9 +753,31 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const syncNotes = buildNotes(scene, level);
   let lastTime = 0;
 
+  // Floodwater (Level.flood): one dark sheet across the floor, raised by the game's water level. Kept
+  // opaque so it draws the same everywhere; the channel's floor and low objects show as the shape
+  // under its surface only by their tops rising out of it.
+  let floodSheet: THREE.Mesh | null = null;
+  if (level.flood && level.navBounds) {
+    const b = level.navBounds;
+    floodSheet = new THREE.Mesh(
+      new THREE.PlaneGeometry(b.maxX - b.minX, b.maxZ - b.minZ),
+      new THREE.MeshStandardMaterial({ color: 0x2a3a3a, roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.86, depthWrite: false }),
+    );
+    floodSheet.rotation.x = -Math.PI / 2;
+    floodSheet.position.set((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2);
+    floodSheet.visible = false;
+    floodSheet.renderOrder = 2;
+    scene.add(floodSheet);
+  }
+
   return {
     update(time, state) {
       const dt = Math.max(0, Math.min(0.1, time - lastTime));
+      if (floodSheet) {
+        const water = floodHeight(state);
+        floodSheet.visible = water > 0.01;
+        floodSheet.position.y = water;
+      }
       lastTime = time;
       animateDressing(time);
       syncDressing(state);

@@ -360,6 +360,9 @@ export interface Level {
   // A dark floor where a light gives the crew away: while any living player has their flashlight on, one
   // more of the dead is called in every few seconds, and the held stand sends them faster.
   lightsCall?: boolean;
+  // A floor where floodwater rises in authored stages: how deep it stands (metres above the ground) once
+  // `at` seconds have passed since the crew arrived. It slows anyone wading, and drains once the job is done.
+  flood?: { stages: { at: number; height: number }[] };
   cues?: Cue[];
   notes?: Note[];
   rescue?: Rescue;
