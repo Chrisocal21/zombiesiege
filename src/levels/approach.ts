@@ -1,5 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
-import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor } from './streetKit';
+import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, furniture, stationBoxes } from './wardKit';
 
 // Prologue P05, Final Push (Mile 1): the last mile into Northline. Town streets, dark now, shops
@@ -22,7 +22,7 @@ const doors = [
   streetDoor(-14, 10.25, 0, -1), streetDoor(14, 10.25, 0, -1), streetDoor(28, 10.25, 0, -1),
 ];
 
-const elevator: Elevator = { position: { x: 34.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
+const elevator: Elevator = { position: { x: 34.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -30, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } },
@@ -43,7 +43,8 @@ export const approach: Level = {
     ground(-34, 34, 6, 10, '#7d7f80'),
     ...frontage('x', -10.25, -34.5, 34.5, doors, FRONT_HEIGHT, BRICK),
     ...frontage('x', 10.25, -34.5, 34.5, doors, FRONT_HEIGHT, STONE),
-    ...frontage('z', 34.25, -10, 10, [elevator], FRONT_HEIGHT, STONE),
+    ...frontage('z', 34.25, -10, 10, [elevator], FRONT_HEIGHT, STONE, 'building', [elevator]),
+    ...checkpointBoxes(elevator, STONE),
     ...frontage('z', -34.25, -10, 10, [], FRONT_HEIGHT, BRICK),
     ...stationBoxes(stations),
 

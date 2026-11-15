@@ -1,6 +1,6 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
 import { CREW } from './voices';
-import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor } from './streetKit';
+import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, stationBoxes } from './wardKit';
 
 // Act 4, the third block: the failed barricades near the edge of the zone. Two staggered lines of
@@ -24,7 +24,7 @@ const ARMY = '#4a5a3a';
 
 const doors = [streetDoor(-16, -9.25, 0, 1), streetDoor(6, -9.25, 0, 1), streetDoor(-6, 9.25, 0, -1), streetDoor(16, 9.25, 0, -1)];
 
-const elevator: Elevator = { position: { x: 30.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
+const elevator: Elevator = { position: { x: 30.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -24, y: 1.25, z: 8.95 }, normal: { x: 0, z: -1 } },
@@ -50,7 +50,8 @@ export const barricades: Level = {
     ...frontage('x', -9.25, -30.5, 30.5, doors, FRONT_HEIGHT, STONE),
     ...frontage('x', 9.25, -30.5, 30.5, doors, FRONT_HEIGHT, BRICK),
     ...frontage('z', -30.25, -9, 9, [], FRONT_HEIGHT, STONE),
-    ...frontage('z', 30.25, -9, 9, [elevator], FRONT_HEIGHT, BRICK),
+    ...frontage('z', 30.25, -9, 9, [elevator], FRONT_HEIGHT, BRICK, 'building', [elevator]),
+    ...checkpointBoxes(elevator, BRICK),
     ...stationBoxes(stations),
 
     // The first barricade line, torn open in the middle and near the north kerb.

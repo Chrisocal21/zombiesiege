@@ -1,7 +1,7 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
 import { gapsOn, wallLine } from './build';
 import { CREW, SCIENTIST_HERE } from './voices';
-import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor } from './streetKit';
+import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, furniture, stationBoxes } from './wardKit';
 
 // Act 4, the first block: Main Street, out in the open, at first light. The crew steps out at the west
@@ -25,7 +25,7 @@ const BARRIER = '#8a8d90';
 
 const doors = [streetDoor(-12, -10.25, 0, 1), streetDoor(14, -10.25, 0, 1), streetDoor(-4, 10.25, 0, -1), streetDoor(20, 10.25, 0, -1)];
 
-const elevator: Elevator = { position: { x: 28.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
+const elevator: Elevator = { position: { x: 28.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -20, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } },
@@ -68,7 +68,8 @@ export const mainStreet: Level = {
     block(4, 2, 1.2, 2.2, 17, BARRIER),
     ...frontage('x', 10.25, -28.5, 28.5, doors, FRONT_HEIGHT, STONE),
     ...frontage('z', -28.25, -10, 10, [], FRONT_HEIGHT, STONE),
-    ...frontage('z', 28.25, -10, 10, [elevator], FRONT_HEIGHT, BRICK),
+    ...frontage('z', 28.25, -10, 10, [elevator], FRONT_HEIGHT, BRICK, 'building', [elevator]),
+    ...checkpointBoxes(elevator, BRICK),
     ...stationBoxes(stations),
 
     // Parked cars at the kerbs, and a van left across a lane.

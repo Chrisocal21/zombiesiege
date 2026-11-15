@@ -1,5 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
-import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor } from './streetKit';
+import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, stationBoxes } from './wardKit';
 
 // Prologue P03, Failed Evacuation Checkpoint (Mile 5): the army's screening point, where people were
@@ -18,7 +18,7 @@ const TENT = '#58634e';
 
 const doors = [streetDoor(-18, -10.25, 0, 1), streetDoor(2, -10.25, 0, 1), streetDoor(-6, 10.25, 0, -1), streetDoor(16, 10.25, 0, -1)];
 
-const elevator: Elevator = { position: { x: 30.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
+const elevator: Elevator = { position: { x: 30.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -26, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } },
@@ -39,7 +39,8 @@ export const checkpoint: Level = {
     ground(-30, 30, 6, 10, '#8a8d90'),
     ...frontage('x', -10.25, -30.5, 30.5, doors, FRONT_HEIGHT, TENT, 'wall'),
     ...frontage('x', 10.25, -30.5, 30.5, doors, FRONT_HEIGHT, TENT, 'wall'),
-    ...frontage('z', 30.25, -10, 10, [elevator], FRONT_HEIGHT, CONCRETE),
+    ...frontage('z', 30.25, -10, 10, [elevator], FRONT_HEIGHT, CONCRETE, 'building', [elevator]),
+    ...checkpointBoxes(elevator, CONCRETE),
     ...frontage('z', -30.25, -10, 10, [], FRONT_HEIGHT, CONCRETE),
     ...stationBoxes(stations),
 

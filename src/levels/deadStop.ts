@@ -1,5 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
-import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor } from './streetKit';
+import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, furniture, stationBoxes } from './wardKit';
 
 // Prologue P02, Roadside Station (Mile 7): a petrol station on the road, with no fuel left. The crew's alarm
@@ -18,7 +18,7 @@ const HEDGE = '#2c4426';
 
 const doors = [streetDoor(-8, -10.25, 0, 1), streetDoor(10, -10.25, 0, 1), streetDoor(-2, 10.25, 0, -1), streetDoor(18, 10.25, 0, -1)];
 
-const elevator: Elevator = { position: { x: 28.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
+const elevator: Elevator = { position: { x: 28.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -22, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } },
@@ -39,7 +39,8 @@ export const deadStop: Level = {
     ground(-28, 28, 6, 10, '#55603f', 'plain'),
     ...frontage('x', -10.25, -28.5, 28.5, doors, FRONT_HEIGHT, BRICK),
     ...frontage('x', 10.25, -28.5, 28.5, doors, FRONT_HEIGHT, HEDGE, 'wall'),
-    ...frontage('z', 28.25, -10, 10, [elevator], FRONT_HEIGHT, HEDGE, 'wall'),
+    ...frontage('z', 28.25, -10, 10, [elevator], FRONT_HEIGHT, HEDGE, 'wall', [elevator]),
+    ...checkpointBoxes(elevator, HEDGE),
     ...frontage('z', -28.25, -10, 10, [], FRONT_HEIGHT, HEDGE, 'wall'),
     ...stationBoxes(stations),
 

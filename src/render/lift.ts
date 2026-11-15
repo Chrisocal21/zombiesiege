@@ -28,18 +28,114 @@ function displayTexture(gate: boolean): { texture: THREE.CanvasTexture; draw: (l
       context.textAlign = 'center';
       context.fillStyle = '#ffffff';
       context.font = '700 54px Bahnschrift, Arial Narrow, sans-serif';
-      context.fillText(gate ? 'GATE' : 'ELEVATOR', 256, 70);
-      context.fillStyle = open ? '#38e070' : '#ffd24a';
+      context.fillText(gate ? 'CHECKPOINT' : 'ELEVATOR', 256, 70);
+      context.fillStyle = open ? '#38e070' : gate ? '#ff5a4a' : '#ffd24a';
       context.font = '700 46px Bahnschrift, Arial Narrow, sans-serif';
-      context.fillText(gate ? (open ? 'OPEN  ▶' : 'LOCKED') : label === 'ROOF' ? '▲  ROOF' : `${arrow}  FLOOR ${label}`, 256, 130);
+      context.fillText(gate ? (open ? 'OPEN  ▶' : 'CLOSED') : label === 'ROOF' ? '▲  ROOF' : `${arrow}  FLOOR ${label}`, 256, 130);
       texture.needsUpdate = true;
     },
+  };
+}
+
+const HAZARD = new THREE.MeshStandardMaterial({ color: 0xd9a82a, roughness: 0.5, metalness: 0.4 });
+
+// A road checkpoint's gate: two steel swing gates across the road between posts, under a gantry with the
+// sign and a lamp that is red while it is shut and green once it is open. Once the way is open the gates
+// swing out into the lane beyond, against its walls.
+function buildCheckpointGate(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
+  const lift = level.elevator;
+  const group = new THREE.Group();
+  group.position.set(lift.position.x + lift.normal.x * 0.25, 0, lift.position.z + lift.normal.z * 0.25);
+  group.rotation.y = Math.atan2(lift.normal.x, lift.normal.z);
+  scene.add(group);
+  const half = lift.width / 2;
+  const height = lift.height;
+
+  // Posts either side, tall enough to carry the gantry.
+  const topY = height + 1.5;
+  for (const side of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.26, topY, 0.26), FRAME);
+    post.position.set(side * (half + 0.13), topY / 2, -0.12);
+    post.castShadow = true;
+    group.add(post);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.3), HAZARD);
+    cap.position.set(side * (half + 0.13), height + 0.1, -0.12);
+    group.add(cap);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(lift.width + 0.52, 0.22, 0.22), FRAME);
+  beam.position.set(0, topY - 0.11, -0.12);
+  group.add(beam);
+
+  // A leaf: top and bottom rails, bars, and a diagonal brace, hinged at its origin and reaching along +x.
+  const length = half;
+  const leaf = (): THREE.Group => {
+    const leafGroup = new THREE.Group();
+    const bar = (w: number, h: number, material: THREE.Material, x: number, y: number) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.07), material);
+      mesh.position.set(x, y, 0);
+      mesh.castShadow = true;
+      leafGroup.add(mesh);
+      return mesh;
+    };
+    bar(length, 0.1, HAZARD, length / 2, height - 0.08);
+    bar(length, 0.09, GATE_LEAF, length / 2, 0.3);
+    bar(length, 0.07, GATE_LEAF, length / 2, height / 2);
+    for (let i = 0; i <= 6; i++) bar(0.05, height - 0.2, GATE_LEAF, (i / 6) * (length - 0.05) + 0.025, height / 2 - 0.02);
+    const brace = bar(Math.hypot(length, height - 0.5), 0.06, GATE_LEAF, length / 2, height / 2);
+    brace.rotation.z = Math.atan2(height - 0.5, length);
+    return leafGroup;
+  };
+  const leaves = [-1, 1].map((side) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * half, 0, -0.2);
+    const body = leaf();
+    // The right-hand gate reaches the other way.
+    if (side === 1) body.scale.x = -1;
+    pivot.add(body);
+    group.add(pivot);
+    return { pivot, side };
+  });
+
+  const display = displayTexture(true);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.75), new THREE.MeshBasicMaterial({ map: display.texture }));
+  sign.position.set(0, topY - 0.6, 0.0);
+  group.add(sign);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff5a4a }));
+  lamp.position.set(0, topY + 0.08, -0.12);
+  group.add(lamp);
+  const light = new THREE.PointLight(0xff5a4a, 4, 9, 2);
+  light.position.set(0, topY - 0.3, 0.4);
+  group.add(light);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color: 0xff5a4a, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.5 }));
+  glow.scale.setScalar(1.1);
+  glow.position.copy(lamp.position);
+  group.add(glow);
+
+  let shownOpen: boolean | null = null;
+  return (state, time) => {
+    const doorTicks = config.elevator.doorSeconds * 1.6 * config.ticksPerSecond;
+    const since = state.lift.changedTick < 0 ? Infinity : (state.tick - state.lift.changedTick) / doorTicks;
+    const progress = state.lift.open ? Math.min(1, since) : Math.max(0, 1 - since);
+    const eased = progress * progress * (3 - 2 * progress);
+    for (const { pivot, side } of leaves) pivot.rotation.y = -side * eased * Math.PI * 0.47;
+    if (state.lift.open !== shownOpen) {
+      shownOpen = state.lift.open;
+      display.draw('', state.lift.open);
+      const colour = state.lift.open ? 0x38e070 : 0xff5a4a;
+      (lamp.material as THREE.MeshBasicMaterial).color.setHex(colour);
+      (glow.material as THREE.SpriteMaterial).color.setHex(colour);
+      light.color.setHex(colour);
+    }
+    const blink = settings.reducedFlashing || state.lift.open ? 1 : 0.55 + 0.45 * Math.sin(time * 5);
+    light.intensity = 4 * blink;
+    glow.material.opacity = 0.5 * blink;
   };
 }
 
 // The elevator: a steel frame, two sliding doors, a sign that says which floor is next, and a lit
 // cab behind the wall. The doors are solid in the rules while shut and drawn from the game state.
 export function buildLift(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
+  if (level.exitGate) return buildCheckpointGate(scene, level, glowMap);
   const lift = level.elevator;
   const facing = Math.atan2(lift.normal.x, lift.normal.z);
   const group = new THREE.Group();

@@ -1,5 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
-import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor } from './streetKit';
+import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, stationBoxes } from './wardKit';
 
 // Prologue P04, Commercial District (Mile 3): shops and restaurants on both sides of a street split by a row of
@@ -22,7 +22,7 @@ const doors = [
   streetDoor(-18, 12.25, 0, -1), streetDoor(6, 12.25, 0, -1), streetDoor(26, 12.25, 0, -1),
 ];
 
-const elevator: Elevator = { position: { x: 34.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 2.2, height: DOOR_HEIGHT, cabDepth: 3, cabWidth: 3 };
+const elevator: Elevator = { position: { x: 34.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -32, y: 1.25, z: -11.95 }, normal: { x: 0, z: 1 } },
@@ -43,7 +43,8 @@ export const commercial: Level = {
     ground(-34, 34, 8, 12, '#7d7f80'),
     ...frontage('x', -12.25, -34.5, 34.5, doors, FRONT_HEIGHT, BRICK),
     ...frontage('x', 12.25, -34.5, 34.5, doors, FRONT_HEIGHT, STONE),
-    ...frontage('z', 34.25, -12, 12, [elevator], FRONT_HEIGHT, STONE),
+    ...frontage('z', 34.25, -12, 12, [elevator], FRONT_HEIGHT, STONE, 'building', [elevator]),
+    ...checkpointBoxes(elevator, STONE),
     ...frontage('z', -34.25, -12, 12, [], FRONT_HEIGHT, BRICK),
     ...stationBoxes(stations),
 
