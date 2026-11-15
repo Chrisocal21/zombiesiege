@@ -201,6 +201,7 @@ Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the 
 - [x] High Ground signature choice built: Level.lightsCall, a flashlight on calls the dead and speeds the held stand (check-relay proves it)
 - [x] Act 8 slice 08-A built (floor 26, highWater.ts, game/flood.ts, check-water.mjs): Level.flood rising water in authored stages, wading at half speed for players and the dead, two sluice gates on dry catwalks, drains when done. The water sheet's look is unverified on a real GPU
 - [x] Act 9 slice 09-B built (floor 27, doorsShut.ts, check-doors.mjs): forced gate (250 points) or the open service door, three frightened evacuees, a register. Negotiated entry needs a dialogue or barter system, which does not exist
+- [x] Act 10 slice 10-B built (floor 28, emptyHouses.ts, check-houses.mjs): a quiet street of three houses, a route note that names the shelter, sleeping dead in the north-east house. Unbuilt: 10-A Names on the Frequency, 10-C Shelter Zero (cargo/passenger tradeoff), alarms as a stealth mechanic (only the sweep rule: gunfire calls them)
 - [ ] Act 6 06-A and 06-C, Act 7 07-A and 07-C, then Acts, 8 Blackwater, 9 Fault Lines, 10 Ghost Signal, 11 Ground Zero, 12 First Light: outlined in the handoff, none built
 - [ ] Needs you: the survivor zip (re-download) and lore approval of the draft wording
 

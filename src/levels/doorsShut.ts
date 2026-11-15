@@ -43,6 +43,7 @@ const lights: LevelLight[] = [lamp(-20, -4), lamp(-12, 8, true), lamp(-2, -6), l
 export const doorsShut: Level = {
   name: 'Doors Shut',
   theme: 'street',
+  exitGate: true,
   scenery: { north: 'trees', south: 'trees', east: 'trees', west: 'trees', skyline: false },
   atmosphere: { fog: '#34383e', fogNear: 14, fogFar: 66, ambient: 1.3, sky: { horizon: '#8a6a58', zenith: '#1c2440', stars: 0.3 } },
   boxes: [

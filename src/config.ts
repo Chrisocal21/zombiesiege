@@ -212,6 +212,10 @@ export const config = {
     faultLines: [
       { number: 0, name: 'Doors Shut', waves: 3 },
     ],
+    // Act 10, the old town.
+    ghostSignal: [
+      { number: 0, name: 'Empty Houses', waves: 3 },
+    ],
     refuge: [
       { number: 0, name: 'Inventory of the Living', waves: 1 },
       { number: 0, name: 'The Missing Delivery', waves: 3 },

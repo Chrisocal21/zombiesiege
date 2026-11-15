@@ -17,7 +17,8 @@ export const roads = config.tower.roads;
 export const deadAir = config.tower.deadAir;
 export const blackwater = config.tower.blackwater;
 export const faultLines = config.tower.faultLines;
-const sequel = [...descent, ...vault, ...daybreak, ...refuge, ...roads, ...deadAir, ...blackwater, ...faultLines];
+export const ghostSignal = config.tower.ghostSignal;
+const sequel = [...descent, ...vault, ...daybreak, ...refuge, ...roads, ...deadAir, ...blackwater, ...faultLines, ...ghostSignal];
 
 // The prologue: the floors before the garage, with negative indexes, the first at -prelude.length.
 export const prelude = config.tower.prelude;
@@ -34,6 +35,7 @@ export const LAST_REFUGE = LAST_DAYBREAK + refuge.length;
 export const LAST_ROADS = LAST_REFUGE + roads.length;
 export const LAST_DEAD_AIR = LAST_ROADS + deadAir.length;
 export const LAST_BLACKWATER = LAST_DEAD_AIR + blackwater.length;
+export const LAST_FAULT_LINES = LAST_BLACKWATER + faultLines.length;
 export const LAST_FLOOR = ROOF + sequel.length;
 
 // True from Act 2 on: the floors after the hospital's roof.
@@ -41,10 +43,10 @@ export function isDescent(floor: number): boolean {
   return floor > ROOF;
 }
 
-// Which act a floor belongs to: 0 for the prologue, then 1 to 9.
-export function actOf(floor: number): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 {
+// Which act a floor belongs to: 0 for the prologue, then 1 to 10.
+export function actOf(floor: number): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 {
   if (floor < 0) return 0;
-  return floor <= ROOF ? 1 : floor <= LAST_DESCENT ? 2 : floor <= LAST_VAULT ? 3 : floor <= LAST_DAYBREAK ? 4 : floor <= LAST_REFUGE ? 5 : floor <= LAST_ROADS ? 6 : floor <= LAST_DEAD_AIR ? 7 : floor <= LAST_BLACKWATER ? 8 : 9;
+  return floor <= ROOF ? 1 : floor <= LAST_DESCENT ? 2 : floor <= LAST_VAULT ? 3 : floor <= LAST_DAYBREAK ? 4 : floor <= LAST_REFUGE ? 5 : floor <= LAST_ROADS ? 6 : floor <= LAST_DEAD_AIR ? 7 : floor <= LAST_BLACKWATER ? 8 : floor <= LAST_FAULT_LINES ? 9 : 10;
 }
 
 export function stopAt(floor: number): { number: number; name: string; waves: number } {

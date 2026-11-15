@@ -242,6 +242,8 @@ High Water (08-A, built, draft): after days of rain the river is over the bank a
 
 Doors Shut (09-B, built, draft): the Lincoln Road settlement has shut itself in behind a wall across a school yard and is not answering the radio. A group of evacuees the crew is looking for went in and has not come out. The main gate is locked from inside: the crew can force it for points, and every person inside hears it. Or the service door in the north corner is still unlocked (the cook uses it) and leads across a courtyard where some of the dead were shut in with the settlement. Inside, three frightened evacuees are hiding in the stores; nobody meant them harm, the doors were shut because everyone was afraid. The register in the east hall points east, and one of the rescued remembers the family being sent that way. Not built: negotiated entry (needs a dialogue or barter system), 09-A Split Claim and 09-C Shared Wall.
 
+Empty Houses (10-B, built, draft): Mill Street in the old town, the morning after an evacuation. Nobody is hunting the crew. A child's coat and a packed bag in one house; in the middle house a handwritten note says the street was sent by bus to the old school, and that the Ward family went with the second bus, Sam with a fever. The north-east house holds sleepers; going in there and firing wakes the street. Not built: 10-A and 10-C.
+
 ### After Act 6
 
 Not written yet. See **Places** for what's next.
