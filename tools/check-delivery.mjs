@@ -15,7 +15,7 @@ const { LAST_FLOOR, actOf } = await import('../src/game/tower.ts');
 const HZ = 120;
 const run = (s, seconds) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_FLOOR - 1);
+startOnFloor(s, LAST_FLOOR - 2);
 assert.equal(s.level.name, 'The Missing Delivery');
 assert.equal(actOf(s.floor), 5);
 assert.equal(flowOf(s.level).kind, 'sweep');

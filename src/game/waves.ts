@@ -317,13 +317,13 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     if (everyoneInCab(state)) {
       closeLift(state);
       // In the prologue the way on is a gate, not a lift: everyone goes straight through to the next floor.
-      if (level.exitGate) {
-        startCross(state);
-        return;
-      }
       // The last floor built so far: the run ends here until the next one exists.
       if (state.floor >= LAST_FLOOR) {
         waves.phase = 'won';
+        return;
+      }
+      if (level.exitGate) {
+        startCross(state);
         return;
       }
       // Whoever was left on the floor stays there.

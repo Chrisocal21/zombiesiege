@@ -226,7 +226,11 @@ The Missing Delivery (05-B, built, draft): on the camp road before the siege, th
 
 Not built yet in this act: a real fence breach in the siege, assigning defenders, and a choice of first repair with consequences (the ledger is read-only cards for now).
 
-### After Act 5
+### Act 6: Broken Roads (draft, first slice built)
+
+Running on Empty (06-B, built, draft): the camp has three days of generator fuel and nothing to move a vehicle. The fuel yard on the road out of the valley still has a tanker delivered the night before the roads closed, eleven thousand litres. The crew throws the two power cabinets, hooks up the tanker and holds the bay while it fills. The pumps are loud and call the dead. The message at the end: the camp has fuel, the road east is open. The driving missions (06-A Bay E05 with the scientist's El Cajon car, 06-C Broken Convoy) need a vehicle controller and are not built.
+
+### After Act 6
 
 Not written yet. See **Places** for what's next.
 

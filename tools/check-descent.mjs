@@ -31,7 +31,7 @@ for (let floor = 7; floor <= LAST_FLOOR; floor++) {
   s.zombies = []; s.objective.done = true; s.waves.phase = 'lift'; s.lift.open = true;
   const e = s.level.elevator;
   Object.assign(s.players[0], { x: e.position.x - e.normal.x * 1.7, z: e.position.z - e.normal.z * 1.7, health: 100 });
-  if (floor === LAST_FLOOR - 3) { s.zombies = []; s.waves.phase = 'evac'; const pad = s.level.objective.pad; Object.assign(s.players[0], { x: pad.x, z: pad.z }); run(1, () => s.waves.phase === 'flight'); assert.equal(s.waves.phase, 'flight', 'the helicopter takes off with everyone aboard'); run(30, () => s.floor === floor + 1); assert.equal(s.floor, floor + 1, 'the flight ends at the camp'); continue; }
+  if (floor === LAST_FLOOR - 4) { s.zombies = []; s.waves.phase = 'evac'; const pad = s.level.objective.pad; Object.assign(s.players[0], { x: pad.x, z: pad.z }); run(1, () => s.waves.phase === 'flight'); assert.equal(s.waves.phase, 'flight', 'the helicopter takes off with everyone aboard'); run(30, () => s.floor === floor + 1); assert.equal(s.floor, floor + 1, 'the flight ends at the camp'); continue; }
   if (floor < LAST_FLOOR) { assert.ok(run(40, () => s.floor === floor + 1), 'rode down to the next floor'); console.log('reached', s.level.name); }
   else { run(5, () => s.waves.phase === 'won'); assert.equal(s.waves.phase, 'won', 'run ends after the last built floor'); }
 }

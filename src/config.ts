@@ -196,6 +196,10 @@ export const config = {
       { number: 0, name: 'The park', waves: 3 },
     ],
     // Act 5, the outskirts camp: the first place worth defending.
+    // Act 6, the roads out: fuel first.
+    roads: [
+      { number: 0, name: 'Running on Empty', waves: 3 },
+    ],
     refuge: [
       { number: 0, name: 'Inventory of the Living', waves: 1 },
       { number: 0, name: 'The Missing Delivery', waves: 3 },

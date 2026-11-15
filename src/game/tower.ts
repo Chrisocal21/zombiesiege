@@ -13,7 +13,8 @@ export const descent = config.tower.descent;
 export const vault = config.tower.vault;
 export const daybreak = config.tower.daybreak;
 export const refuge = config.tower.refuge;
-const sequel = [...descent, ...vault, ...daybreak, ...refuge];
+export const roads = config.tower.roads;
+const sequel = [...descent, ...vault, ...daybreak, ...refuge, ...roads];
 
 // The prologue: the floors before the garage, with negative indexes, the first at -prelude.length.
 export const prelude = config.tower.prelude;
@@ -26,6 +27,7 @@ export function onFoot(floor: number): boolean {
 export const LAST_DESCENT = ROOF + descent.length;
 export const LAST_VAULT = LAST_DESCENT + vault.length;
 export const LAST_DAYBREAK = LAST_VAULT + daybreak.length;
+export const LAST_REFUGE = LAST_DAYBREAK + refuge.length;
 export const LAST_FLOOR = ROOF + sequel.length;
 
 // True from Act 2 on: the floors after the hospital's roof.
@@ -33,10 +35,10 @@ export function isDescent(floor: number): boolean {
   return floor > ROOF;
 }
 
-// Which act a floor belongs to: 0 for the prologue, then 1 to 5.
-export function actOf(floor: number): 0 | 1 | 2 | 3 | 4 | 5 {
+// Which act a floor belongs to: 0 for the prologue, then 1 to 6.
+export function actOf(floor: number): 0 | 1 | 2 | 3 | 4 | 5 | 6 {
   if (floor < 0) return 0;
-  return floor <= ROOF ? 1 : floor <= LAST_DESCENT ? 2 : floor <= LAST_VAULT ? 3 : floor <= LAST_DAYBREAK ? 4 : 5;
+  return floor <= ROOF ? 1 : floor <= LAST_DESCENT ? 2 : floor <= LAST_VAULT ? 3 : floor <= LAST_DAYBREAK ? 4 : floor <= LAST_REFUGE ? 5 : 6;
 }
 
 export function stopAt(floor: number): { number: number; name: string; waves: number } {

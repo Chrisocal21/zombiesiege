@@ -16,7 +16,7 @@ const { LAST_FLOOR } = await import('../src/game/tower.ts');
 const HZ = 120;
 const run = (s, seconds) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_FLOOR - 2);
+startOnFloor(s, LAST_FLOOR - 3);
 assert.equal(s.level.name, 'Inventory of the Living');
 assert.equal(s.level.objective.panels.length, 4);
 assert.equal(s.level.notes.length, 4, 'a ledger card for each facility');

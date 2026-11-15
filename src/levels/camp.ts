@@ -49,6 +49,7 @@ const lights: LevelLight[] = [
 export const camp: Level = {
   name: 'Last Refuge',
   theme: 'street',
+  exitGate: true,
   scenery: { north: 'trees', south: 'trees', east: 'trees', west: 'trees', skyline: false },
   atmosphere: { fog: '#2a2e36', fogNear: 12, fogFar: 62, ambient: 1.2, sky: { horizon: '#5a4a52', zenith: '#10162a', stars: 0.55 } },
   boxes: [

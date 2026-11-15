@@ -132,7 +132,7 @@ export function partBanner(state: GameState): { eyebrow: string; title: string; 
   if (isDescent(state.floor)) {
     const gate = state.level.exitGate;
     const detail = flowOf(state.level).kind === 'siege' && state.waves.phase !== 'search' ? 'The freight lift opens once the floor is clear' : gate ? 'The gate opens when the job is done. Keep moving' : 'The freight lift is open. Get to it';
-    return { eyebrow: actOf(state.floor) === 5 ? 'LAST REFUGE' : actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail };
+    return { eyebrow: actOf(state.floor) === 6 ? 'BROKEN ROADS' : actOf(state.floor) === 5 ? 'LAST REFUGE' : actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail };
   }
   return {
     eyebrow: `HELIPAD PART ${state.floor} OF ${ROOF - 1}`,
