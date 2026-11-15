@@ -221,6 +221,7 @@ export const config = {
     groundZero: [
       { number: 0, name: 'The Original Site', waves: 3 },
       { number: 0, name: 'Containment Protocol', waves: 3 },
+      { number: 0, name: 'The Last Record', waves: 3 },
     ],
     // Act 12, first light.
     firstLight: [
