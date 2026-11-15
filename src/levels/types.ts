@@ -79,7 +79,7 @@ export interface LevelBox {
   // once what was driven back in is sealed behind it.
   vaultDoor?: boolean;
   // Part of the park, drawn by render/park.ts in place of the box (which is hidden).
-  parkPiece?: 'lawn' | 'path' | 'bench' | 'shed' | 'planter' | 'fountain' | 'bandstand';
+  parkPiece?: 'lawn' | 'path' | 'bench' | 'shed' | 'planter' | 'fountain' | 'bandstand' | 'median';
 }
 
 // A ladder runs up the face of a box. The player climbs it from the side the normal points to.

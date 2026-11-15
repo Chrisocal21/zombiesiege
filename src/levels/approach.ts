@@ -1,4 +1,4 @@
-import type { Elevator, Level, LevelLight, Station } from './types';
+import type { Elevator, Level, LevelBox, LevelLight, Station } from './types';
 import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, furniture, stationBoxes } from './wardKit';
 
@@ -67,6 +67,12 @@ export const approach: Level = {
     block(31, 7.2, 1.6, 0.8, 0.8, '#4a5a3a'),
     furniture(-10, -8.6, 2.2, 0.5, 0.6, '#5a4a3a', 'bench', 'south'),
     furniture(12, -8.6, 2.2, 0.5, 0.6, '#5a4a3a', 'bench', 'south'),
+    // A green median down the middle of the road: low kerbed lawns in the gaps between the barriers,
+    // each with a park bench (the kerb is low enough to step over, so the road stays open).
+    ...[[-21, 9], [-6.5, 9], [11.5, 11], [26, 6]].flatMap(([x, length], i): LevelBox[] => [
+      { position: { x, y: 0.07, z: 0 }, size: { x: length, y: 0.14, z: 1.8 }, color: '#8d8c86', surface: 'plain', parkPiece: 'median' },
+      { position: { x, y: 0.39, z: 0 }, size: { x: 2, y: 0.5, z: 0.62 }, color: '#5a4a3a', hidden: true, parkPiece: 'bench', facing: i % 2 ? Math.PI : 0 },
+    ]),
     block(-24, 8.6, 0.7, 1, 0.7, '#3a3f44', 'barrel'),
     block(3, 8.6, 0.7, 1, 0.7, '#3a3f44', 'barrel'),
   ],

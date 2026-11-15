@@ -187,7 +187,7 @@ export function buildPark(parent: THREE.Object3D, level: Level): void {
   // ---- Benches: cast iron ends, wooden slats for the seat and back ----
   for (const bench of pieces.filter((p) => p.parkPiece === 'bench')) {
     const g = new THREE.Group();
-    g.position.set(bench.position.x, 0, bench.position.z);
+    g.position.set(bench.position.x, bench.position.y - bench.size.y / 2, bench.position.z);
     g.rotation.y = bench.facing ?? 0;
     group.add(g);
     const length = Math.max(bench.size.x, bench.size.z);
@@ -254,6 +254,16 @@ export function buildPark(parent: THREE.Object3D, level: Level): void {
   if (fountain) {
     for (const angle of [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4]) {
       bed(fountain.position.x + Math.cos(angle) * 3.4, fountain.position.z + Math.sin(angle) * 3.4, 1.8, 1.1, -angle + Math.PI / 2);
+    }
+  }
+
+  // ---- Road medians: a lawn on the kerbed island, hedge-clipped shrubs at each end ----
+  for (const m of pieces.filter((p) => p.parkPiece === 'median')) {
+    const top = m.position.y + m.size.y / 2;
+    flat(new THREE.PlaneGeometry(m.size.x - 0.3, m.size.z - 0.3), lawnMaterial(m.size.x, m.size.z), m.position.x, top + 0.004, m.position.z);
+    for (const end of [-1, 1]) {
+      const shrub = add(new THREE.IcosahedronGeometry(0.36, 1), new THREE.MeshStandardMaterial({ color: 0x2c4a24, roughness: 0.95, flatShading: true }), m.position.x + end * (m.size.x / 2 - 0.6), top + 0.25, m.position.z);
+      shrub.scale.set(1.3, 0.8, 1.3);
     }
   }
 
