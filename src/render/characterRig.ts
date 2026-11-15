@@ -11,6 +11,9 @@ import { loadModel, track } from './models';
 // that rest, and the bones in between (neck, shoulders, toes) follow their parents.
 
 export const ZOMBIE_MODELS = ['/models/characters/zombie-a.glb', '/models/characters/zombie-b.glb'];
+// The brute's own body: a hunched mutant with one huge arm, rigged by tools/blender/rig_mutant.py. Its arms
+// already hang at rest, so they take no drop. Without the file the brutes use the ordinary bodies.
+export const MUTANT_MODEL = '/models/characters/mutant.glb';
 export const SURVIVOR_MODEL = '/models/characters/survivor.glb';
 
 export interface Joints {
@@ -67,6 +70,7 @@ interface BoneInfo {
 }
 
 let templates: THREE.Object3D[] | null = null;
+let mutantTemplate: THREE.Object3D | null = null;
 
 // The zombie files carry a normal map for every texture, but the materials were exported without them.
 // This finds each (the image just before the diffuse one) and puts it back, so skin and cloth have grain.
@@ -95,6 +99,17 @@ async function addNormalMaps(model: GLTF): Promise<void> {
 const loading = track(Promise.all(ZOMBIE_MODELS.map(loadModel)).then(async (models) => {
   await Promise.all(models.map((model) => addNormalMaps(model).catch(() => undefined)));
   templates = models.map((model) => model.scene);
+  try {
+    const mutant = (await loadModel(MUTANT_MODEL)).scene;
+    // The file is bare grey: give it sick, pale flesh.
+    mutant.traverse((child) => {
+      if (!(child instanceof THREE.SkinnedMesh)) return;
+      for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+        if (material instanceof THREE.MeshStandardMaterial) { material.color.set('#7c6258'); material.roughness = 0.7; material.metalness = 0; }
+      }
+    });
+    mutantTemplate = mutant;
+  } catch { mutantTemplate = null; }
   return templates;
 }));
 
@@ -130,8 +145,13 @@ export function riggedBody(variant: number): RiggedBody {
   return rig(templates![variant % templates!.length]);
 }
 
-// Any loaded character model, ready to pose.
-export function rig(template: THREE.Object3D): RiggedBody {
+// The brute's mutant body, or null when its file is missing.
+export function riggedMutant(): RiggedBody | null {
+  return mutantTemplate ? rig(mutantTemplate, true) : null;
+}
+
+// Any loaded character model, ready to pose. `armsHang` for a model whose arms already hang at rest.
+export function rig(template: THREE.Object3D, armsHang = false): RiggedBody {
   // Measured in the model's own space, so before it is put in its turned holder.
   const model = clone(template);
   model.updateMatrixWorld(true);
@@ -151,8 +171,8 @@ export function rig(template: THREE.Object3D): RiggedBody {
     const name = boneName(child.name);
     child.getWorldQuaternion(world);
     const rest = world.clone();
-    if (LEFT_ARM.has(name)) rest.premultiply(drop(-1));
-    if (RIGHT_ARM.has(name)) rest.premultiply(drop(1));
+    if (!armsHang && LEFT_ARM.has(name)) rest.premultiply(drop(-1));
+    if (!armsHang && RIGHT_ARM.has(name)) rest.premultiply(drop(1));
     index.set(child, bones.length);
     bones.push({
       bone: child, parent: child.parent instanceof THREE.Bone ? index.get(child.parent)! : -1,

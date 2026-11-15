@@ -5,7 +5,7 @@ import { config } from '../config';
 import type { GameState, Zombie } from '../game/state';
 import { paintTexture } from './materials';
 import { eyeGlow, gradedBody } from './zombieSkin';
-import { createJoints, riggedBody, whenZombieModelsLoad, zombieModelsReady, type RiggedBody } from './characterRig';
+import { createJoints, riggedBody, riggedMutant, whenZombieModelsLoad, zombieModelsReady, type RiggedBody } from './characterRig';
 
 // How each kind of infected is built: its body scale (width, height, depth) and a tint on its skin and
 // clothes. The brute is broad and dark, the runner lean, the screamer pale.
@@ -319,11 +319,13 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     const group = new THREE.Group(); group.name = `Infected ${zombie.id}`;
     group.rotation.order = 'YXZ';
     const joints = createJoints();
-    const rig = riggedBody(zombie.id);
+    // A brute is the hunched mutant, when its model has loaded; it wears no clothes to dress.
+    const mutant = zombie.kind === 'brute' ? riggedMutant() : null;
+    const rig = mutant ?? riggedBody(zombie.id);
     group.add(rig.object);
-    dress(rig, zombie);
+    if (!mutant) dress(rig, zombie);
     // Each kind has its own build, and no two are quite the same height.
-    const [sx, sy, sz] = KIND_LOOK[zombie.kind].scale;
+    const [sx, sy, sz] = mutant ? [1.12, 1.12, 1.12] : KIND_LOOK[zombie.kind].scale;
     const height = zombie.boss ? 1.16 : 0.95 + 0.1 * ((zombie.id * 0.381966) % 1);
     group.scale.set(sx * height, sy * height, sz * height);
     scene.add(group);

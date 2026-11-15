@@ -43,12 +43,20 @@ Draco decoder from `/draco/`. `tools/models.html?model=city/<name>` shows one fr
 The two zombies are posed by the game's own joint angles (`src/render/zombieRig.ts`), so they
 need no animation files. Their Mixamo skeletons would also take Mixamo clips as they are.
 
+## Mutant (the brute)
+
+`Mutant.fbx` (tripo, 20k triangles, bare grey) went through `pack.py export` (12k triangles) to a raw
+GLB, then `tools/blender/rig_mutant.py` laid a Mixamo-named skeleton along its hunched body and
+skinned it with automatic weights. `public/models/characters/mutant.glb` is the brute's body
+(`riggedMutant` in `characterRig.ts`); its arms hang at rest, so the rig skips the T-pose arm drop.
+The flesh colour is set when it loads.
+
 ## Waiting to be used
 
 - Amber (Character Creator, about 1.7 million triangles, CC skeleton): needs her hair and clothes
   reduced and her bones renamed to Mixamo names before the rig can drive her.
-- Mutant and the ghillie soldier (tripo): not rigged; they need automatic weights onto the Mixamo
-  skeleton first.
+- The ghillie soldier (tripo): not rigged; it needs automatic weights onto a Mixamo-named skeleton,
+  as the mutant got from `tools/blender/rig_mutant.py`.
 - `post-apocalyptic-survivor-*.zip` is a saved web page, not a model: download it again.
 - The rest of the building packs (glass apartment and brick tower meshes tear when reduced and are
   too heavy whole), the rooftop HVAC sets, the other plants and the big trees (millions of triangles).
