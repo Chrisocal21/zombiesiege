@@ -3,7 +3,7 @@ import type { Level, Resident, Vec3 } from '../levels/types';
 import { resolveCircle } from './collision';
 import { roam, roamersFor } from './roam';
 import { rayAabb, raycastBoxes } from './hitscan';
-import { dropSupply } from './items';
+import { dropSupply, silenced } from './items';
 import { nextStep, routeOf } from './navigation';
 import { flowOf, type GameState, type Player, type Zombie, type ZombieKind } from './state';
 import { crowdAt, depth } from './tower';
@@ -180,7 +180,7 @@ function hearNoises(state: GameState): void {
     const shot = player.lastShotTick >= 0 && state.tick - player.lastShotTick <= 2;
     const swung = player.lastMeleeHitTick >= 0 && state.tick - player.lastMeleeHitTick <= 2;
     if (!shot && !swung) continue;
-    const range = shot ? config.zombie.noiseRange : config.zombie.meleeNoiseRange;
+    const range = shot ? (silenced(player) ? config.zombie.silencedNoiseRange : config.zombie.noiseRange) : config.zombie.meleeNoiseRange;
     for (const zombie of state.zombies) {
       if (zombie.dead || Math.hypot(zombie.x - player.x, zombie.z - player.z) > range) continue;
       zombie.alertUntil = Math.max(zombie.alertUntil, state.tick + ticks(config.zombie.alertSeconds));

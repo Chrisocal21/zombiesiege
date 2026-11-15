@@ -1,7 +1,7 @@
 import { config } from '../config';
 import type { Door, Level } from '../levels/types';
 import { closeLift, everyoneInCab, openLift } from './elevator';
-import { dropCache } from './items';
+import { dropCache, placeSilencers, silenced } from './items';
 import { beginPrep, closeGate, doorwaySpawn } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, completeStep, dropCase, everyoneAboard, inArea, lastStep } from './objectives';
@@ -97,7 +97,7 @@ function pressure(state: GameState, dt: number, level: Level): void {
   // A quiet floor that turns on the crew once its job is done: from then on it is a run.
   if (flow.kind === 'sweep' && flow.then && state.objective.done) flow = { kind: 'run', ...flow.then };
   if (flow.kind === 'sweep') {
-    const loud = state.players.some((player) => player.health > 0 && player.lastShotTick >= 0 && state.tick - player.lastShotTick <= 1);
+    const loud = state.players.some((player) => player.health > 0 && player.lastShotTick >= 0 && state.tick - player.lastShotTick <= 1 && !silenced(player));
     if (loud && (waves.loudTick < 0 || state.tick - waves.loudTick >= ticks(LOUD_GAP_SECONDS))) {
       waves.reinforce += waves.alarms === 0 ? flow.first ?? flow.loud : flow.loud;
       waves.alarms++;
@@ -456,6 +456,7 @@ function respawn(old: Player, level: Level, keepGuns: boolean, cab: { x: number;
   player.flashlight = old.flashlight;
   // Lives stay with the player. Anyone out of them stays out, watching.
   player.lives = old.lives;
+  player.silencer = old.silencer;
   if (old.out && old.lives <= 0) {
     player.out = true;
     player.health = 0;
@@ -493,6 +494,7 @@ function startFloor(state: GameState, keepGuns: boolean, inCab = false): void {
   // with the gate still open, as on a new game, not inside it with the gate already shut.
   const street = !inCab && Boolean(level.gate) && level.streetSpawns.length > 0;
   state.players = state.players.map((old, i) => respawn(old, level, keepGuns, inCab ? cabSpot(level, i, state.players.length) : null, street));
+  placeSilencers(state);
   // The scientist, after the vault, comes along: in the cab with the crew, or beside where they start.
   const count = state.players.length;
   const beside = besideCrew(level);

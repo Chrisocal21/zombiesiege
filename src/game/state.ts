@@ -97,6 +97,8 @@ export interface Player {
   carrying: number;
   // The light on the shoulder, for floors with the power out.
   flashlight: boolean;
+  // A silencer found on the floor, screwed onto the pistol and the AK. The shotgun stays loud.
+  silencer: boolean;
   // Bandages, first aid kits and water being carried.
   items: Items;
   // 0 to 100. Drives how fast health comes back on its own.
@@ -503,6 +505,7 @@ export function createPlayer(id: number, spawn: Vec3): Player {
     bars: 0,
     carrying: -1,
     flashlight: false,
+    silencer: false,
     items: startingItems(),
     hydration: 50,
     item: null,

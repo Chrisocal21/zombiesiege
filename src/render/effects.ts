@@ -145,7 +145,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
             addParticle(shell, eject, ejectVelocity, 2.8, 9.8, floor, true);
           }
           smoke(muzzle, 0.11, '#a8b3b8', 0.14);
-          shotLight.position.copy(muzzle); flashLeft = 0.045;
+          shotLight.position.copy(muzzle); flashLeft = player.silencer && player.weapon !== 'shotgun' ? 0.012 : 0.045;
         }
       }
       flashLeft = Math.max(0, flashLeft - dt); shotLight.intensity = settings.reducedFlashing ? 0 : flashLeft / 0.045 * 8;

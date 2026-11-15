@@ -272,6 +272,8 @@ export const config = {
     roamSpeed: 0.3,
     noiseRange: 32,
     meleeNoiseRange: 8,
+    // A silenced shot: a cough and the slide, heard only close by.
+    silencedNoiseRange: 5,
     alertSeconds: 8,
     // Within surroundRange of its target a zombie aims for its own spot on a ring round the player, so a
     // crowd spreads out instead of queueing.

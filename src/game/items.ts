@@ -1,5 +1,6 @@
 import { config } from '../config';
 import type { GameState, Player } from './state';
+import { spotsFromStart } from './roam';
 
 // Things to carry and use: bandages and first aid kits heal, water keeps natural regeneration quick.
 export const ITEM_IDS = ['bandage', 'medkit', 'water'] as const;
@@ -26,9 +27,12 @@ export const ITEMS: Record<ItemId, ItemStats> = {
 export type Items = Record<ItemId, number>;
 export const startingItems = (): Items => ({ bandage: 1, medkit: 0, water: 1 });
 
+// What can lie on the floor to pick up: the carried items, and a silencer.
+export type SupplyKind = ItemId | 'silencer';
+
 export interface Supply {
   id: number;
-  item: ItemId;
+  item: SupplyKind;
   x: number;
   z: number;
 }
@@ -116,7 +120,7 @@ export function nearestSupply(state: GameState, player: Player): number {
   let nearest = -1;
   let best = SUPPLY_RANGE;
   state.supplies.forEach((supply, index) => {
-    if (player.items[supply.item] >= ITEMS[supply.item].carryMax) return;
+    if (!wants(player, supply.item)) return;
     const distance = Math.hypot(supply.x - player.x, supply.z - player.z);
     if (distance <= best) { nearest = index; best = distance; }
   });
@@ -125,7 +129,26 @@ export function nearestSupply(state: GameState, player: Player): number {
 
 export function takeSupply(state: GameState, player: Player, index: number): void {
   const supply = state.supplies[index];
-  if (!supply || player.items[supply.item] >= ITEMS[supply.item].carryMax) return;
-  player.items[supply.item]++;
+  if (!supply || !wants(player, supply.item)) return;
+  if (supply.item === 'silencer') player.silencer = true;
+  else player.items[supply.item]++;
   state.supplies.splice(index, 1);
+}
+
+function wants(player: Player, item: SupplyKind): boolean {
+  return item === 'silencer' ? !player.silencer : player.items[item] < ITEMS[item].carryMax;
+}
+
+// Whether this player's shots are quiet: a silencer on, and not the shotgun in hand.
+export function silenced(player: Player): boolean {
+  return player.silencer && player.weapon !== 'shotgun';
+}
+
+// A silencer lies a short walk from the start of each floor for everyone still without one, so the
+// crew can choose to go about it quietly.
+export function placeSilencers(state: GameState): void {
+  const without = state.players.filter((player) => !player.silencer && !player.out).length;
+  for (const spot of spotsFromStart(state.level, without, 6, 14)) {
+    state.supplies.push({ id: state.nextSupplyId++, item: 'silencer', x: spot.x, z: spot.z });
+  }
 }

@@ -212,6 +212,28 @@ export function roamersFor(level: Level): Resident[] {
   return placed;
 }
 
+// Somewhere open on the floor, between `near` and `far` metres from where the crew starts, for a
+// pickup worth a short walk. Spots `apart` from each other; fewer if the floor has no room.
+export function spotsFromStart(level: Level, count: number, near: number, far: number, apart = 2): { x: number; z: number }[] {
+  const ground = groundOf(level);
+  if (!ground || count <= 0) return [];
+  const starts = [...level.playerSpawns, ...level.streetSpawns];
+  const spots: { x: number; z: number }[] = [];
+  const seed = level.name.length * 17 + level.boxes.length + 5;
+  for (let attempt = 0; attempt < 1500 && spots.length < count; attempt++) {
+    // Widens the band if nothing fits.
+    const reach = far + Math.floor(attempt / 500) * 6;
+    const x = ground.minX + hash(seed, attempt * 2) * ground.cols * CELL;
+    const z = ground.minZ + hash(seed, attempt * 2 + 1) * ground.rows * CELL;
+    if (!isOpen(ground, x, z, ground.placeable)) continue;
+    const from = Math.min(...starts.map((s) => Math.hypot(s.x - x, s.z - z)));
+    if (from < near || from > reach) continue;
+    if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < apart)) continue;
+    spots.push({ x, z });
+  }
+  return spots;
+}
+
 const ticks = (seconds: number): number => Math.round(seconds * config.ticksPerSecond);
 
 // A walker not yet aware of anyone: it stands a while, then shuffles to somewhere else near where it

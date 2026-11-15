@@ -434,6 +434,19 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   muzzle.add(flash);
   const flashLight = new THREE.PointLight(0xffb15a, 0, 2.5, 2);
   muzzle.add(flashLight);
+  // A silencer screwed onto the barrel, shown on the pistol and the AK once one has been picked up.
+  // The flash moves out to its tip and all but goes.
+  const SUPPRESSOR_LENGTH = 0.13;
+  const suppressor = new THREE.Group();
+  const can = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, SUPPRESSOR_LENGTH, 20), new THREE.MeshStandardMaterial({ color: '#1a1c1f', roughness: 0.5, metalness: 0.5 }));
+  can.rotation.x = Math.PI / 2;
+  can.position.z = -SUPPRESSOR_LENGTH / 2;
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.0125, 0.0125, 0.012, 16), new THREE.MeshStandardMaterial({ color: '#55595f', roughness: 0.35, metalness: 0.8 }));
+  collar.rotation.x = Math.PI / 2;
+  collar.position.z = 0.004;
+  suppressor.add(can, collar);
+  suppressor.visible = false;
+  muzzle.add(suppressor);
 
   // Lit parts shade each other, so the fingers and thumb cast shadows on the gun.
   root.traverse((object) => {
@@ -518,6 +531,9 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
         if (shotgunHeld || glockHeld) muzzle.position.set(0, 0, 0);
         else muzzle.position.set(0, 0.0475, -0.14);
       }
+      const quiet = player.silencer && (player.weapon === 'pistol' || player.weapon === 'ak');
+      suppressor.visible = quiet;
+      flash.position.z = quiet ? -SUPPRESSOR_LENGTH - 0.01 : -0.012;
       if (sinceDraw !== null) sinceDraw += frameSeconds;
       if (sinceShot !== null) sinceShot += frameSeconds;
       swapDip *= Math.exp(-frameSeconds * 8);
@@ -538,7 +554,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
           sinceShot = 0;
           flashLeft = FLASH_SECONDS;
           flashMaterial.rotation = Math.random() * Math.PI * 2;
-          flash.scale.setScalar(FLASH_SIZE * (player.weapon === 'shotgun' ? 1.6 : 1) * (0.8 + Math.random() * 0.5));
+          flash.scale.setScalar(FLASH_SIZE * (player.weapon === 'shotgun' ? 1.6 : 1) * (suppressor.visible ? 0.3 : 1) * (0.8 + Math.random() * 0.5));
         }
       }
       // Integrate a damped spring in short steps so 30 Hz and 144 Hz settle alike.
@@ -555,7 +571,7 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
       triggerPull = Math.max(0, triggerPull - frameSeconds * 9);
       trigger.rotation.x = -TRIGGER_TRAVEL * triggerPull;
       flash.visible = !settings.reducedFlashing && flashLeft > 0;
-      flashLight.intensity = !settings.reducedFlashing && flashLeft > 0 ? 0.6 : 0;
+      flashLight.intensity = !settings.reducedFlashing && flashLeft > 0 && !suppressor.visible ? 0.6 : 0;
 
       // The gun lags behind when you turn, then settles.
       if (lastYaw !== null) {

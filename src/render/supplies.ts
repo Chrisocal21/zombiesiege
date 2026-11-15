@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import type { ItemId } from '../game/items';
+import type { SupplyKind } from '../game/items';
 import type { GameState } from '../game/state';
 import { medkitModel } from './props';
 
 // Bandages, first aid kits and water lying where a zombie fell: small props that turn slowly, with a
 // soft light column so they can be seen across a dark floor.
-function build(item: ItemId): THREE.Group {
+function build(item: SupplyKind): THREE.Group {
   const group = new THREE.Group();
   const prop = new THREE.Group();
   group.add(prop);
@@ -21,6 +21,15 @@ function build(item: ItemId): THREE.Group {
     const bag = medkitModel();
     bag.scale.setScalar(1 / 1.6 * 1.1);
     prop.add(bag);
+  } else if (item === 'silencer') {
+    // A matte black tube, lying on its side, with a threaded collar at one end.
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 18), paint('#1b1d20', 0.55));
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.03, 14), paint('#5a5f66', 0.35));
+    collar.position.y = 0.115;
+    const lying = new THREE.Group();
+    lying.add(tube, collar);
+    lying.rotation.z = Math.PI / 2;
+    prop.add(lying);
   } else {
     const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.2, 16), new THREE.MeshStandardMaterial({ color: '#7cc4ff', transparent: true, opacity: 0.7, roughness: 0.2 }));
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.04, 12), paint('#1f6fbf'));
@@ -29,7 +38,7 @@ function build(item: ItemId): THREE.Group {
   }
   prop.scale.setScalar(1.6);
   prop.position.y = 0.18;
-  const color = item === 'bandage' ? '#fff3d6' : item === 'medkit' ? '#ff6a5c' : '#6ab8ff';
+  const color = item === 'bandage' ? '#fff3d6' : item === 'medkit' ? '#ff6a5c' : item === 'silencer' ? '#d8dde4' : '#6ab8ff';
   const beam = new THREE.Mesh(
     new THREE.CylinderGeometry(0.09, 0.09, 0.8, 16, 1, true),
     new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }),
@@ -44,7 +53,7 @@ export interface SupplyViews {
 }
 
 export function createSupplyViews(scene: THREE.Object3D): SupplyViews {
-  const views = new Map<number, { group: THREE.Group; item: ItemId }>();
+  const views = new Map<number, { group: THREE.Group; item: SupplyKind }>();
   return {
     update(state, time) {
       const live = new Set<number>();

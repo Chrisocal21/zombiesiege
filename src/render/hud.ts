@@ -3,7 +3,7 @@ import { bindings, keyLabel } from '../client/bindings';
 import { settings } from '../client/settings';
 import { config } from '../config';
 import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
-import { ITEMS } from '../game/items';
+import { ITEMS, type SupplyKind } from '../game/items';
 import { CARD_SECONDS, cardFor } from '../game/notes';
 import { bleedLeft, canGetUp, isDown, reviveProgress, reviveTarget, revivedBy } from '../game/downed';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
@@ -54,6 +54,10 @@ const DAMAGE_MARK_SECONDS = 1.4;
 const RADAR_RANGE = 24;
 // How near the dead walking about unaware have to be before the radar shows them.
 const UNAWARE_RADAR_RANGE = 14;
+
+function supplyName(item: SupplyKind): string {
+  return item === 'silencer' ? 'silencer' : ITEMS[item].name.toLowerCase();
+}
 
 function clock(seconds: number): string {
   const whole = Math.max(0, Math.ceil(seconds));
@@ -792,6 +796,7 @@ export function createHud(menu: Menu): Hud {
     const nameY = base - 102 * unit;
     text(context, stats.name, right, nameY, { size: 15 * unit, align: 'right', spacing: 5 * unit, weight: 700 });
     const nameWidth = measure(context, stats.name, 15 * unit, 700, 5 * unit);
+    if (player.silencer && player.weapon !== 'shotgun') text(context, 'SILENCED', right, nameY - 22 * unit, { size: 11 * unit, align: 'right', spacing: 4 * unit, weight: 700, color: COLOR.good });
     context.fillStyle = COLOR.accent;
     context.fillRect(right - nameWidth - 18 * unit, nameY - 6 * unit, 10 * unit, 2 * unit);
     {
@@ -958,7 +963,7 @@ export function createHud(menu: Menu): Hud {
     } else if (interaction && objectivePrompt(state, interaction.kind)) prompt = { keys: [bindings.use], label: objectivePrompt(state, interaction.kind)! };
     else if (player.carrying >= 0) prompt = { keys: [bindings.fire], label: 'Put the case down' };
     else if (interaction?.kind === 'gate') prompt = { keys: [bindings.use], label: 'Close the gate' };
-    else if (interaction?.kind === 'supply') prompt = { keys: [bindings.use], label: `Pick up ${ITEMS[state.supplies[interaction.index].item].name.toLowerCase()}` };
+    else if (interaction?.kind === 'supply') prompt = { keys: [bindings.use], label: `Pick up ${supplyName(state.supplies[interaction.index].item)}` };
     else if (interaction?.kind === 'pickup') prompt = { keys: [bindings.use], label: 'Pick up a cage panel' };
     else if (interaction?.kind === 'door') prompt = { keys: [bindings.use], label: 'Put up a cage across this door' };
     else if (player.ladder) prompt = { keys: [bindings.forward, bindings.back], label: 'Climb' };

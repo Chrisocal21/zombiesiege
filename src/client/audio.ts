@@ -184,6 +184,14 @@ export function createAudio(): Audio {
     bang(output(0, 1), context!.currentTime, 1.6);
   }
 
+  // Through a silencer: a muffled thump and the slide working, a fraction as loud.
+  function quietShot(): void {
+    const t = context!.currentTime;
+    const out = output(0, 0.5);
+    burst(out, t, 0.07, 'lowpass', 900, 200, 0.55, 3);
+    burst(out, t + 0.01, 0.04, 'bandpass', 2600, 1600, 0.25, 4);
+  }
+
   function shot(): void {
     bang(output(0, 0.95), context!.currentTime, 1);
   }
@@ -579,7 +587,7 @@ export function createAudio(): Audio {
           }
         }
         if (player.lastShotTick !== shotTick && player.lastShotTick >= 0) {
-          if (player.weapon === 'shotgun') shotgun(); else shot();
+          if (player.weapon === 'shotgun') shotgun(); else if (player.silencer) quietShot(); else shot();
           if (player.lastShotZombie) impact(player.lastShotKill, player.lastShotHead);
         }
         if (player.lastDryTick !== dryTick && player.lastDryTick >= 0) dryClick();
