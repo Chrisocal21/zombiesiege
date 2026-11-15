@@ -187,3 +187,11 @@ Open, in suggested order (one phase each, compact between):
 - No HTML in any output
 - No emojis in any output
 - SVG icons only when genuinely needed
+
+## Next acts (from `ZOMBIE_SIEGE_MASTER_CAMPAIGN_HANDOFF_v2.md`, Acts 5 to 12 are working expansion)
+
+Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the optional features, then the acts.
+- [ ] Act 5, Last Refuge, built as three slices, each from existing mechanics: 05-C the camp siege first (reuses the park's siege waves, adds a generator to repair and a fall-back yard), then 05-B The Missing Delivery (a search run with a cargo-versus-people choice), then 05-A Inventory of the Living (the quiet camp: needs a small ledger screen, so it comes last)
+- [ ] Act 6 Broken Roads, 7 Dead Air, 8 Blackwater, 9 Fault Lines, 10 Ghost Signal, 11 Ground Zero, 12 First Light: outlined in the handoff, none built
+- [ ] Needs you: the survivor zip (re-download) and lore approval of the draft wording
+
