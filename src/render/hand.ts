@@ -3,6 +3,7 @@ import { appearance, selectedGloves } from '../client/appearance';
 import * as THREE from 'three';
 import type { HandSocket } from './handSockets';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { track } from './models';
 import { articulateHand, refineHandSurface, FINGER_CHAINS as CHAINS } from './handRig';
 
 // The source tracking joints are upgraded to a connected 36-bone deformation rig on load.
@@ -233,7 +234,7 @@ function currentWorld(object: THREE.Object3D, out: THREE.Matrix4): THREE.Matrix4
 export function loadHand(parent: THREE.Object3D, url: string): Hand {
   const hand: Hand = { holdWeapon: () => false, pullIndex: () => {}, blendPose: () => {}, getWrist: () => false };
 
-  new GLTFLoader().load(url, (gltf) => {
+  void track(new GLTFLoader().loadAsync(url)).then((gltf) => {
     gltf.scene.name = url === RIGHT_HAND_MODEL ? 'Primary hand mesh' : 'Support hand mesh';
     let mesh: THREE.SkinnedMesh | undefined;
     gltf.scene.traverse((object) => {

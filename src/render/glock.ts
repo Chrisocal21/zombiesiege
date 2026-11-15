@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { track } from './models';
 
 export const GLOCK_MODEL = '/models/glock17.glb';
 
@@ -148,7 +149,7 @@ export function loadGlock(parent: THREE.Object3D): Glock {
   // The skin the arm extensions are made of, matched to the arm's own texture once it has loaded.
   const skin = new THREE.MeshStandardMaterial({ color: '#d9ad99', roughness: 0.75 });
 
-  new GLTFLoader().load(GLOCK_MODEL, (gltf) => {
+  void track(new GLTFLoader().loadAsync(GLOCK_MODEL)).then((gltf) => {
     frame.add(gltf.scene);
     skin.color.copy(averageSkin(gltf.scene) ?? skin.color).multiplyScalar(0.92);
     gltf.scene.traverse((object) => {

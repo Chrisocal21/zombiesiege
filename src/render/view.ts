@@ -24,6 +24,9 @@ export interface View {
   animate(time: number, state: GameState): void;
   // The light on the player's shoulder.
   setFlashlight(on: boolean): void;
+  // Gets the floor showing now ready to draw from any side: every texture on the card and every
+  // shader built, so turning round for the first time does not stall on one.
+  prepare(): Promise<void>;
 }
 
 // The finished frame is drawn through this as a final step, bending it like a slight fisheye lens.
@@ -264,6 +267,21 @@ export function createView(level: Level): View {
       // The reflections light every wall evenly, so they fade with the power too, or a blacked-out
       // floor still reads as lit.
       scene.environmentIntensity = 0.2 * (0.1 + 0.9 * power);
+    },
+    async prepare() {
+      // Hidden floors are skipped, so only this floor, the dead on it, and the weapon are done.
+      const textures = new Set<THREE.Texture>();
+      const collect = (object: THREE.Object3D) => {
+        const material = (object as THREE.Mesh).material;
+        if (!material) return;
+        for (const each of Array.isArray(material) ? material : [material]) {
+          for (const value of Object.values(each)) if (value instanceof THREE.Texture) textures.add(value);
+        }
+      };
+      scene.traverseVisible(collect);
+      viewScene.traverseVisible(collect);
+      for (const texture of textures) renderer.initTexture(texture);
+      await Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(viewScene, viewCamera)]);
     },
     setFlashlight(on) {
       flashlight.intensity = on ? 38 : 0;

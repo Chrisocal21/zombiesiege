@@ -17,6 +17,7 @@ import { awakeZombies } from '../game/zombies';
 import type { Menu } from './menu';
 import { drawHotbar, drawItemUse, drawWheel } from './itemsHud';
 import type { WheelState } from '../client/wheel';
+import type { LoadingScreen } from '../client/loading';
 import { COLOR, clamp, keycap, measure, roundedRect, text } from './ui';
 import { radioLine } from './radio';
 
@@ -24,7 +25,8 @@ const floorName = floorTitle;
 
 export interface Hud {
   toggleMap(): void;
-  draw(state: GameState, player: Player, time: number, wheel?: WheelState): void;
+  // The loading screen, when a floor is still coming in, goes over the game and under the menu.
+  draw(state: GameState, player: Player, time: number, wheel?: WheelState, loading?: LoadingScreen | null): void;
   // Wipes the overlay, for the opening scene, where none of the game's display shows.
   clear(): void;
 }
@@ -94,7 +96,7 @@ export function createHud(menu: Menu): Hud {
   return {
     toggleMap() { mapOpen = !mapOpen; },
     clear() { context.setTransform(1, 0, 0, 1, 0, 0); context.clearRect(0, 0, canvas.width, canvas.height); },
-    draw(state, player, time, wheel) {
+    draw(state, player, time, wheel, loading) {
       const dpr = window.devicePixelRatio || 1;
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -147,11 +149,36 @@ export function createHud(menu: Menu): Hud {
       }
       ghostHealth = Math.max(player.health, ghostHealth - 28 * frame);
 
-      if (!menu.onTitle()) drawGame(width, height, state, player, time, wheel);
-      if (mapOpen && !menu.isOpen()) drawTacticalMap(context, width, height, state, player);
+      const covered = loading && (loading.alpha >= 1 || loading.alone);
+      if (!menu.onTitle() && !covered) drawGame(width, height, state, player, time, wheel);
+      if (mapOpen && !menu.isOpen() && !covered) drawTacticalMap(context, width, height, state, player);
+      if (loading && !menu.onTitle()) drawLoading(width, height, state, loading, time);
       menu.draw(context, width, height, time);
     },
   };
+
+  // Black, the floor's name, and a thin bar filling as its models come in.
+  function drawLoading(width: number, height: number, state: GameState, loading: LoadingScreen, time: number): void {
+    const unit = height / 1080;
+    context.save();
+    context.globalAlpha = loading.alpha;
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, width, height);
+    const middle = width / 2;
+    const y = height * 0.47;
+    text(context, floorName(state.floor).toUpperCase(), middle, y - 44 * unit, { size: 17 * unit, weight: 700, color: COLOR.accent, spacing: 6 * unit, align: 'center', shadow: false });
+    text(context, stopAt(state.floor).name.toUpperCase(), middle, y + 6 * unit, { size: 46 * unit, weight: 800, spacing: 3 * unit, align: 'center', shadow: false });
+    const barWidth = Math.min(width * 0.6, 360 * unit);
+    const barY = y + 44 * unit;
+    context.fillStyle = 'rgba(255,255,255,0.14)';
+    context.fillRect(middle - barWidth / 2, barY, barWidth, 2 * unit);
+    context.fillStyle = COLOR.accent;
+    context.fillRect(middle - barWidth / 2, barY, barWidth * loading.progress, 2 * unit);
+    // The word breathes, the way the launch screen's does, so a long wait still looks alive.
+    const breathe = settings.reducedFlashing ? 1 : 0.72 + 0.28 * Math.cos(time * 2.6);
+    text(context, 'LOADING', middle, barY + 40 * unit, { size: 14 * unit, weight: 700, color: COLOR.dim, spacing: 7 * unit, align: 'center', alpha: breathe, shadow: false });
+    context.restore();
+  }
 
   function bearingTo(player: Player, x: number, z: number): number {
     return Math.atan2(x - player.x, -(z - player.z));

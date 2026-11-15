@@ -14,7 +14,9 @@ let dismissed = false;
 // A key pressed while the game is still loading is remembered and used as soon as it is ready.
 let waiting = false;
 
-const game = import('./main').then((module) => {
+// Ready once the code is in and the garage behind the title has settled.
+const game = import('./main').then(async (module) => {
+  await module.loaded;
   // The game read the saved settings again as it loaded.
   if (!dismissed) settings.reducedFlashing = true;
   ready = true;

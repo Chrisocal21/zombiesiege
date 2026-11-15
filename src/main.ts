@@ -5,6 +5,7 @@ import { createLocalInput } from './client/localInput';
 import { createIntroOverlay, INTRO_SECONDS, introPose, introWalker, WALKER_COUNT, type IntroOverlay, type IntroPose } from './client/intro';
 import { createSceneOverlay, playing, scenePose, type SceneOverlay } from './client/scene';
 import { createLocalSession, createRemoteSession } from './client/session';
+import { createLoader } from './client/loading';
 import { loadSettings, settings } from './client/settings';
 import { config } from './config';
 import { createGameState, eyeY, type GameState } from './game/state';
@@ -53,6 +54,10 @@ function newRun(): GameState {
 
 const session = coop ? createRemoteSession(coop, createGameState(level)) : createLocalSession(dressTitle(createGameState(level)));
 const view = createView(level);
+// Each new floor holds the game behind a loading screen until its models are in and drawn once.
+const loader = createLoader(() => view.prepare());
+// The launch screen waits on this before it offers to go on, so the title comes up settled.
+export const loaded = loader.first;
 const input = createLocalInput(view.renderer.domElement);
 const viewmodel = createViewmodel(view.viewScene);
 const effects = createEffects(view.scene, view.camera, viewmodel);
@@ -214,7 +219,11 @@ view.renderer.setAnimationLoop((now) => {
   const paused = menu.isOpen();
 
   const floorBefore = session.state.floor;
-  if (!paused && !reviewing && !intro) session.advance(frameSeconds, input.poll);
+  // A floor that changed since the last frame is held from its first tick. The review harness steps
+  // the game itself and shoots the screen, so it never waits on loading.
+  loader.update(session.state.level.name, now / 1000);
+  const loading = loader.waiting && !reviewing;
+  if (!paused && !reviewing && !intro && !loading) session.advance(frameSeconds, input.poll);
   else session.hold();
   const state = session.state;
   // Coming through the last gate of the prologue into the hospital garage plays the Nightfall opening.
@@ -254,8 +263,8 @@ view.renderer.setAnimationLoop((now) => {
   };
   const onTitle = menu.onTitle();
   if (intro) {
-    // A paused scene waits where it is.
-    if (paused) intro.start += frameSeconds * 1000;
+    // A paused scene waits where it is, and so does one whose garage is still loading.
+    if (paused || loader.waiting) intro.start += frameSeconds * 1000;
     if (introAt !== null) intro.start = now - Number(introAt) * 1000;
     const t = (now - intro.start) / 1000;
     if (intro.skip || t >= INTRO_SECONDS) endIntro(now);
@@ -330,8 +339,9 @@ view.renderer.setAnimationLoop((now) => {
   audio.update(state, player, paused || onTitle || intro !== null, frameSeconds);
   view.render(!onTitle && !cinematic);
   if (outfitPreview) view.renderOutfitPreview();
-  if (cinematic) hud.clear();
-  else hud.draw(state, player, now / 1000, paused ? undefined : (import.meta.env.DEV && (window as unknown as { __wheel?: WheelState }).__wheel) || input.wheel());
+  const loadingScreen = reviewing ? null : loader.screen(now / 1000);
+  if (cinematic && !loadingScreen) hud.clear();
+  else hud.draw(state, player, now / 1000, paused ? undefined : (import.meta.env.DEV && (window as unknown as { __wheel?: WheelState }).__wheel) || input.wheel(), loadingScreen && cinematic ? { ...loadingScreen, alone: true } : loadingScreen);
 });
 
 // Development only: ?introAt=SECONDS holds the opening scene at that moment, for looking at its shots.
@@ -339,6 +349,22 @@ if (introAt !== null) {
   menu.close();
   if (dressed) { session.state.zombies = []; dressed = false; }
   startIntro(performance.now());
+}
+
+// Development only: starts a floor with the menu closed, and shows the loader, for testing the
+// loading screen in a browser that cannot capture the mouse.
+if (import.meta.env.DEV) {
+  Object.assign(window, { __siegeLoading: {
+    loader,
+    state: () => session.state,
+    go(floor: number) {
+      const next = createGameState(level);
+      startOnFloor(next, floor);
+      dressed = false;
+      session.replace(next);
+      menu.close();
+    },
+  } });
 }
 
 // Opt-in development review harness; excluded from production builds.

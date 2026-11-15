@@ -8,10 +8,26 @@ const draco = new DRACOLoader().setDecoderPath('/draco/');
 const loader = new GLTFLoader().setDRACOLoader(draco);
 const cache = new Map<string, Promise<GLTF>>();
 
+// Work still under way to put models in the world: files on their way, and anything done to them
+// before they can be drawn. The loading screen waits for this to come to nothing.
+const work = { busy: 0, started: 0, finished: 0 };
+
+export function track<T>(job: Promise<T>): Promise<T> {
+  work.busy++;
+  work.started++;
+  const done = () => { work.busy--; work.finished++; };
+  job.then(done, done);
+  return job;
+}
+
+export function modelWork(): Readonly<typeof work> {
+  return work;
+}
+
 export function loadModel(url: string): Promise<GLTF> {
   let model = cache.get(url);
   if (!model) {
-    model = loader.loadAsync(url);
+    model = track(loader.loadAsync(url));
     cache.set(url, model);
   }
   return model;

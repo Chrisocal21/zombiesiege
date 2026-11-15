@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { loadModel } from './models';
+import { loadModel, track } from './models';
 
 // Skinned characters, posed by joint angles rather than animation files: the zombies, with the
 // same angles that animate the drawn zombies, and the other players in co-op. Each model has a
@@ -92,11 +92,11 @@ async function addNormalMaps(model: GLTF): Promise<void> {
   await Promise.all(jobs);
 }
 
-const loading = Promise.all(ZOMBIE_MODELS.map(loadModel)).then(async (models) => {
+const loading = track(Promise.all(ZOMBIE_MODELS.map(loadModel)).then(async (models) => {
   await Promise.all(models.map((model) => addNormalMaps(model).catch(() => undefined)));
   templates = models.map((model) => model.scene);
   return templates;
-});
+}));
 
 // Calls back once the models have loaded. Until then there is nothing to rig.
 export function whenZombieModelsLoad(callback: () => void): void {
