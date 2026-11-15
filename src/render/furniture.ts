@@ -16,7 +16,17 @@ interface Kit {
   group: THREE.Group;
   color: string;
   random: Random;
+  // Free room left on the piece for loose medical stock (see props.ts), in the piece's own space.
+  spots: FreeSpot[];
 }
+
+// Room on a shelf or a worktop where loose things can go: its middle at the front edge's height,
+// how wide and deep it is and how much height is free, and which way its front faces.
+export interface FreeSpot { x: number; y: number; z: number; yaw: number; width: number; depth: number; height: number }
+
+const freeSpots = new WeakMap<LevelBox, FreeSpot[]>();
+// The free room on a piece of furniture once it is built, in world space.
+export function furnitureSpots(box: LevelBox): FreeSpot[] { return freeSpots.get(box) ?? []; }
 
 type V3 = [number, number, number];
 
@@ -615,8 +625,11 @@ const shelf: Builder = (kit, w, h, d) => {
       const room = (y === 1.7 ? h - y : 0.4) - 0.04;
       while (cursor < w / 2 - 0.12) {
         const roll = random();
-        if (roll < 0.22) {
-          cursor += 0.15 + random() * 0.35;
+        if (roll < 0.32) {
+          // A gap where the boxes were taken: loose stock is put in it later.
+          const gap = 0.15 + random() * 0.35;
+          if (cursor + gap < w / 2 - 0.05) kit.spots.push({ x: cursor + gap / 2, y: y + 0.011, z: side * (d / 2 - 0.04 - (d / 2 - 0.06) / 2), yaw: side < 0 ? Math.PI : 0, width: gap - 0.03, depth: d / 2 - 0.08, height: room });
+          cursor += gap;
           continue;
         }
         if (roll < 0.62) {
@@ -870,10 +883,14 @@ const cart: Builder = (kit, w, h, d) => {
       box(defib, 0.32, 0.18, 0.26, 0, 0.09, 0, plain('#e8a020', 0.5), 0.03);
       plane(defib, 0.14, 0.09, -0.06, 0.12, 0.131, screen('ecg', T.ecgScreen()));
       for (const side of [-1, 1]) box(defib, 0.07, 0.04, 0.11, side * 0.12, 0.2, 0.0, greyPlastic(), 0.015);
-      box(g, uw * 0.7, h * 0.75, 0.02, x, bottom + h * 0.4, -d / 2 + 0.06, plain('#e06a1a', 0.5), 0.01);
-      cylinder(g, 0.05, 0.5, x + uw / 2 - 0.08, 0.5, -d / 2 + 0.14, plain('#2c7a3c', 0.4), 12);
+      box(g, uw * 0.7, Math.min(h * 0.75, bodyTop - bottom), 0.02, x, bottom + Math.min(h * 0.75, bodyTop - bottom) / 2 + 0.02, -(d - 0.14) / 2 - 0.012, plain('#e06a1a', 0.5), 0.01);
+      // The oxygen bottle rides in a bracket on the cart's side, not through its top.
+      const bottle = Math.min(0.5, bodyTop - bottom - 0.06);
+      cylinder(g, 0.045, bottle, x + (uw - 0.12) / 2 + 0.046, bottom + 0.04 + bottle / 2, -d / 2 + 0.16, plain('#2c7a3c', 0.4), 12);
+      box(g, 0.02, 0.03, 0.1, x + (uw - 0.12) / 2 + 0.01, bottom + 0.04 + bottle * 0.7, -d / 2 + 0.16, darkSteel());
     } else {
-      for (let k = 0; k < 4; k++) box(g, 0.14, 0.08, 0.18, x - uw / 2 + 0.14 + k * 0.17, bodyTop + 0.07, (random() - 0.5) * 0.2, plain(pick(random, ['#f2c200', '#3a8ac4', '#e8e8e8', '#c43c2c']), 0.5), 0.01);
+      // The tray is left for loose medical stock (props.ts) beside the sharps bin.
+      kit.spots.push({ x: x - 0.08, y: bodyTop + 0.03, z: 0.02, yaw: 0, width: uw - 0.36, depth: d - 0.22, height: 0.3 });
       box(g, 0.14, 0.2, 0.1, x + uw / 2 - 0.12, bodyTop + 0.13, -d / 2 + 0.12, plain('#f2c200', 0.5), 0.01);
     }
   }
@@ -1376,8 +1393,15 @@ export function buildFurniture(box: LevelBox, reflections: THREE.Texture): THREE
   piece.name = box.prop ?? 'furniture';
   piece.position.set(box.position.x, box.position.y - box.size.y / 2, box.position.z);
   piece.rotation.y = facing;
-  const kit: Kit = { group: piece, color: box.color, random: seeded(Math.round(box.position.x * 97) * 7919 + Math.round(box.position.z * 89) * 104729) };
+  const kit: Kit = { group: piece, color: box.color, random: seeded(Math.round(box.position.x * 97) * 7919 + Math.round(box.position.z * 89) * 104729), spots: [] };
   BUILDERS[box.prop!](kit, w, box.size.y, d);
+  if (kit.spots.length) {
+    piece.updateMatrix();
+    freeSpots.set(box, kit.spots.map((spot) => {
+      const at = new THREE.Vector3(spot.x, spot.y, spot.z).applyMatrix4(piece.matrix);
+      return { ...spot, x: at.x, y: at.y, z: at.z, yaw: spot.yaw + facing };
+    }));
+  }
   // A soft shadow on the floor under it, since the room lights do not cast any.
   if (box.prop !== 'curtain') flat(piece, w + 0.3, d + 0.3, 0, 0.004, 0, contactShadow());
   return piece;
