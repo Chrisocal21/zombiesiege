@@ -31,6 +31,12 @@ const p = s.players[0];
 assert.ok(!s.level.boxes.some((b) => Math.abs(b.position.x - p.x) < b.size.x / 2 && Math.abs(b.position.z - p.z) < b.size.z / 2 && b.position.y + b.size.y / 2 > 0.3), 'spawn is clear');
 // The waves come: someone is spawned through a gap within a minute and a half.
 assert.ok(run(s, 90, () => s.zombies.length > 0), 'the dead come through the fence');
+// The fall-back call is said when wave 3 begins, and the final push when wave 4 does.
+const { radioLine } = await import('../src/render/radio.ts');
+s.waves.phase = 'active'; s.waves.number = 3; s.waves.startedTick = s.tick - 3 * HZ;
+assert.match(radioLine(s)?.text ?? '', /fall back to the medical yard/i, 'wave 3: fall back');
+s.waves.number = 4; s.waves.startedTick = s.tick - 3 * HZ;
+assert.match(radioLine(s)?.text ?? '', /last push/i, 'wave 4: the last push');
 // Skip the waves, throw both generators, and the lift opens; the run ends here.
 s.zombies = []; s.waves.phase = 'search'; s.waves.number = wavesOnFloor(s.floor);
 useObjective(s, p, { kind: 'breaker', index: 0 });

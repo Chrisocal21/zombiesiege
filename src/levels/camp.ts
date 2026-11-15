@@ -109,6 +109,9 @@ export const camp: Level = {
   cues: [
     { on: 'start', at: 1.5, speaker: CREW, text: 'The camp. Fences, tents, and the lights are out. They will come for the noise.' },
     { on: 'start', at: 8, speaker: CREW, text: 'Hold the gaps. If the line breaks, fall back to the medical yard.', seconds: 6 },
+    { on: 'wave', wave: 3, at: 2, speaker: CREW, text: 'The line will not hold. Fall back to the medical yard. Use the gate, make them come through it.', seconds: 7 },
+    { on: 'wave', wave: 3, at: 11, speaker: CREW, text: 'Hold the gate. Nothing gets into the yard except through that gap.', seconds: 5 },
+    { on: 'wave', wave: 4, at: 2, speaker: CREW, text: 'Last push. They are all at the gate. Take them there, then get the generators back.', seconds: 7 },
     { on: 'done', at: 0.6, speaker: CREW, text: 'Generators are running, the camp is lit. Fuel and a way out of here are next.' },
   ],
   navBounds: { minX: -33, maxX: 33, minZ: -19, maxZ: 19 },

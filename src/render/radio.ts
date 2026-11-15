@@ -49,6 +49,7 @@ function momentOf(state: GameState, cue: Cue, index: number): number {
     case 'step': return stepDoneTick(state, cue.step ?? 0);
     case 'area': return state.heard[index] ?? -1;
     case 'boss': return state.boss?.arrivedTick ?? -1;
+    case 'wave': return state.waves.phase === 'active' && state.waves.number === cue.wave ? state.waves.startedTick : -1;
   }
 }
 

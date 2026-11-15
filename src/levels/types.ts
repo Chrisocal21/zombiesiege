@@ -237,12 +237,14 @@ export interface Resident {
 // A line of radio or crew talk, shown for a few seconds at a moment on the floor.
 // 'start': after arriving. 'done': once the whole floor's objective is done. 'step': once step
 // `step` of the floor's steps is done. 'area': once the first player walks into `area`. 'boss':
-// once the floor's boss arrives.
+// once the floor's boss arrives. 'wave': once wave `wave` of a siege floor begins.
 // `at` is the seconds after that moment.
 // `feed` puts a security-camera monitor on screen while the line shows, with that label on it.
 export interface Cue {
-  on: 'start' | 'done' | 'step' | 'area' | 'boss';
+  on: 'start' | 'done' | 'step' | 'area' | 'boss' | 'wave';
   at: number;
+  // For 'wave': which wave of a siege floor it is said when it begins.
+  wave?: number;
   speaker: string;
   text: string;
   seconds?: number;
