@@ -5,6 +5,7 @@ import { buildArchitecture } from './architecture';
 import { buildHospital } from './hospital';
 import { buildHospitalParking } from './parking';
 import { buildPark } from './park';
+import { buildRoofDressing } from './roofDressing';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { GameState } from '../game/state';
@@ -719,6 +720,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const animateDressing = buildDressing(detailProps, level);
   if (garage) buildHospitalParking(detailProps, level);
   buildPark(detailProps, level);
+  buildRoofDressing(detailProps, level);
   bakeStaticMeshes(detailProps);
 
   const lampGroup = new THREE.Group();
