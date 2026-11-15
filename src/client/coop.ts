@@ -1,5 +1,5 @@
 import type { InputMessage } from '../game/inputs';
-import type { GameState } from '../game/state';
+import { createGameState, type GameState } from '../game/state';
 import type { Level } from '../levels/types';
 import type { ServerMessage } from '../net/protocol';
 
@@ -36,6 +36,7 @@ export function joinRoom(room: string): Coop {
   let playerId = -1;
   let status: Coop['status'] = 'connecting';
   let level: Level | null = null;
+  let defaults: GameState | null = null;
   let latest: Snapshot | null = null;
   let before: Snapshot | null = null;
   let seq = 0;
@@ -51,8 +52,12 @@ export function joinRoom(room: string): Coop {
     else if (message.type === 'snapshot') {
       if (message.level) level = message.level;
       if (!level) return;
+      // A server deployed from older code sends states without the newest fields. Whatever is missing
+      // is filled from a fresh game, so the page keeps running (and the host sees the menu) until the
+      // server is redeployed.
+      defaults ??= createGameState(level);
       before = latest;
-      latest = { state: { ...message.state, level }, arrived: performance.now() };
+      latest = { state: { ...defaults, ...message.state, level }, arrived: performance.now() };
       unapplied = unapplied.filter((each) => each.seq > message.ack);
     }
   });
