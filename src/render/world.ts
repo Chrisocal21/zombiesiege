@@ -30,8 +30,10 @@ const CITY_DEPTH = 48;
 import { buildStations } from './station';
 import { buildGate, buildStreet } from './street';
 import { buildStreetBuildings } from './streetBuildings';
+import { buildScenery, sceneryLines } from './scenery';
+import { buildPropStack, buildTree, dressFurniture } from './props';
 import { asphaltMaterial, hazardMaterial, labelTexture } from './streetTextures';
-import { buildCartons, buildPillar, buildVehicle } from './vehicles';
+import { buildPillar, buildVehicle } from './vehicles';
 
 export interface World {
   // Call every frame with the running time in seconds and the game state, for flickering lamps,
@@ -76,15 +78,6 @@ function boxMapUVs(geometry: THREE.BufferGeometry, box: LevelBox, tile: number):
   uv.needsUpdate = true;
 }
 
-function barrelGeometry(): THREE.BufferGeometry {
-  const outline: [number, number][] = [
-    [0, -0.5], [0.44, -0.5], [0.47, -0.47], [0.47, -0.38], [0.5, -0.33], [0.5, -0.28], [0.47, -0.24],
-    [0.47, 0.24], [0.5, 0.28], [0.5, 0.33], [0.47, 0.38], [0.47, 0.47], [0.44, 0.5], [0.36, 0.5],
-    [0.36, 0.47], [0, 0.47],
-  ];
-  return new THREE.LatheGeometry(outline.map(([r, y]) => new THREE.Vector2(r, y)), 24);
-}
-
 const slabMaterials = (() => {
   const concrete = surfaceMaterial('wall', '#8a8d90');
   const ceiling = surfaceMaterial('floor', '#7a7d82');
@@ -100,17 +93,10 @@ function buildBoxObject(box: LevelBox, index: number): THREE.Object3D | null {
   const surface = box.surface ?? 'plain';
   if (surface === 'board' || surface === 'gate' || surface === 'lift' || surface === 'lock' || surface === 'step') return null;
   if (surface === 'car' || surface === 'van') return buildVehicle(box);
-  if (surface === 'building' || surface === 'crate') return buildArchitecture(box);
-  if (surface === 'cartons') return buildCartons(box);
+  if (surface === 'building') return buildArchitecture(box);
+  if (surface === 'crate' || surface === 'cartons' || surface === 'barrel') return buildPropStack(box, index);
+  if (surface === 'tree') return buildTree(box, index);
   if (surface === 'pillar') return buildPillar(box, surfaceMaterial('plain', box.color), index);
-
-  if (surface === 'barrel') {
-    const mesh = new THREE.Mesh(barrelGeometry(), surfaceMaterial(surface, box.color));
-    mesh.scale.set(box.size.x, box.size.y, box.size.z);
-    mesh.position.set(box.position.x, box.position.y, box.position.z);
-    mesh.castShadow = mesh.receiveShadow = true;
-    return mesh;
-  }
 
   const bevel = BEVEL[surface];
   const geometry = bevel
@@ -298,8 +284,9 @@ const BOARD_TICKS = 40;
 
 // Door frames, the red lights behind them, the boards that appear when a door is boarded up, and
 // the bundles of boards lying on the floor waiting to be found.
-function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
+function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture, rustic: Set<Level['doors'][number]> = new Set()): (state: GameState, time: number) => void {
   const frameMaterial = new THREE.MeshStandardMaterial({ color: 0xb59a2e, roughness: 0.55, metalness: 0.35 });
+  const postMaterial = new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 0.9 });
   const cageMaterial = new THREE.MeshStandardMaterial({ color: 0x5b6168, roughness: 0.4, metalness: 0.85 });
 
   const boards: THREE.Group[] = [];
@@ -311,20 +298,39 @@ function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture)
     group.rotation.y = facing;
     scene.add(group);
 
-    for (const side of [-1, 1]) {
-      const jamb = new THREE.Mesh(new RoundedBoxGeometry(0.2, door.height + 0.2, 0.14, 2, 0.02), frameMaterial);
-      jamb.position.set(side * (door.width / 2 + 0.1), (door.height + 0.2) / 2, 0.07);
-      jamb.castShadow = true;
-      group.add(jamb);
+    if (rustic.has(door)) {
+      // A gap in a hedge or fence: two old gateposts, and the gate itself swung back into the field.
+      for (const side of [-1, 1]) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.6, 0.16), postMaterial);
+        post.position.set(side * (door.width / 2 + 0.08), 0.8, -0.2);
+        post.castShadow = true;
+        group.add(post);
+      }
+      const gate = new THREE.Group();
+      gate.position.set(door.width / 2, 0, -0.2);
+      gate.rotation.y = 1.9;
+      for (const y of [0.35, 0.75, 1.15]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(door.width - 0.2, 0.08, 0.05), postMaterial);
+        rail.position.set(-(door.width - 0.2) / 2, y, 0);
+        gate.add(rail);
+      }
+      group.add(gate);
+    } else {
+      for (const side of [-1, 1]) {
+        const jamb = new THREE.Mesh(new RoundedBoxGeometry(0.2, door.height + 0.2, 0.14, 2, 0.02), frameMaterial);
+        jamb.position.set(side * (door.width / 2 + 0.1), (door.height + 0.2) / 2, 0.07);
+        jamb.castShadow = true;
+        group.add(jamb);
+      }
+      const header = new THREE.Mesh(new RoundedBoxGeometry(door.width + 0.4, 0.2, 0.14, 2, 0.02), frameMaterial);
+      header.position.set(0, door.height + 0.1, 0.07);
+      header.castShadow = true;
+      group.add(header);
     }
-    const header = new THREE.Mesh(new RoundedBoxGeometry(door.width + 0.4, 0.2, 0.14, 2, 0.02), frameMaterial);
-    header.position.set(0, door.height + 0.1, 0.07);
-    header.castShadow = true;
-    group.add(header);
 
     // A dim red light in the dark space behind the door.
     const lamp = new THREE.Group();
-    lamp.position.set(door.position.x - door.normal.x * 1.6, 3.2, door.position.z - door.normal.z * 1.6);
+    lamp.position.set(door.position.x - door.normal.x * 1.6, rustic.has(door) ? 1.2 : 3.2, door.position.z - door.normal.z * 1.6);
     lamp.add(new THREE.PointLight(0xff4a2a, 9, 8, 2));
     const bulb = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: glowMap, color: 0xff3a22, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.7 }),
@@ -424,7 +430,7 @@ function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture)
 }
 
 // The night sky, the moon and a far ring of buildings standing on the ground at `ground`.
-function buildSky(scene: THREE.Object3D, ground: number, palette?: { horizon: string; zenith: string; stars: number }): void {
+function buildSky(scene: THREE.Object3D, ground: number, palette?: { horizon: string; zenith: string; stars: number }, ring = true): void {
   const horizonColor = new THREE.Color(palette?.horizon ?? '#131a26');
   const zenithColor = new THREE.Color(palette?.zenith ?? '#03050b');
   const starLevel = palette?.stars ?? 1;
@@ -498,7 +504,8 @@ function buildSky(scene: THREE.Object3D, ground: number, palette?: { horizon: st
   disc.visible = starLevel > 0.3;
   scene.add(disc);
 
-  // A ring of dark buildings far off, with a few lit windows.
+  // A ring of dark buildings far off, with a few lit windows (not where real scenery stands instead).
+  if (!ring) return;
   const skyline = new THREE.Group();
   const buildingMaterial = new THREE.MeshBasicMaterial({ color: 0x090c11, fog: false });
   const windowMaterial = new THREE.MeshBasicMaterial({ color: 0xffc77a, fog: false });
@@ -589,14 +596,17 @@ function buildGarageDressing(scene: THREE.Object3D, level: Level): void {
 export function buildWorld(scene: THREE.Object3D, level: Level, environment: THREE.Texture): World {
   const staticProps = new THREE.Group();
   scene.add(staticProps);
+  // The edges of an outdoor block are drawn as real buildings, fences or hedges instead of their walls.
+  const scenery = level.theme === 'street' ? sceneryLines(level) : null;
   level.boxes.forEach((box, index) => {
-    if (box.hidden) return;
+    if (box.hidden || scenery?.skip.has(box)) return;
     const object = level.theme === 'garage' && box.surface === 'building'
       ? buildHospital(box)
       : box.prop ? buildFurniture(box, environment) : buildBoxObject(box, index);
     if (object) staticProps.add(object);
   });
   bakeStaticMeshes(staticProps);
+  dressFurniture(scene, level);
   for (const ladder of level.ladders) scene.add(buildLadder(ladder));
 
   // Ground beyond everything, so there is no void.
@@ -666,12 +676,16 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
     buildStreet(scene, level, glowMap);
     void buildStreetBuildings(scene, level);
   }
-  if (street) buildSky(scene, 0, level.atmosphere?.sky);
+  if (street) buildSky(scene, 0, level.atmosphere?.sky, !level.scenery);
+  if (scenery) void buildScenery(scene, level, scenery.lines);
   if (level.theme === 'roof') {
     buildSky(scene, -CITY_DEPTH);
     buildCity(scene, -CITY_DEPTH);
   }
-  const syncDoors = buildDoors(scene, level, glowMap);
+  // Doorways in a hedge or fence are gateposts, not door frames.
+  const rustic = new Set(level.doors.filter((door) => scenery?.lines.some((line) => line.backdrop !== 'city'
+    && Math.abs((line.axis === 'x' ? door.position.z : door.position.x) - line.fixed) < 0.1)));
+  const syncDoors = buildDoors(scene, level, glowMap, rustic);
   const syncGate = buildGate(scene, level, glowMap);
   const syncLift = buildLift(scene, level, glowMap);
   const syncStations = buildStations(scene, level, glowMap);

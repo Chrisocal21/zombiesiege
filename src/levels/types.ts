@@ -24,6 +24,8 @@ export type Surface =
   | 'plaster'
   | 'ceiling'
   | 'building'
+  // A tree's trunk: drawn as a whole tree.
+  | 'tree'
   | 'board'
   | 'gate'
   | 'lift'
@@ -70,7 +72,7 @@ export interface LevelBox {
   hidden?: boolean;
   // Ramp backing for shots/solids; feet follow Level.ramp's continuous surface instead.
   rampStep?: boolean;
-  vehicleRole?: 'ambulance' | 'elCajon';
+  vehicleRole?: 'ambulance' | 'elCajon' | 'police';
   // The vault's door: solid until the time lock opens it, drawn from the game state, and shut again
   // once what was driven back in is sealed behind it.
   vaultDoor?: boolean;
@@ -369,4 +371,22 @@ export interface Level {
   exitTimer?: number;
   // On a gate floor, the checkpoint the crew has just come through, behind where they start: open.
   entry?: Elevator;
+  // What is seen beyond each edge of an outdoor block, drawn in place of its plain walls (the walls are
+  // still there to walk into). North is the edge at -z, west the edge at -x. `skyline` puts towers on
+  // the horizon.
+  scenery?: Scenery;
+}
+
+// 'city': a row of real buildings, their ground floors shopfronts with the block's doorways in them.
+// 'houses': a fence, front yards and houses. 'trees': a hedge with fields and trees behind it.
+// A side can leave stretches of a city row `open` (from, to along the line): low buildings, or a place the
+// crew can walk into behind the frontage, where a tall building would stand in the way.
+export type Backdrop = 'city' | 'houses' | 'trees';
+export type SceneryEdge = Backdrop | { kind: Backdrop; open?: [number, number][] };
+export interface Scenery {
+  north?: SceneryEdge;
+  south?: SceneryEdge;
+  west?: SceneryEdge;
+  east?: SceneryEdge;
+  skyline?: boolean;
 }

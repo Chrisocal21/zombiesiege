@@ -44,6 +44,7 @@ const stall = (x: number, z: number, color: string) => furniture(x, z, 3, 1.1, 1
 export const market: Level = {
   name: 'Market square',
   theme: 'street',
+  scenery: { north: 'city', south: 'city', west: 'city', east: 'city', skyline: true },
   exitGate: true,
   atmosphere: { fog: '#6a6e78', fogNear: 25, fogFar: 100, ambient: 1.4, sky: { horizon: '#e0a070', zenith: '#4a5f86', stars: 0.05 } },
   boxes: [

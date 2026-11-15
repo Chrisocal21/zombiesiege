@@ -20,4 +20,11 @@ Blender 5.2 runs these headless to turn downloaded packs into the game's GLB fil
   own skeleton and textures.
   `"$B" -b --factory-startup -P split_characters.py -- in.fbx <textures dir> <out dir>`
 
+- `pack.py`: the general one. `inspect` lists a pack's top-level objects with size, triangles and
+  textures; `export` writes chosen objects as one GLB stood at the origin, with options for triangle
+  target (`tris=`, `careful`), texture size (`tex=`), turning (`turn=`, `rotx=`), scale, and wiring
+  textures a file does not point at (`wire=DIR` by material name, `wireobj=DIR` by object name).
+  `"$B" -b --factory-startup -P pack.py -- export pack.fbx out.glb "Object name" tris=12000 tex=1024`
+  Buildings whose windows are real geometry tear when reduced: export those whole or leave them out.
+
 Check a result with `/tools/models.html?model=<folder>/<name>` on the dev server.

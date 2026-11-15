@@ -4,6 +4,33 @@ import { AXLE_Y, CAR, createElCajon, WHEEL_X } from './elCajon';
 import { createSedan, createVan, type Fit } from './vehicleModels';
 import type { LevelBox } from '../levels/types';
 import { cardboardMaterial, hazardMaterial, labelTexture } from './streetTextures';
+import { placeModel } from './models';
+
+// Vehicles that come from model files: the file, how long the model is, and the turn that points its
+// front down -z (the way the drawn vans face before they are placed).
+const MODELLED = {
+  ambulance: { file: '/models/vehicles/ambulance.glb', length: 6.64, turn: 0 },
+  police: { file: '/models/vehicles/police-wreck.glb', length: 4.88, turn: Math.PI / 2 },
+} as const;
+
+// A vehicle from a file, fitted to its box: stood on the ground, as long as the box, turned like the
+// drawn ones. It appears once its file has loaded.
+function buildModelledVehicle(box: LevelBox, role: keyof typeof MODELLED): THREE.Group {
+  const spec = MODELLED[role];
+  const alongX = box.size.x > box.size.z;
+  const length = alongX ? box.size.x : box.size.z;
+  const group = new THREE.Group();
+  group.name = role;
+  group.position.set(box.position.x, box.position.y - box.size.y / 2, box.position.z);
+  group.rotation.y = alongX ? (box.position.x < 0 ? -Math.PI / 2 : Math.PI / 2) : (box.position.x < 0 ? Math.PI : 0);
+  void placeModel(spec.file).then((model) => {
+    model.rotation.y = spec.turn;
+    model.scale.setScalar(length / spec.length);
+    model.traverse((child) => { if (child instanceof THREE.Mesh) { child.castShadow = true; child.receiveShadow = true; } });
+    group.add(model);
+  });
+  return group;
+}
 
 const round = (w: number, h: number, d: number, r: number) => new RoundedBoxGeometry(w, h, d, 3, r);
 function add(parent: THREE.Object3D, mesh: THREE.Mesh, x: number, y: number, z: number, shadows = true): THREE.Mesh {
@@ -46,6 +73,7 @@ function tyreTemplate(): THREE.Mesh {
 // A saloon, estate, van or ambulance, sized to its box and facing the way its place requires.
 export function buildVehicle(box: LevelBox): THREE.Group {
   if (box.vehicleRole === 'elCajon') return buildElCajonVehicle(box);
+  if (box.vehicleRole === 'ambulance' || box.vehicleRole === 'police') return buildModelledVehicle(box, box.vehicleRole);
   const van = box.surface === 'van';
   const estate = !van && box.size.y > 1.6;
   const alongX = box.size.x > box.size.z;

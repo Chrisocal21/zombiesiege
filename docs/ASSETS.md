@@ -12,7 +12,26 @@ needs its download page checked for use in a commercial game.
 | AK | `public/models/weapons/ak.glb` | `AK files/akSAl.blend` from `AK files(1).zip`; its arms are left out, and the packed camo texture is replaced by flat paint | *unconfirmed* |
 | Street buildings (8) | `public/models/city/*.glb` | "Buildings" pack (FBX + baked PBR textures) | *unconfirmed* |
 | Zombies (2) and a survivor | `public/models/characters/zombie-a.glb`, `zombie-b.glb`, `survivor.glb` | "3 zombie collection" (FBX, Mixamo skeletons) | *unconfirmed* |
+| City rows and skyline (11) | `public/models/blocks/*.glb` | CGTrader "City Building Pack" bundle (Building Collection 1 and 2, FBX) | *unconfirmed* (CGTrader purchase: check the licence on the order) |
+| Suburban houses (16) | `public/models/houses/house-*.glb`, `home-*.glb` | CGTrader "Suburban House Collection" 1 and 2 (FBX) | *unconfirmed* (CGTrader purchase) |
+| Cargo: barrels, drums, pallets, cartons, crates, sacks, tank | `public/models/props/*.glb` (not medkit, med-items, container) | CGTrader "Box and Cargo Collection" (FBX) | *unconfirmed* (CGTrader purchase) |
+| First aid bag (closed, open) and loose medical items | `public/models/props/medkit*.glb`, `med-items.glb` | CGTrader "Emergency Medical Kit, game ready" (FBX + textures; the bag's opacity map is left out) | *unconfirmed* (CGTrader purchase) |
+| Ambulance | `public/models/vehicles/ambulance.glb` | CGTrader "Vehicle Ambulance Rescue Truck, game ready 06" (OBJ, textures wired by part) | *unconfirmed* (CGTrader purchase) |
+| Burned police car | `public/models/vehicles/police-wreck.glb` | CGTrader "Destroyed Police Car Wreck, post-apocalyptic PBR" (GLB) | *unconfirmed* (CGTrader purchase) |
+| Shipping container | `public/models/props/container.glb` | `shipping-container-proz.glb` from the asset folder | *unconfirmed* |
+| Two trees, grass bush | `public/models/plants/*.glb` | `projectbaja/assets/plants`: the two low-poly trees in "Realistic Trees" and `grass_bush` in `plants_assets.fbx` | *unconfirmed* |
 | Draco decoder | `public/draco/*` | three.js `examples/jsm/libs/draco` | Apache 2.0 |
+
+## How the new packs are used
+
+- `src/render/scenery.ts` draws the edges of every street floor from `Level.scenery`: city rows of the
+  block models over shopfronts the game draws (the models are clipped at 4.4 m so their own ground
+  floors never cover a doorway), fences with houses behind, hedges with fields and trees, and dark
+  towers on the skyline.
+- `src/render/props.ts` fills the levels' `barrel`, `cartons` and `crate` boxes with the cargo models,
+  draws `tree` trunks as whole trees, leaves small things on counters, desks, shelves and carts, and
+  gives the first aid pickup its real bag.
+- `src/render/vehicles.ts` draws the crew's ambulance and the P01 police car from their files.
 
 ## How the scenery is converted
 
@@ -25,6 +44,14 @@ The two zombies are posed by the game's own joint angles (`src/render/zombieRig.
 need no animation files. Their Mixamo skeletons would also take Mixamo clips as they are.
 
 ## Waiting to be used
+
+- Amber (Character Creator, about 1.7 million triangles, CC skeleton): needs her hair and clothes
+  reduced and her bones renamed to Mixamo names before the rig can drive her.
+- Mutant and the ghillie soldier (tripo): not rigged; they need automatic weights onto the Mixamo
+  skeleton first.
+- `post-apocalyptic-survivor-*.zip` is a saved web page, not a model: download it again.
+- The rest of the building packs (glass apartment and brick tower meshes tear when reduced and are
+  too heavy whole), the rooftop HVAC sets, the other plants and the big trees (millions of triangles).
 
 - Zombie Schoolgirl: rigged (its own skeleton, not Mixamo), no animations.
 - CGT Facades (CGTrendy "Free Facades"): street fronts, lampposts, trees, benches.

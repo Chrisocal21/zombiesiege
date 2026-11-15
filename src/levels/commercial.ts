@@ -67,6 +67,7 @@ const lights: LevelLight[] = [lamp(-30, -10.4), lamp(-18, 10.4, true), lamp(-8, 
 export const commercial: Level = {
   name: 'Commercial District',
   theme: 'street',
+  scenery: { north: 'city', south: { kind: 'city', open: [[14.5, 35]] }, west: 'city', east: 'city', skyline: true },
   exitGate: true,
   atmosphere: { fog: '#181c24', fogNear: 18, fogFar: 80, ambient: 1.05, sky: { horizon: '#1e2232', zenith: '#05070d', stars: 0.8 } },
   boxes: [

@@ -36,6 +36,7 @@ const lights: LevelLight[] = [lamp(-30, 8.4), lamp(-20, -8.4, true), lamp(-8, 8.
 export const approach: Level = {
   name: 'Final Push',
   theme: 'street',
+  scenery: { north: 'city', south: 'city', west: 'city', east: 'city', skyline: true },
   exitGate: true,
   atmosphere: { fog: '#171c24', fogNear: 18, fogFar: 80, ambient: 1.05, sky: { horizon: '#1c2030', zenith: '#04060c', stars: 0.9 } },
   boxes: [

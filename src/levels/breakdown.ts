@@ -29,6 +29,7 @@ const lights: LevelLight[] = [lamp(-22, 8.4), lamp(-8, -8.4), lamp(6, 8.4, true)
 export const breakdown: Level = {
   name: 'Breakdown',
   theme: 'street',
+  scenery: { north: 'trees', south: 'houses', west: 'trees', east: 'trees' },
   exitGate: true,
   atmosphere: { fog: '#3a3028', fogNear: 26, fogFar: 100, ambient: 1.5, sky: { horizon: '#9a6040', zenith: '#1c2236', stars: 0.1 } },
   boxes: [
@@ -43,9 +44,10 @@ export const breakdown: Level = {
     ...stationBoxes(stations),
 
     // The crew's ambulance, dry, and what is left on the road: a police car with its door open, wrecks, hay bales.
-    { position: { x: -20, y: 1.175, z: -2 }, size: { x: 4.9, y: 2.35, z: 1.98 }, color: '#d6ddd7', surface: 'van', vehicleRole: 'ambulance' },
+    { position: { x: -20, y: 1.275, z: -2 }, size: { x: 6.2, y: 2.55, z: 2.2 }, color: '#d6ddd7', surface: 'van', vehicleRole: 'ambulance' },
     parkedCar(-8, 4.4, '#2f4a5c'),
-    parkedCar(6, -4.4, '#2b3a63'),
+    // The police car, burned out, with the radio still working.
+    { ...parkedCar(6, -4.4, '#2b3a63'), size: { x: 4.9, y: 1.5, z: 2.0 }, position: { x: 6, y: 0.75, z: -4.4 }, vehicleRole: 'police' },
     parkedCar(14, 4.4, '#6b2a2a', true),
     parkedCar(22, -4.4, '#a8782f'),
     block(-2, 0.4, 3, 1.1, 0.8, '#8a8d90'),

@@ -35,11 +35,12 @@ const stations: Station[] = [
   { kind: 'shotgun', weapon: 'ak', position: { x: -25.95, y: 1.25, z: 9 }, normal: { x: 1, z: 0 } },
 ];
 
-// A tree: a trunk with a canopy of leaves well above head height.
+// A tree: a trunk, drawn as the whole tree, with its canopy well above head height (not drawn: it only
+// stops shots).
 function tree(x: number, z: number): LevelBox[] {
   return [
-    block(x, z, 0.6, 3.2, 0.6, '#4a3a2a'),
-    { position: { x, y: 4.6, z }, size: { x: 3.6, y: 2.8, z: 3.6 }, color: '#3a5a2e', surface: 'plain' },
+    block(x, z, 0.6, 3.2, 0.6, '#4a3a2a', 'tree'),
+    { position: { x, y: 4.6, z }, size: { x: 3.6, y: 2.8, z: 3.6 }, color: '#3a5a2e', surface: 'plain', hidden: true },
   ];
 }
 
@@ -49,6 +50,7 @@ const lights: LevelLight[] = [lamp(-20, -10), lamp(-20, 10), lamp(0, -14), lamp(
 export const park: Level = {
   name: 'The park',
   theme: 'street',
+  scenery: { north: 'trees', south: 'trees', east: 'trees', skyline: true },
   atmosphere: { fog: '#8a7a80', fogNear: 25, fogFar: 110, ambient: 1.9, sky: { horizon: '#d98a62', zenith: '#27324e', stars: 0.15 } },
   boxes: [
     ground(-26, 26, -18, 18, GRASS, 'plain'),

@@ -46,6 +46,7 @@ const shopLights: LevelLight[] = [
 export const mainStreet: Level = {
   name: 'Main Street',
   theme: 'street',
+  scenery: { north: 'city', south: 'city', west: 'city', east: 'city', skyline: true },
   exitGate: true,
   atmosphere: { fog: '#8a8f98', fogNear: 25, fogFar: 100, ambient: 1.3, sky: { horizon: '#d9a070', zenith: '#50648a', stars: 0.05 } },
   boxes: [

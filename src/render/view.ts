@@ -98,6 +98,8 @@ export function createView(level: Level): View {
   renderer.autoClear = false;
   renderer.info.autoReset = false;
   renderer.shadowMap.enabled = true;
+  // City rows clip the models' own ground floors away above the shopfronts (render/scenery.ts).
+  renderer.localClippingEnabled = true;
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();

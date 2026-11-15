@@ -6,7 +6,7 @@ import type { Surface } from '../levels/types';
 
 export type Painter = (context: CanvasRenderingContext2D, size: number, random: () => number) => void;
 
-function seededRandom(seed: number): () => number {
+export function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -566,6 +566,7 @@ const TILE_METERS: Record<Surface, number> = {
   crate: 1,
   container: 1,
   barrel: 1,
+  tree: 1,
   plain: 2,
   board: 1,
   pillar: 2,

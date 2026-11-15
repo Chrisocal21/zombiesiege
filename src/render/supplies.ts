@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ItemId } from '../game/items';
 import type { GameState } from '../game/state';
+import { medkitModel } from './props';
 
 // Bandages, first aid kits and water lying where a zombie fell: small props that turn slowly, with a
 // soft light column so they can be seen across a dark floor.
@@ -16,10 +17,10 @@ function build(item: ItemId): THREE.Group {
     stripe.rotation.x = Math.PI / 2;
     prop.add(roll, stripe);
   } else if (item === 'medkit') {
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.12), paint('#f1f1ec'));
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.125), paint('#d8342a'));
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.125), paint('#d8342a'));
-    prop.add(box, bar, post);
+    // The real first aid bag, a little smaller in its holder since the holder is scaled up below.
+    const bag = medkitModel();
+    bag.scale.setScalar(1 / 1.6 * 1.1);
+    prop.add(bag);
   } else {
     const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.2, 16), new THREE.MeshStandardMaterial({ color: '#7cc4ff', transparent: true, opacity: 0.7, roughness: 0.2 }));
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.04, 12), paint('#1f6fbf'));

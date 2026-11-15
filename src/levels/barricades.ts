@@ -42,6 +42,7 @@ const lights: LevelLight[] = [
 export const barricades: Level = {
   name: 'The barricades',
   theme: 'street',
+  scenery: { north: 'city', south: 'city', west: 'city', east: 'city', skyline: true },
   exitGate: true,
   atmosphere: { fog: '#383c46', fogNear: 14, fogFar: 70, ambient: 1.5, sky: { horizon: '#6a5a66', zenith: '#1a2236', stars: 0.3 } },
   boxes: [

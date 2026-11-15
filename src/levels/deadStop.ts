@@ -32,6 +32,7 @@ const lights: LevelLight[] = [lamp(-24, 8.4), lamp(-14, -8.4, true), lamp(0, 8.4
 export const deadStop: Level = {
   name: 'Roadside Station',
   theme: 'street',
+  scenery: { north: 'houses', south: 'trees', west: 'trees', east: 'trees' },
   exitGate: true,
   atmosphere: { fog: '#2a2a30', fogNear: 22, fogFar: 90, ambient: 1.25, sky: { horizon: '#5a3a3a', zenith: '#0c0e1a', stars: 0.35 } },
   boxes: [
@@ -47,7 +48,7 @@ export const deadStop: Level = {
     ...stationBoxes(stations),
 
     // The crew's ambulance, dead in the road, and the cars left on the road around it.
-    { position: { x: -20, y: 1.175, z: -2.2 }, size: { x: 4.9, y: 2.35, z: 1.98 }, color: '#d6ddd7', surface: 'van', vehicleRole: 'ambulance' },
+    { position: { x: -20, y: 1.275, z: -2.2 }, size: { x: 6.2, y: 2.55, z: 2.2 }, color: '#d6ddd7', surface: 'van', vehicleRole: 'ambulance' },
     parkedCar(-8, -4.4, '#2f4a5c'),
     parkedCar(4, 4.4, '#6b2a2a'),
     parkedCar(14, -4.4, '#a8782f'),

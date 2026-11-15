@@ -33,6 +33,7 @@ const lights: LevelLight[] = [lamp(-24, 8.4), lamp(-12, -8.4, true), lamp(0, 8.4
 export const checkpoint: Level = {
   name: 'Checkpoint',
   theme: 'street',
+  scenery: { north: 'trees', south: 'trees', west: 'trees', east: 'trees' },
   exitGate: true,
   atmosphere: { fog: '#1c2128', fogNear: 20, fogFar: 85, ambient: 1.05, sky: { horizon: '#2a2a3a', zenith: '#06080f', stars: 0.6 } },
   boxes: [

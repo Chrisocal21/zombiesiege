@@ -5,6 +5,7 @@ import { settings } from '../client/settings';
 import type { GameState } from '../game/state';
 import { goesDown, stopAt, storeyLabel, storeysToNext } from '../game/tower';
 import type { Level } from '../levels/types';
+import { placeModel } from './models';
 
 const FRAME = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.35, metalness: 0.85 });
 const DOOR = new THREE.MeshStandardMaterial({ color: 0xa9aeb4, roughness: 0.3, metalness: 0.9 });
@@ -114,6 +115,22 @@ function buildCheckpointGate(scene: THREE.Object3D, lift: Level['elevator'], glo
   const laneLight = new THREE.PointLight(0xffd9a0, 7, 13, 2);
   laneLight.position.set(0, 3.2, -4.5);
   group.add(laneLight);
+
+  // The far end of the lane is shut by shipping containers stacked across the road, the next block's
+  // own barricade, with a few drums left in front of them.
+  void placeModel('/models/props/container.glb').then((container) => {
+    container.traverse((child) => { if (child instanceof THREE.Mesh) { child.castShadow = true; child.receiveShadow = true; } });
+    const low = container.clone(true);
+    low.position.set(0, 0, -9.2);
+    group.add(low);
+    const high = container.clone(true);
+    high.position.set(0.15, 2.59, -9.3);
+    high.rotation.y = 0.02;
+    group.add(high);
+  });
+  for (const [x, z, file] of [[-2.2, -7.4, 'barrel-dent'], [-1.5, -7.7, 'drum'], [2.3, -7.6, 'barrel']] as const) {
+    void placeModel(`/models/props/${file}.glb`).then((drum) => { drum.position.set(x, 0, z); drum.rotation.y = x * 2; group.add(drum); });
+  }
 
   let shownOpen: boolean | null = null;
   return (state, time) => {

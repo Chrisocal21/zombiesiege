@@ -5,7 +5,7 @@ from mathutils import Vector
 
 path = sys.argv[sys.argv.index('--') + 1]
 bpy.ops.wm.read_factory_settings(use_empty=True)
-if path.endswith('.fbx'):
+if path.lower().endswith('.fbx'):
     bpy.ops.import_scene.fbx(filepath=path)
 else:
     bpy.ops.wm.open_mainfile(filepath=path)
