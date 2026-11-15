@@ -1,4 +1,5 @@
 import { bakeStaticMeshes } from './bake';
+import { buildGroundDecals, isOpenGround } from './groundDecals';
 import { buildDressing } from './dressing';
 import { settings } from '../client/settings';
 import { buildArchitecture } from './architecture';
@@ -113,7 +114,7 @@ function buildBoxObject(box: LevelBox, index: number): THREE.Object3D | null {
 
   let material: THREE.Material | THREE.Material[];
   // Open ground laid by the street kit (half a metre thick, top at nothing): wet, so the lamps shine in it.
-  if ((surface === 'slab' || surface === 'plain') && box.size.y === 0.5 && box.position.y === -0.25 && box.size.x * box.size.z >= 60) material = wetGroundMaterial(box.color, tile);
+  if (isOpenGround(box)) material = wetGroundMaterial(box.color, tile);
   else if (surface === 'slab') material = slabMaterials;
 
   else material = surfaceMaterial(surface, box.color);
@@ -172,6 +173,10 @@ interface Lamp {
   emergency?: boolean;
   // The cone of lit air under a street lantern.
   shaft?: THREE.ShaderMaterial;
+  // The pool a street lantern throws straight down, which is the part that casts shadows, and where it stands.
+  pool?: THREE.SpotLight;
+  x?: number;
+  z?: number;
 }
 
 // Lit air under a lantern: a cone, brightest seen through its middle and near the lamp, added to the view.
@@ -203,17 +208,17 @@ function lightShaft(color: THREE.Color, height: number): THREE.Mesh<THREE.ConeGe
   return mesh;
 }
 
-function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THREE.Group): Lamp {
+function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THREE.Group, shadows = false): Lamp {
   const { x, y, z } = lightConfig.position;
   const color = new THREE.Color(lightConfig.color);
   const group = new THREE.Group();
   group.position.set(x, y, z);
-  const lamp = buildFitting(lightConfig, color, glowMap, group);
+  const lamp = buildFitting(lightConfig, color, glowMap, group, shadows);
   parent.add(group);
   return { ...lamp, circuit: lightConfig.circuit, emergency: lightConfig.emergency };
 }
 
-function buildFitting(lightConfig: LevelLight, color: THREE.Color, glowMap: THREE.Texture, group: THREE.Group): Lamp {
+function buildFitting(lightConfig: LevelLight, color: THREE.Color, glowMap: THREE.Texture, group: THREE.Group, shadows = false): Lamp {
   const { x, y, z } = lightConfig.position;
 
   if (lightConfig.emergency) {
@@ -299,7 +304,22 @@ function buildFitting(lightConfig: LevelLight, color: THREE.Color, glowMap: THRE
     group.add(glow);
     const shaft = lightShaft(color, y - 0.05);
     group.add(shaft);
-    return { light, glow, bulb, base: lightConfig.intensity, flicker: lightConfig.flicker === true, seed: x * 3.1 + z * 1.7, shaft: shaft.material };
+    // A pool of light straight down from under the collar. The lantern's own glow goes every way and
+    // casts nothing; this is what puts the shadow of a car, a crate or one of the dead on the ground.
+    let pool: THREE.SpotLight | undefined;
+    if (shadows) {
+      pool = new THREE.SpotLight(color, lightConfig.intensity * 1.2, 13, 1.02, 0.7, 2);
+      pool.position.y = -0.45;
+      pool.target.position.set(0, -y, 0);
+      pool.castShadow = true;
+      pool.shadow.mapSize.set(512, 512);
+      pool.shadow.camera.near = 0.4;
+      pool.shadow.camera.far = 13;
+      pool.shadow.bias = -0.002;
+      pool.shadow.normalBias = 0.03;
+      group.add(pool, pool.target);
+    }
+    return { light, glow, bulb, base: lightConfig.intensity, flicker: lightConfig.flicker === true, seed: x * 3.1 + z * 1.7, shaft: shaft.material, pool, x, z };
   }
 
   // The fitting hangs off whichever wall is closest, or stands on a pole if there is none near.
@@ -763,7 +783,10 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const lampGroup = new THREE.Group();
   scene.add(lampGroup);
   const glowMap = glowTexture();
-  const lamps = level.lights.map((light) => buildLamp(light, glowMap, lampGroup));
+  // Lanterns cast shadows only where there are few enough of them to afford it.
+  const lanternShadows = level.lights.filter((light) => light.post).length <= 6;
+  const lamps = level.lights.map((light) => buildLamp(light, glowMap, lampGroup, lanternShadows));
+  buildGroundDecals(scene, level);
 
   if (garage) {
     buildSky(scene, 0);
@@ -848,6 +871,14 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
         lamp.glow.material.opacity = 0.22 * brightness;
         lamp.bulb.color.copy(lamp.light.color).multiplyScalar(0.25 + 0.75 * brightness);
         if (lamp.shaft) lamp.shaft.uniforms.power.value = brightness;
+        if (lamp.pool) {
+          lamp.pool.intensity = lamp.base * 1.2 * brightness;
+          // Shadows are redrawn each frame only under a lantern someone is near; the rest keep the
+          // still shadows they drew once.
+          const near = state.players.some((player) => Math.hypot(player.x - lamp.x!, player.z - lamp.z!) < 18);
+          if (!near && lamp.pool.shadow.autoUpdate) lamp.pool.shadow.needsUpdate = true;
+          lamp.pool.shadow.autoUpdate = near;
+        }
       }
     },
   };

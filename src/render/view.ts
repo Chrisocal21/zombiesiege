@@ -113,6 +113,29 @@ export function syncCamera(camera: THREE.PerspectiveCamera, pose: CameraPose): v
   camera.rotation.set(pose.pitch, pose.yaw, pose.roll, 'YXZ');
 }
 
+// What open ground and car paint reflect out of doors: a night sky, darker overhead than at the horizon,
+// with a moon and a low warm band where a town would be.
+function nightSky(renderer: THREE.WebGLRenderer): THREE.Texture {
+  const sky = new THREE.Scene();
+  sky.add(new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    vertexShader: /* glsl */ `varying vec3 vAt; void main() { vAt = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: /* glsl */ `
+      varying vec3 vAt;
+      void main() {
+        float up = normalize(vAt).y;
+        vec3 color = mix(vec3(0.16, 0.2, 0.3), vec3(0.015, 0.022, 0.045), smoothstep(-0.05, 0.75, up));
+        color += vec3(0.3, 0.17, 0.07) * (1.0 - smoothstep(0.0, 0.16, abs(up - 0.02)));
+        color = mix(color, vec3(0.012), smoothstep(0.0, -0.25, up));
+        gl_FragColor = vec4(color, 1.0);
+      }`,
+  })));
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(2.6, 16, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 10.5, 13) }));
+  moon.position.set(-0.3, 0.88, 0.2).normalize().multiplyScalar(45);
+  sky.add(moon);
+  return new THREE.PMREMGenerator(renderer).fromScene(sky, 0.02).texture;
+}
+
 export function createView(level: Level): View {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
@@ -167,6 +190,8 @@ export function createView(level: Level): View {
   };
   let current = worldFor(level);
   let currentName = level.name;
+  const nightEnv = nightSky(renderer);
+  const outdoors = (floor: Level) => floor.theme === 'street' || floor.theme === 'roof';
 
   const aspect = window.innerWidth / window.innerHeight;
   const camera = new THREE.PerspectiveCamera(config.view.fieldOfView, aspect, 0.1, 130);
@@ -213,7 +238,7 @@ export function createView(level: Level): View {
   viewScene.environment = environment.texture;
   viewScene.environmentIntensity = 0.4;
   // The yard gets the same reflections, much fainter, so the metal and the puddles pick up a sky.
-  scene.environment = environment.texture;
+  scene.environment = outdoors(level) ? nightEnv : environment.texture;
   scene.environmentIntensity = 0.2;
 
   // Both scenes are drawn into this, then the lens pass puts it on screen.
@@ -277,6 +302,7 @@ export function createView(level: Level): View {
         current.root.visible = false;
         next.root.visible = true;
         current = next;
+        scene.environment = outdoors(state.level) ? nightEnv : environment.texture;
       }
       current.world.update(time, state);
       lensMaterial.uniforms.time.value = time;
@@ -300,7 +326,7 @@ export function createView(level: Level): View {
       sky.intensity = 0.65 * (air?.ambient ?? 1) * (0.08 + 0.92 * power);
       // The reflections light every wall evenly, so they fade with the power too, or a blacked-out
       // floor still reads as lit.
-      scene.environmentIntensity = 0.2 * (0.1 + 0.9 * power);
+      scene.environmentIntensity = (outdoors(state.level) ? 1 : 0.2) * (0.1 + 0.9 * power);
     },
     async prepare() {
       // Hidden floors are skipped, so only this floor, the dead on it, and the weapon are done.
