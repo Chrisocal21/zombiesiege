@@ -150,6 +150,12 @@ async function enterGame(withIntro = false): Promise<void> {
 
 const menu = createMenu({
   play() {
+    // Nothing to deploy into until the room's server has answered: say so rather than standing in a placeholder.
+    if (coop && coop.status !== 'joined') {
+      menu.showError(coop.status === 'connecting' ? 'Still connecting to the co-op server. Try again in a moment.'
+        : coop.status === 'full' ? 'This room is full.' : 'Cannot reach the co-op server. Start it with npm run server, or check the connection.');
+      return;
+    }
     // A game not yet started still has the title's zombies standing in it. The run itself starts at P01.
     if (dressed) {
       session.replace(newRun());
@@ -327,7 +333,8 @@ view.renderer.setAnimationLoop((now) => {
   if ((!onTitle && !cinematic) || outfitPreview) viewmodel.update(player, pose, paused ? 0 : frameSeconds, outfitPreview);
   view.setAim(onTitle || cinematic ? 0 : viewmodel.aimAmount());
   view.setFlashlight(!onTitle && !cinematic && player.flashlight && player.health > 0);
-  remotePlayers?.update(state.players, session.playerId);
+  // Before the server has said who this player is, every figure in the placeholder game would be drawn as someone else, this player's own body around the camera included.
+  remotePlayers?.update(coop && coop.playerId >= 0 ? state.players : [], session.playerId);
   view.animate(now / 1000, state);
   input.setLookScale(view.camera.fov / settings.fieldOfView);
   effects.update(player, paused ? 0 : frameSeconds, state.level);
