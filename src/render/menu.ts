@@ -27,6 +27,8 @@ export interface RunStats {
   points: number;
   lives: number;
   seconds: number;
+  // People got out along the way (P04's restaurant).
+  rescued?: number;
   // Set when the run ended with nobody standing, with the floor it ended on.
   lost?: { floor: number };
 }
@@ -788,6 +790,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             lost ? ['FELL ON', floorTitle(lost.floor).toUpperCase()] : ['FLOORS CLEARED', String(stats.floors)],
             ['POINTS', String(stats.points)],
             ['LIVES LEFT', String(stats.lives)],
+            ...(stats.rescued ? [['SURVIVORS RESCUED', String(stats.rescued)] as [string, string]] : []),
             ['TIME', `${minutes}:${String(Math.floor(stats.seconds % 60)).padStart(2, '0')}`],
           ];
           rows.forEach(([label, value], i) => {

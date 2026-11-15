@@ -168,6 +168,13 @@ export function createHud(menu: Menu): Hud {
     } else if (phase === 'search' || phase === 'hold' || phase === 'evac' || phase === 'break' || phase === 'active') {
       for (const marker of objectiveMarkers(state, player)) points.push({ x: marker.at.x, z: marker.at.z, color: COLOR.good, label: marker.label });
     }
+    // People hiding to be got out, and once they follow, the way they leave by.
+    const rescue = level.rescue;
+    if (rescue) {
+      const hiding = state.survivors.find((survivor) => survivor.mode === 'hiding');
+      if (hiding) points.push({ x: hiding.x, z: hiding.z, color: COLOR.dim, label: 'VOICES' });
+      else if (state.survivors.some((survivor) => survivor.mode === 'following')) points.push({ x: (rescue.exit.minX + rescue.exit.maxX) / 2, z: (rescue.exit.minZ + rescue.exit.maxZ) / 2, color: COLOR.good, label: 'THEIR VAN' });
+    }
     // A teammate down, to get to before they bleed out.
     for (const other of state.players) {
       if (other !== player && isDown(other)) points.push({ x: other.x, z: other.z, color: COLOR.danger, label: 'DOWN' });
@@ -913,6 +920,8 @@ export function createHud(menu: Menu): Hud {
       prompt = offer.status === 'ok'
         ? { keys: [bindings.use], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost }
         : { keys: [], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost, short: true };
+    } else if (interaction?.kind === 'survivor') {
+      prompt = { keys: [bindings.use], label: 'Tell them to stay close and follow' };
     } else if (interaction?.kind === 'note') {
       prompt = { keys: [bindings.use], label: `Read the ${state.level.notes![interaction.index].what}` };
     } else if (interaction && objectivePrompt(state, interaction.kind)) prompt = { keys: [bindings.use], label: objectivePrompt(state, interaction.kind)! };
@@ -1230,6 +1239,12 @@ export function createHud(menu: Menu): Hud {
       detail = siege ? `Restarting wave ${waves.number}` : 'Back where you came in. What is done stays done';
       color = COLOR.danger;
       age = seconds(waves.diedTick);
+    } else if (state.rescueTick >= 0 && seconds(state.rescueTick) < BANNER_SECONDS && state.level.rescue) {
+      eyebrow = state.level.rescue.name.toUpperCase();
+      title = 'THEY GOT OUT';
+      detail = state.level.rescue.line;
+      color = COLOR.good;
+      age = seconds(state.rescueTick);
     } else if (state.gate.closed && seconds(state.gate.closedTick) < BANNER_SECONDS) {
       eyebrow = 'THE GARAGE';
       title = 'GATE SEALED';

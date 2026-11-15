@@ -62,3 +62,34 @@ console.log('ok');
   assert.ok(t.waves.reinforce > 0, 'and more were called in');
   console.log('timed exit ok');
 }
+
+// P04: four people hiding in Casa Rosa's kitchen. Spoken to, they follow; led out through the back door to the
+// van in the alley, they are away, the points come in and the log remembers them. Nothing waits on it.
+{
+  const { useAction } = await import('../src/game/doors.ts');
+  const t = createGameState(level0);
+  startOnFloor(t, -2);
+  assert.equal(t.level.name, 'Commercial District');
+  assert.equal(t.survivors.length, 4);
+  assert.ok(t.survivors.every((s) => s.mode === 'hiding'));
+  // Their own dead are asleep in the restaurant and the alley; clear them for the walk.
+  t.zombies = [];
+  t.waves.phase = 'search';
+  const p = t.players[0];
+  Object.assign(p, { x: 30.5, z: 16.8, health: 100 });
+  useAction(t, p);
+  assert.ok(t.survivors.every((s) => s.mode === 'following'), 'they come out of hiding');
+  // The player walks out the back door and down the alley; they follow.
+  const route = [[30.2, 18.6], [30.2, 21.5], [25, 21.8], [22.5, 21.8]];
+  const before = t.points[0];
+  for (const [x, z] of route) {
+    for (let i = 0; i < 4 * 120; i++) { Object.assign(p, { x, z, health: 100 }); t.zombies = []; step(t, [idleInput(0)], 1 / 120); }
+  }
+  for (let i = 0; i < 12 * 120 && t.rescueTick < 0; i++) { Object.assign(p, { x: 22.5, z: 21.8, health: 100 }); t.zombies = []; step(t, [idleInput(0)], 1 / 120); }
+  assert.ok(t.survivors.every((s) => s.mode === 'away'), `all four got away (${t.survivors.map((s) => s.mode)})`);
+  assert.equal(t.rescued, 4);
+  assert.ok(t.points[0] >= before + 4 * t.level.rescue.points, 'points for each');
+  assert.ok(t.log.some((entry) => entry.title === 'Casa Rosa'), 'the log remembers them');
+  assert.ok(!t.objective.done, 'and it was never needed to go on');
+  console.log('restaurant rescue ok');
+}

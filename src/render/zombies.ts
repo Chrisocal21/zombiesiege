@@ -257,7 +257,8 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     const rows = 9, columns = 22;
     const arc = Math.PI * 2 * (0.78 + 0.08 * ((id * 0.37) % 1));
     const start = (id % 2 ? 1 : -1) * 0.6 + Math.PI * (id % 2 ? 0.1 : -0.1);
-    const geometry = new THREE.CylinderGeometry(0.158, top.coat ? 0.19 : 0.152, top.length, columns, rows, true, start, arc);
+    // Wide enough to wrap the body it hangs on, not stand off it as a sheet front and back.
+    const geometry = new THREE.CylinderGeometry(0.19, top.coat ? 0.24 : 0.2, top.length, columns, rows, true, start, arc);
     const positions = geometry.attributes.position;
     const colors = new Float32Array(positions.count * 3);
     const base = new THREE.Color(top.colors[id % top.colors.length]);
@@ -283,7 +284,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
     const shell = new THREE.Mesh(geometry, material);
     // Wider than it is deep, hanging from the shoulders.
-    shell.scale.z = 0.68;
+    shell.scale.z = 0.8;
     shell.position.set(0, 0.26 - top.length / 2, 0.01);
     shell.castShadow = true;
     group.add(shell);

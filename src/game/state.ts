@@ -219,6 +219,12 @@ export interface Companion {
   lostTicks: number;
 }
 
+// Someone the crew is getting out (Level.rescue): hiding where they were found, following the crew, or away.
+export interface Survivor extends Companion {
+  mode: 'hiding' | 'following' | 'away';
+  look: 'cook' | 'waiter' | 'diner';
+}
+
 // How the floor's boss stands. Stage 1 is the time lock, stage 2 after the vault opens. It is beaten
 // back once its health runs out in stage 2, and sealed once it is behind the vault door.
 export interface BossState {
@@ -349,6 +355,11 @@ export interface GameState {
   card: { tick: number; player: number; title: string; lines: string[] } | null;
   // The scientist, from the moment he steps out of the vault, or null.
   scientist: Companion | null;
+  // The floor's hidden survivors, if it has any (Level.rescue), and the tick the last of them got away, or -1.
+  survivors: Survivor[];
+  rescueTick: number;
+  // How many people the crew has got out over the whole run, for the end screen.
+  rescued: number;
   // The floor's boss, once it has come, or null.
   boss: BossState | null;
   // A scene playing (the rules stand still meanwhile): the tick it began, or null.
@@ -402,6 +413,8 @@ export function enterLevel(state: GameState, level: Level): void {
   state.heard = (level.cues ?? []).map(() => -1);
   state.read = (level.notes ?? []).map(() => -1);
   state.card = null;
+  state.survivors = (level.rescue?.people ?? []).map((person) => ({ x: person.x, z: person.z, yaw: person.yaw ?? 0, speed: 0, lostTicks: 0, mode: 'hiding', look: person.look }));
+  state.rescueTick = -1;
   state.boss = null;
   state.scene = null;
   state.vault = { openTick: -1, shutTick: -1 };
@@ -512,6 +525,9 @@ export function createGameState(level: Level): GameState {
     log: [],
     card: null,
     scientist: null,
+    survivors: [],
+    rescueTick: -1,
+    rescued: 0,
     boss: null,
     scene: null,
     vault: { openTick: -1, shutTick: -1 },

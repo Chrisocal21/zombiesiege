@@ -22,6 +22,7 @@ import { createViewmodel } from './render/viewmodel';
 import type { WheelState } from './client/wheel';
 import { createSupplyViews } from './render/supplies';
 import { createZombieViews } from './render/zombies';
+import { createSurvivorViews } from './render/survivors';
 import { createScientistView } from './render/scientist';
 
 document.body.style.margin = '0';
@@ -58,6 +59,7 @@ const effects = createEffects(view.scene, view.camera, viewmodel);
 const zombieViews = createZombieViews(view.scene);
 const supplyViews = createSupplyViews(view.scene);
 const scientistView = createScientistView(view.scene);
+const survivorViews = createSurvivorViews(view.scene);
 // The letterbox and captions of a level's scene, while one plays.
 let sceneOverlay: SceneOverlay | null = null;
 const audio = createAudio();
@@ -226,6 +228,7 @@ view.renderer.setAnimationLoop((now) => {
       points: state.points[session.playerId] ?? 0,
       lives: session.player().lives,
       seconds: state.tick / config.ticksPerSecond,
+      rescued: state.rescued,
       lost: lost ? { floor: state.floor } : undefined,
     });
     document.exitPointerLock();
@@ -321,6 +324,7 @@ view.renderer.setAnimationLoop((now) => {
   effects.update(player, paused ? 0 : frameSeconds, state.level);
   zombieViews.update(state, paused ? 0 : frameSeconds);
   scientistView.update(state, paused ? 0 : frameSeconds);
+  survivorViews.update(state, paused ? 0 : frameSeconds);
   supplyViews.update(state, now / 1000);
   // A level scene keeps its sound (the vault door); the opening scene has its own quiet.
   audio.update(state, player, paused || onTitle || intro !== null, frameSeconds);

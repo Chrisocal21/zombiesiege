@@ -80,40 +80,104 @@ function spotNear(level: Level, player: Player): { x: number; z: number } {
   return { x: player.x, z: player.z };
 }
 
-// He keeps close to the nearest player, round the walls the way the dead find their way, and stops
-// a step away. Nothing attacks him and nothing he does can end a mission.
+// Keeps a companion close to the nearest player, round the walls the way the dead find their way, and
+// stops `distance` away. Left behind, or stuck where nobody can see, they are brought up to the crew.
+function follow(state: GameState, companion: Companion, dt: number, level: Level, distance: number): void {
+  const near = nearestAlive(state, companion.x, companion.z);
+  if (!near) { companion.speed = 0; return; }
+  const { player } = near;
+  const gap = near.distance;
+  if (gap > distance) {
+    let heading = { x: player.x - companion.x, z: player.z - companion.z };
+    if (level.navBounds) {
+      // The way round the walls to the nearest player, as the dead find it, by the shortest road.
+      const step = nextStep(state, { id: 0, x: companion.x, z: companion.z } as Zombie, player);
+      if (step) heading = { x: step.x - companion.x, z: step.z - companion.z };
+    }
+    const length = Math.hypot(heading.x, heading.z) || 1;
+    const pace = config.player.moveSpeed * (gap > 6 ? 1 : 0.65);
+    const moved = resolveCircle(level, companion.x + (heading.x / length) * pace * dt, companion.z + (heading.z / length) * pace * dt, RADIUS, 0, 1.8);
+    companion.speed = Math.hypot(moved.x - companion.x, moved.z - companion.z) / Math.max(dt, 1e-6);
+    companion.x = moved.x;
+    companion.z = moved.z;
+    companion.yaw = Math.atan2(-heading.x, -heading.z);
+  } else {
+    companion.speed = 0;
+    companion.yaw = Math.atan2(-(player.x - companion.x), -(player.z - companion.z));
+  }
+  const lost = gap > LOST_DISTANCE && !seen(state, level, companion.x, companion.z);
+  companion.lostTicks = lost ? companion.lostTicks + 1 : 0;
+  if (companion.lostTicks > ticks(LOST_SECONDS)) {
+    const spot = spotNear(level, player);
+    companion.x = spot.x;
+    companion.z = spot.z;
+    companion.lostTicks = 0;
+  }
+}
+
+// He keeps close to the nearest player and stops a step away. Nothing attacks him and nothing he does
+// can end a mission.
 function updateScientist(state: GameState, dt: number, level: Level): void {
   const scientist = state.scientist;
   if (!scientist || state.scene) return;
-  const near = nearestAlive(state, scientist.x, scientist.z);
-  if (!near) { scientist.speed = 0; return; }
-  const { player, distance } = near;
-  if (distance > FOLLOW_DISTANCE) {
-    let heading = { x: player.x - scientist.x, z: player.z - scientist.z };
-    if (level.navBounds) {
-      // The way round the walls to the nearest player, as the dead find it, by the shortest road.
-      const step = nextStep(state, { id: 0, x: scientist.x, z: scientist.z } as Zombie, player);
-      if (step) heading = { x: step.x - scientist.x, z: step.z - scientist.z };
+  follow(state, scientist, dt, level, FOLLOW_DISTANCE);
+}
+
+// ---- Survivors ----------------------------------------------------------------------------------
+
+// Once this close to their way out, survivors stop following and make for it.
+const MAKE_A_RUN = 9;
+
+// How close a player has to be to a hiding survivor to tell them to come.
+export const SURVIVOR_REACH = 1.8;
+
+// The nearest hiding survivor this player could speak to, or -1.
+export function nearestSurvivor(state: GameState, player: Player): number {
+  let best = -1;
+  let nearest = SURVIVOR_REACH;
+  state.survivors.forEach((survivor, index) => {
+    if (survivor.mode !== 'hiding') return;
+    const distance = Math.hypot(survivor.x - player.x, survivor.z - player.z);
+    if (distance <= nearest) { best = index; nearest = distance; }
+  });
+  return best;
+}
+
+// Telling one of them to come brings the whole group out of hiding behind the crew.
+export function callSurvivors(state: GameState): void {
+  for (const survivor of state.survivors) if (survivor.mode === 'hiding') survivor.mode = 'following';
+}
+
+// Those following keep close behind the crew, a little apart from each other. Whoever reaches the way out
+// is away: points for every player, and once the last of them is out the log remembers it.
+function updateSurvivors(state: GameState, dt: number, level: Level): void {
+  const rescue = level.rescue;
+  if (!rescue || state.survivors.length === 0) return;
+  let behind = 0;
+  const way = { x: (rescue.exit.minX + rescue.exit.maxX) / 2, z: (rescue.exit.minZ + rescue.exit.maxZ) / 2 };
+  for (const survivor of state.survivors) {
+    if (survivor.mode !== 'following') continue;
+    const toWay = Math.hypot(way.x - survivor.x, way.z - survivor.z);
+    const clear = toWay < MAKE_A_RUN && raycastBoxes(level, { x: survivor.x, y: 1, z: survivor.z }, { x: (way.x - survivor.x) / toWay, y: 0, z: (way.z - survivor.z) / toWay }, toWay) === null;
+    if (clear) {
+      // Their way out is in plain sight and close: they make for it on their own.
+      const pace = config.player.moveSpeed * 0.8;
+      const moved = resolveCircle(level, survivor.x + ((way.x - survivor.x) / toWay) * pace * dt, survivor.z + ((way.z - survivor.z) / toWay) * pace * dt, RADIUS, 0, 1.8);
+      survivor.speed = Math.hypot(moved.x - survivor.x, moved.z - survivor.z) / Math.max(dt, 1e-6);
+      survivor.yaw = Math.atan2(-(way.x - survivor.x), -(way.z - survivor.z));
+      survivor.x = moved.x;
+      survivor.z = moved.z;
+    } else follow(state, survivor, dt, level, FOLLOW_DISTANCE + 0.9 * behind++);
+    if (inArea(survivor, rescue.exit)) {
+      survivor.mode = 'away';
+      survivor.speed = 0;
+      state.rescued++;
+      state.points = state.points.map((points) => points + rescue.points);
     }
-    const length = Math.hypot(heading.x, heading.z) || 1;
-    const pace = config.player.moveSpeed * (distance > 6 ? 1 : 0.65);
-    const moved = resolveCircle(level, scientist.x + (heading.x / length) * pace * dt, scientist.z + (heading.z / length) * pace * dt, RADIUS, 0, 1.8);
-    scientist.speed = Math.hypot(moved.x - scientist.x, moved.z - scientist.z) / Math.max(dt, 1e-6);
-    scientist.x = moved.x;
-    scientist.z = moved.z;
-    scientist.yaw = Math.atan2(-heading.x, -heading.z);
-  } else {
-    scientist.speed = 0;
-    scientist.yaw = Math.atan2(-(player.x - scientist.x), -(player.z - scientist.z));
   }
-  // Left behind, or stuck where nobody can see: brought up to the crew.
-  const lost = distance > LOST_DISTANCE && !seen(state, level, scientist.x, scientist.z);
-  scientist.lostTicks = lost ? scientist.lostTicks + 1 : 0;
-  if (scientist.lostTicks > ticks(LOST_SECONDS)) {
-    const spot = spotNear(level, player);
-    scientist.x = spot.x;
-    scientist.z = spot.z;
-    scientist.lostTicks = 0;
+  if (state.rescueTick < 0 && state.survivors.every((survivor) => survivor.mode === 'away')) {
+    state.rescueTick = state.tick;
+    if (!state.log.some((entry) => entry.title === rescue.log.title)) state.log.push({ floor: state.floor, title: rescue.log.title, lines: rescue.log.lines });
   }
 }
 
@@ -323,4 +387,5 @@ export function updateStory(state: GameState, dt: number): void {
   }
   updateBoss(state, level);
   updateScientist(state, dt, level);
+  updateSurvivors(state, dt, level);
 }

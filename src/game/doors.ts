@@ -2,6 +2,7 @@ import { config } from '../config';
 import type { Door, LevelBox } from '../levels/types';
 import { nearestSupply, takeSupply } from './items';
 import { nearestNote, readNote } from './notes';
+import { callSurvivors, nearestSurvivor } from './story';
 import { objectiveTarget, useObjective, type ObjectiveTarget } from './objectives';
 import type { GameState, Player } from './state';
 import { giveWeapon, isMelee, owns, reserveOf, setReserve, weaponStats } from './weapons';
@@ -15,6 +16,7 @@ export type Interaction =
   | { kind: 'lock'; index: number }
   | { kind: 'supply'; index: number }
   | { kind: 'note'; index: number }
+  | { kind: 'survivor'; index: number }
   | ObjectiveTarget
   | null;
 
@@ -52,6 +54,8 @@ export function interactionTarget(state: GameState, player: Player): Interaction
     if (objective) return objective;
     const note = nearestNote(state, player);
     if (note >= 0) return { kind: 'note', index: note };
+    const survivor = nearestSurvivor(state, player);
+    if (survivor >= 0) return { kind: 'survivor', index: survivor };
     const stations = state.level.stations;
     for (let index = 0; index < stations.length; index++) {
       const station = stations[index];
@@ -135,6 +139,11 @@ export function useAction(state: GameState, player: Player): void {
 
   if (target.kind === 'note') {
     readNote(state, player, target.index);
+    return;
+  }
+
+  if (target.kind === 'survivor') {
+    callSurvivors(state);
     return;
   }
 

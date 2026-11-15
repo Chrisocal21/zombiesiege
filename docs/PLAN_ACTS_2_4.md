@@ -403,5 +403,12 @@ Each phase ends with a stop for you to compact, as usual.
 - **Teammates** are drawn holding their weapon.
 - **P01 Breakdown** is a sweep that turns into a run (`Flow.sweep.then`). Seven of the dead stand asleep on the road. Finding the police radio brings the hospital's call and the horde from the farm tracks.
 - **P03 Checkpoint** has a timed exit (`Level.exitTimer`, 45 s). After the last control the gate is open for 45 s. If the crew is too slow it shuts, the controls come back off, and 6 more are called in.
-- **Not built:** P04's optional restaurant rescue. It needs survivor NPCs, which don't exist yet. The prologue's P02 (defend, van) and P05 are unchanged.
+- **P04 Casa Rosa** (`Level.rescue`, `GameState.survivors`, `rescued`):
+  - There's a restaurant behind the south frontage: dining room, kitchen and a walled back alley with the restaurant's van. Five of the dead are asleep in it.
+  - Four people (a cook, a waiter and two diners) crouch in the kitchen. Pressing use beside one brings all four out of hiding behind the crew; they follow the way the scientist does.
+  - Once a survivor has the van in plain sight and close, they make for it and are away. Each one away gives every player 150 points.
+  - When all four are out, a banner shows and a "Casa Rosa" entry goes into the run log. The end screen shows SURVIVORS RESCUED.
+  - It's optional: the gate never waits on it and nothing is on a clock.
+- **Look pass:** zombie gowns and shirts are wider so they wrap the body. Better zombie and character models are waiting on bought assets (GLB/FBX, Mixamo rig).
+- The prologue's P02 (defend, van) and P05 are unchanged.
 

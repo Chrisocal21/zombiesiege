@@ -242,6 +242,21 @@ export interface Cue {
   feed?: string;
 }
 
+// People hiding on a floor whom the crew can get out (P04's restaurant): where each one is, the way they
+// leave, and what is remembered once they have. It is never needed to go on, and nothing is on a clock.
+export interface Rescue {
+  // The place, for the HUD and the log.
+  name: string;
+  people: { x: number; z: number; yaw?: number; look: 'cook' | 'waiter' | 'diner' }[];
+  // Once someone following the crew walks into this, they are away.
+  exit: Area;
+  // Points for each person who gets out, to every player.
+  points: number;
+  // What goes into the run's log once they are all out, and what the crew says.
+  log: { title: string; lines: string[] };
+  line: string;
+}
+
 // Something to read on a floor: a memo, an order, a page of notes. Press use beside it for a card
 // with its words, and it goes into the run's log. Reading is never needed to go on.
 export interface Note {
@@ -328,6 +343,7 @@ export interface Level {
   residents?: Resident[];
   cues?: Cue[];
   notes?: Note[];
+  rescue?: Rescue;
   boss?: Boss;
   scene?: Scene;
   // The flight out, after the last floor's helicopter lifts: a camera film with captions, then the run ends.
