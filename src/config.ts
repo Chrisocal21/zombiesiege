@@ -217,7 +217,6 @@ export const config = {
     rideSeconds: 3,
     rideSecondsPerStorey: 1,
     // After arriving, how long the doors stay open before they close again behind the players.
-    arrivalOpenSeconds: 4,
     // On arriving, the beat in the shut cab before the doors slide open.
     arriveSeconds: 1.6,
     // Each step of depth (see tower.ts depth) adds this fraction to every wave's zombie count and to

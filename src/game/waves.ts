@@ -216,10 +216,8 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   listen(state);
   callReinforcements(state, level);
 
-  // Arriving on a new floor, the elevator doors close again behind the players.
-  if (state.lift.open && waves.phase !== 'lift' && (state.tick - state.lift.changedTick) / config.ticksPerSecond > config.elevator.arrivalOpenSeconds) {
-    closeLift(state);
-  }
+  // Arriving on a new floor, the elevator stays open behind the players: it only shuts when the
+  // crew boards it to go up, so it never closes on someone.
 
   if (waves.phase === 'prep' || waves.phase === 'break') {
     waves.timer -= dt;
