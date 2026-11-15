@@ -113,6 +113,7 @@ export function arrivalDetail(state: GameState): string {
   const flow = flowOf(state.level);
   if (flow.kind === 'sweep') return state.waves.alarms > 0 ? 'They heard you. More are on the way' : 'They have not heard you yet. Keep it that way';
   if (flow.kind === 'run') return 'Do not stop. They are coming up behind';
+  if (state.level.name === 'Last Refuge') return 'The generators are down. Close what gaps you can before they come';
   return state.level.objective?.kind === 'breakers' ? 'The power is out. Cage the doors before they come' : 'Cage the doors before they come';
 }
 
@@ -131,7 +132,7 @@ export function partBanner(state: GameState): { eyebrow: string; title: string; 
   if (isDescent(state.floor)) {
     const gate = state.level.exitGate;
     const detail = flowOf(state.level).kind === 'siege' && state.waves.phase !== 'search' ? 'The freight lift opens once the floor is clear' : gate ? 'The gate opens when the job is done. Keep moving' : 'The freight lift is open. Get to it';
-    return { eyebrow: actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail };
+    return { eyebrow: actOf(state.floor) === 5 ? 'LAST REFUGE' : actOf(state.floor) === 4 ? 'DAYBREAK' : actOf(state.floor) === 3 ? 'THE VAULT' : 'THE DESCENT', title: objective.part.toUpperCase(), detail };
   }
   return {
     eyebrow: `HELIPAD PART ${state.floor} OF ${ROOF - 1}`,

@@ -116,7 +116,7 @@ const [MAIN, MARKET, BARRICADES, PARK] = [1, 2, 3, 4].map((k) => LAST_VAULT + k)
 {
   const s = createGameState(level0);
   startOnFloor(s, PARK);
-  assert.equal(s.floor, LAST_FLOOR);
+  assert.equal(s.floor, LAST_FLOOR - 1);
   assert.ok(s.level.flight && s.level.flight.seconds > 10);
   s.zombies = []; s.objective.done = true; s.waves.phase = 'evac';
   const pad = s.level.objective.pad;
@@ -132,7 +132,8 @@ const [MAIN, MARKET, BARRICADES, PARK] = [1, 2, 3, 4].map((k) => LAST_VAULT + k)
   const start = { ...s.players[0] };
   for (let i = 0; i < 2 * HZ; i++) step(s, [{ ...idleInput(0), moveForward: 1 }], 1 / HZ);
   assert.equal(s.players[0].x, start.x, 'nobody walks off during the film');
-  run(s, 12);
-  assert.equal(s.waves.phase, 'won', 'then the run is won');
+  run(s, 16);
+  assert.equal(s.floor, LAST_FLOOR, 'then the crew arrives at the camp');
+  assert.equal(s.level.name, 'Last Refuge');
 }
 console.log('ok');

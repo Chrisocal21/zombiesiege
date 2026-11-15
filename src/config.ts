@@ -195,6 +195,10 @@ export const config = {
       { number: 0, name: 'The barricades', waves: 4 },
       { number: 0, name: 'The park', waves: 3 },
     ],
+    // Act 5, the outskirts camp: the first place worth defending.
+    refuge: [
+      { number: 0, name: 'Last Refuge', waves: 4 },
+    ],
   },
 
   objectives: {

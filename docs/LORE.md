@@ -216,7 +216,13 @@ The broadcast deliberately names no other towns. The handoff only asks for a hin
 
 The extraction has no painted pad: five red flares are thrown onto the grass and red smoke goes up. The run ends when everyone is aboard.
 
-### After Act 4
+### Act 5: Last Refuge (draft, first slice built)
+
+The air ambulance sets the crew down at the outskirts camp at nightfall. It is the first place anyone wants to protect: tents and a garage shed inside a chain-and-timber fence, a supply stack in the middle, a medical yard behind an inner fence. The generators are down, so the floodlights are dark. The dead come for the noise through four gaps in the fence; the crew can plank two of them. When both generators are thrown the camp is lit, and the lift opens. The message at the end names fuel and a way out as the next priorities (leads to Act 6, Broken Roads).
+
+Not built yet in this act: the fall-back to the medical yard when the line breaks, assigning defenders, the missing delivery run (05-B) and the camp ledger (05-A).
+
+### After Act 5
 
 Not written yet. See **Places** for what's next.
 

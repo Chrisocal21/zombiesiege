@@ -179,7 +179,9 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   // The flight out: the film runs, then the run is over.
   if (waves.phase === 'flight') {
     waves.timer -= dt;
-    if (waves.timer <= 0) waves.phase = 'won';
+    if (waves.timer <= 0) {
+      if (state.floor >= LAST_FLOOR) waves.phase = 'won'; else startCross(state);
+    }
     return;
   }
   // Going through a gate or onto the air ambulance: the view goes dark, then the next floor starts.
@@ -286,10 +288,8 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
 
   if (waves.phase === 'evac') {
     if (everyoneAboard(state)) {
-      if (state.floor >= LAST_FLOOR) {
-        if (level.flight) { waves.phase = 'flight'; waves.timer = level.flight.seconds; } else waves.phase = 'won';
-        return;
-      }
+      if (level.flight) { waves.phase = 'flight'; waves.timer = level.flight.seconds; return; }
+      if (state.floor >= LAST_FLOOR) { waves.phase = 'won'; return; }
       // The air ambulance takes the crew on to the office tower: Act 2 begins on its roof.
       startCross(state);
       return;
