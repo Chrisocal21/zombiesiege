@@ -5,6 +5,7 @@ import { settings } from '../client/settings';
 import { config } from '../config';
 import type { GameState } from '../game/state';
 import type { Level } from '../levels/types';
+import { createPost } from './post';
 import { buildWorld, type World } from './world';
 
 const NIGHT = 0x0c1119;
@@ -43,7 +44,6 @@ const LENS_FRAGMENT = /* glsl */ `
   uniform float strength;
   uniform vec2 resolution;
   uniform float time;
-  uniform float bloom;
   uniform float bodycam;
   uniform float reducedFlashing;
   varying vec2 vUv;
@@ -57,13 +57,6 @@ const LENS_FRAGMENT = /* glsl */ `
     vec2 fringe = (uv - 0.5) * bodycam * 0.0014;
     color.r = texture2D(frame, uv + fringe).r;
     color.b = texture2D(frame, uv - fringe).b;
-    // Small highlight diffusion. Thresholding keeps dark surfaces crisp.
-    vec3 glow = vec3(0.0);
-    for (int x = -1; x <= 1; x++) for (int y = -1; y <= 1; y++) {
-      vec3 sampleColor = texture2D(frame, uv + vec2(float(x), float(y)) * 4.0 / resolution).rgb;
-      glow += max(sampleColor - vec3(0.72), vec3(0.0));
-    }
-    color += glow * (0.12 * bloom);
     float vignette = (1.0 - smoothstep(0.15, 0.85, distance(vUv, vec2(0.5))));
     color *= mix(0.86 - bodycam * 0.10, 1.0, vignette);
     float grain = fract(sin(dot(gl_FragCoord.xy + fract(time), vec2(12.9898,78.233))) * 43758.5453);
@@ -199,7 +192,10 @@ export function createView(level: Level): View {
   const frame = new THREE.WebGLRenderTarget(bufferSize.x, bufferSize.y, {
     samples: 4,
     type: THREE.HalfFloatType,
+    // The depth is read back for the ambient occlusion (render/post.ts).
+    depthTexture: new THREE.DepthTexture(bufferSize.x, bufferSize.y),
   });
+  const post = createPost(renderer, frame);
   const lensMaterial = new THREE.ShaderMaterial({
     vertexShader: LENS_VERTEX,
     fragmentShader: LENS_FRAGMENT,
@@ -209,7 +205,6 @@ export function createView(level: Level): View {
       strength: { value: config.view.fisheye },
       resolution: { value: bufferSize },
       time: { value: 0 },
-      bloom: { value: 1 },
       bodycam: { value: 0 },
       reducedFlashing: { value: 1 },
     },
@@ -231,6 +226,7 @@ export function createView(level: Level): View {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.getDrawingBufferSize(bufferSize);
     frame.setSize(bufferSize.x, bufferSize.y);
+    post.setSize(bufferSize.x, bufferSize.y);
     lensMaterial.uniforms.aspect.value = newAspect;
   });
 
@@ -313,14 +309,16 @@ export function createView(level: Level): View {
       lensMaterial.uniforms.strength.value = settings.fisheye === 0 ? 0 : Math.min(0.5, settings.fisheye + (showWeapon ? bodycamAmount * 0.16 : 0));
       lensMaterial.uniforms.bodycam.value = showWeapon ? bodycamAmount : 0;
       lensMaterial.uniforms.reducedFlashing.value = settings.reducedFlashing ? 1 : 0;
-      lensMaterial.uniforms.bloom.value = settings.bloom ? 1 : 0;
       renderer.setRenderTarget(frame);
       renderer.clear();
       renderer.render(scene, camera);
+      // The setting called light diffusion turns both effects off, for slow machines.
+      if (settings.bloom) post.occlude(camera);
       if (showWeapon) {
         renderer.clearDepth();
         renderer.render(viewScene, viewCamera);
       }
+      if (settings.bloom) post.bloom();
       renderer.setRenderTarget(null);
       renderer.render(lensScene, lensCamera);
     },

@@ -213,3 +213,4 @@ Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the 
 - [ ] Act 6 06-A and 06-C, then Acts, 8 Blackwater, 9 Fault Lines, 10 Ghost Signal, 11 Ground Zero, 12 First Light: outlined in the handoff, none built
 - [ ] Needs you: lore approval of the draft wording
 
+- [x] Visual pass 1 (render/post.ts): real multi-scale bloom and screen-space ambient occlusion, both under the Light diffusion setting. Seen in two screenshots (software renderer); frame rate on a real GPU unmeasured
