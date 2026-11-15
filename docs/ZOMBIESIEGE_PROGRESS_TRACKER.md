@@ -160,11 +160,25 @@
 
 ---
 
-## What to Tackle Next
+## What to Tackle Next (updated Nov 14, 2026)
 
-- [ ] Play the roof finale on a real graphics card
-- [ ] Start Phase 2: split the main loop into local (solo) and server (co-op), then the server skeleton on localhost
-- [ ] Optional, any time: small Act 1 story touches from docs/LORE.md (opening text card, patient files, people saved, radio call after the extraction)
+Done and committed but not pushed: silencers (238b1ea), hospital rescue ambulances and varied street cars (3734142), elevator stays open on arrival (latest commit). Loading screen is pushed.
+
+Open, in suggested order (one phase each, compact between):
+
+- [ ] Zombie clothing: the surgical mask floats under the chin and shirts read as paper panels (Sonnet, medium)
+- [ ] Pharmacy and medical supplies: place health items (bandages, IV bags, syringes, first-aid kits) individually on shelves, counters and carts; fix ceiling boxes sitting on shelves and signs (Opus, high)
+- [ ] Park upgrade: paths, flower beds, benches, lamps; fence rails float through the hedge; slabs are blank blocks (Opus, high)
+- [ ] Roof upgrade: vents, pipes, lights, a better skyline; the roof is dark and bare (Sonnet, medium)
+- [ ] Apartment streets: a green median with park benches down the middle of the road
+- [ ] Garage ambulances (level0.ts): look at them in the game; they were never seen rendered
+- [ ] Check-flow: the Pharmacy has one extra walker after a team wipe with the lift open; the check was loosened, find the cause and restore the strict count
+- [ ] Optional manual lift control: a button to open and close the doors by hand (the doors now only shut on the ride)
+- [ ] Play the roof finale and the loading screen on a real graphics card
+- [ ] Co-op: other players' shots and sounds are not drawn; admin tools act on player 0; balance tuning needs a playtest
+- [ ] Character phase: Amber, mutant and ghillie soldier models, and the survivor zip (re-download)
+- [ ] Already failing before this work: check-admin, check-melee, check-ramp
+- [ ] Lore: note texts, town names and the evacuation map text are draft wording awaiting approval
 
 ---
 
