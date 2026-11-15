@@ -21,7 +21,12 @@ interface Figure {
   gait: number;
   x: number;
   z: number;
+  // The last shot of theirs already drawn.
+  shot: number;
 }
+
+// A teammate's shot: a thin bright line from their gun to where it landed, gone in a moment.
+interface Streak { mesh: THREE.Mesh; left: number }
 
 // The other players in a co-op game, as the survivor model: walking, crouching, and holding a
 // gun out in both hands where they aim. A light in their seat's colour floats over each head so
@@ -75,7 +80,7 @@ export function createRemotePlayers(scene: THREE.Object3D): RemotePlayers {
     gun.position.set(0.05, 1.28, -0.34);
     group.add(gun);
     scene.add(group);
-    return { group, held: new Map(), gun, joints: createJoints(), body, phase: 0, gait: 0, x: player.x, z: player.z };
+    return { group, held: new Map(), gun, joints: createJoints(), body, phase: 0, gait: 0, x: player.x, z: player.z, shot: player.lastShotTick };
   }
 
   function pose(figure: Figure, player: Player, dt: number): void {
@@ -114,11 +119,36 @@ export function createRemotePlayers(scene: THREE.Object3D): RemotePlayers {
     figure.gun.rotation.x = player.pitch;
   }
 
+  const streakGeometry = new THREE.CylinderGeometry(0.012, 0.012, 1, 4, 1, true);
+  const streaks: Streak[] = [];
+  const from = new THREE.Vector3(), to = new THREE.Vector3(), mid = new THREE.Vector3();
+  const upAxis = new THREE.Vector3(0, 1, 0);
+
+  function streak(figure: Figure, player: Player): void {
+    figure.gun.getWorldPosition(from);
+    to.set(player.lastShotEnd.x, player.lastShotEnd.y, player.lastShotEnd.z);
+    const length = from.distanceTo(to);
+    if (length < 0.2) return;
+    const material = new THREE.MeshBasicMaterial({ color: '#ffe9a8', transparent: true, opacity: 0.7, depthWrite: false });
+    const mesh = new THREE.Mesh(streakGeometry, material);
+    mesh.position.copy(mid.addVectors(from, to).multiplyScalar(0.5));
+    mesh.scale.set(1, length, 1);
+    mesh.quaternion.setFromUnitVectors(upAxis, to.clone().sub(from).normalize());
+    scene.add(mesh);
+    streaks.push({ mesh, left: 0.12 });
+  }
+
   let last = performance.now();
   return {
     update(players, myId) {
       const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000);
       last = now;
+      for (let i = streaks.length - 1; i >= 0; i--) {
+        const s = streaks[i];
+        s.left -= dt;
+        (s.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, s.left / 0.12) * 0.7;
+        if (s.left <= 0) { scene.remove(s.mesh); (s.mesh.material as THREE.Material).dispose(); streaks.splice(i, 1); }
+      }
       const others = players.filter((player) => player.id !== myId);
       for (const [id, figure] of figures) {
         if (!others.some((player) => player.id === id)) {
@@ -140,6 +170,10 @@ export function createRemotePlayers(scene: THREE.Object3D): RemotePlayers {
         figure.group.rotation.order = 'YXZ';
         figure.group.rotation.set(down ? -1.4 : 0, player.yaw, 0);
         pose(figure, player, dt);
+        if (player.lastShotTick !== figure.shot) {
+          figure.shot = player.lastShotTick;
+          if (figure.shot >= 0 && !player.out) { figure.group.updateMatrixWorld(true); streak(figure, player); }
+        }
       }
     },
   };

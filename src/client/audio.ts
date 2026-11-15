@@ -180,20 +180,22 @@ export function createAudio(): Audio {
     source.start(t);
   }
 
-  function shotgun(): void {
-    bang(output(0, 1), context!.currentTime, 1.6);
+  // The shot functions take where the shot sits (pan, and a gain scale): the player's own is centred
+  // and full; a teammate's is placed to the side and falls off with distance.
+  function shotgun(pan = 0, scale = 1): void {
+    bang(output(pan, scale), context!.currentTime, 1.6);
   }
 
   // Through a silencer: a muffled thump and the slide working, a fraction as loud.
-  function quietShot(): void {
+  function quietShot(pan = 0, scale = 1): void {
     const t = context!.currentTime;
-    const out = output(0, 0.5);
+    const out = output(pan, 0.5 * scale);
     burst(out, t, 0.07, 'lowpass', 900, 200, 0.55, 3);
     burst(out, t + 0.01, 0.04, 'bandpass', 2600, 1600, 0.25, 4);
   }
 
-  function shot(): void {
-    bang(output(0, 0.95), context!.currentTime, 1);
+  function shot(pan = 0, scale = 1): void {
+    bang(output(pan, 0.95 * scale), context!.currentTime, 1);
   }
 
   function reloadOut(): void {
@@ -521,6 +523,8 @@ export function createAudio(): Audio {
   let startedTick = -1;
   let gateClosed = false;
   const zombies = new Map<number, ZombieMemory>();
+  // Each teammate's last shot heard, so a new one is played once.
+  const otherShots = new Map<number, number>();
 
   // Where a sound at (x, z) sits relative to the player: left to right, and how loud.
   function place(player: Player, x: number, z: number): { pan: number; gain: number } {
@@ -589,6 +593,17 @@ export function createAudio(): Audio {
         if (player.lastShotTick !== shotTick && player.lastShotTick >= 0) {
           if (player.weapon === 'shotgun') shotgun(); else if (player.silencer) quietShot(); else shot();
           if (player.lastShotZombie) impact(player.lastShotKill, player.lastShotHead);
+        }
+        // Teammates' shots, placed where they stand.
+        for (const other of state.players) {
+          if (other.id === player.id) continue;
+          const before = otherShots.get(other.id) ?? other.lastShotTick;
+          otherShots.set(other.id, other.lastShotTick);
+          if (other.lastShotTick === before || other.lastShotTick < 0 || other.out) continue;
+          const where = place(player, other.x, other.z);
+          if (other.weapon === 'shotgun') shotgun(where.pan, where.gain);
+          else if (other.silencer) quietShot(where.pan, where.gain);
+          else shot(where.pan, where.gain);
         }
         if (player.lastDryTick !== dryTick && player.lastDryTick >= 0) dryClick();
         if (player.lastBuyTick !== buyTick && player.lastBuyTick >= 0) purchase();
