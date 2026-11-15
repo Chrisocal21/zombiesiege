@@ -219,6 +219,7 @@ export const config = {
     // Act 11, where it began.
     groundZero: [
       { number: 0, name: 'The Original Site', waves: 3 },
+      { number: 0, name: 'Containment Protocol', waves: 3 },
     ],
     // Act 12, first light.
     firstLight: [

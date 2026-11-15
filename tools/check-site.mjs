@@ -19,7 +19,7 @@ const { LAST_GROUND_ZERO, actOf } = await import('../src/game/tower.ts');
 const HZ = 120;
 const run = (s, seconds) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_GROUND_ZERO);
+startOnFloor(s, LAST_GROUND_ZERO - 1);
 assert.equal(s.level.name, 'The Original Site');
 assert.equal(actOf(s.floor), 11);
 assert.equal(flowOf(s.level).kind, 'sweep');
