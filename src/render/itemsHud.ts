@@ -95,16 +95,27 @@ export function drawHotbar(context: CanvasRenderingContext2D, width: number, bas
   const x0 = (width - total) / 2;
   slots.forEach((entry, index) => {
     const sx = x0 + index * (slot + gap);
-    const sy = base - slot;
     const weapon = entry.weapon;
     const owned = weapon ? owns(player, weapon) : entry.item ? player.items[entry.item] > 0 : player.bars > 0;
     const active = weapon ? player.weapon === weapon : entry.item ? player.item === entry.item && player.itemLeft > 0 : false;
+    // The slot in use sits a little proud of the row, lit from under.
+    const sy = base - slot - (active ? 5 * unit : 0);
+    const glass = context.createLinearGradient(0, sy, 0, sy + slot);
+    glass.addColorStop(0, active ? 'rgba(232,184,102,0.34)' : 'rgba(30,38,46,0.66)');
+    glass.addColorStop(1, active ? 'rgba(232,184,102,0.12)' : 'rgba(4,6,9,0.72)');
+    context.save();
+    if (active) { context.shadowColor = 'rgba(232,184,102,0.55)'; context.shadowBlur = 16 * unit; }
     roundedRect(context, sx, sy, slot, slot, 5 * unit);
-    context.fillStyle = active ? 'rgba(232,184,102,0.3)' : 'rgba(6,10,14,0.62)';
+    context.fillStyle = glass;
     context.fill();
+    context.restore();
     context.strokeStyle = active ? COLOR.accent : COLOR.border;
-    context.lineWidth = (active ? 2 : 1.5) * unit;
+    context.lineWidth = (active ? 2 : 1) * unit;
     context.stroke();
+    // A hairline of light along the top edge, and a bar under the slot in use.
+    context.fillStyle = 'rgba(255,255,255,0.16)';
+    context.fillRect(sx + 6 * unit, sy + 1 * unit, slot - 12 * unit, 1 * unit);
+    if (active) { context.fillStyle = COLOR.accent; context.fillRect(sx + slot * 0.3, sy + slot + 4 * unit, slot * 0.4, 2 * unit); }
     const cx = sx + slot / 2;
     const cy = sy + slot / 2 + 2 * unit;
     if (weapon) {

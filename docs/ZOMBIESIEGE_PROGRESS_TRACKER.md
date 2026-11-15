@@ -214,3 +214,4 @@ Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the 
 - [ ] Needs you: lore approval of the draft wording
 
 - [x] Visual pass 1 (render/post.ts): real multi-scale bloom and screen-space ambient occlusion, both under the Light diffusion setting. Seen in two screenshots (software renderer); frame rate on a real GPU unmeasured
+- [x] HUD pass 1 (hud.ts, itemsHud.ts): radar glass, range rings, sweep and turning bezel, dimmer dots for the unaware dead; ammo count kicks per shot and glows when low; score pops on gain; kill word snaps in with a rule; kill ring at the crosshair; hotbar slots are glass and the one in use is raised and lit. Seen in one screenshot; the animations are unseen in motion

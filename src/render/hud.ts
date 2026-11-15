@@ -369,6 +369,14 @@ export function createHud(menu: Menu): Hud {
         }
         context.stroke();
       }
+      if (hitIsKill && !settings.reducedFlashing) {
+        context.globalAlpha = t * 0.7;
+        context.strokeStyle = COLOR.danger;
+        context.lineWidth = 1.5 * unit;
+        context.beginPath();
+        context.arc(cx, cy, outer + (1 - t) * 26 * unit, 0, Math.PI * 2);
+        context.stroke();
+      }
       context.restore();
     }
   }
@@ -555,7 +563,10 @@ export function createHud(menu: Menu): Hud {
     context.save();
     context.beginPath();
     context.arc(cx, cy, radius, 0, Math.PI * 2);
-    context.fillStyle = 'rgba(8,10,14,0.66)';
+    const glass = context.createRadialGradient(cx, cy - radius * 0.3, radius * 0.1, cx, cy, radius);
+    glass.addColorStop(0, 'rgba(22,30,38,0.78)');
+    glass.addColorStop(1, 'rgba(5,7,10,0.8)');
+    context.fillStyle = glass;
     context.fill();
     context.clip();
 
@@ -577,6 +588,22 @@ export function createHud(menu: Menu): Hud {
       context.fillRect(box.position.x - box.size.x / 2, box.position.z - box.size.z / 2, box.size.x, box.size.z);
     }
     context.restore();
+
+    // Range rings, and a slow sweep going round.
+    context.strokeStyle = 'rgba(255,255,255,0.07)';
+    context.lineWidth = 1 * unit;
+    for (const ring of [1 / 3, 2 / 3]) { context.beginPath(); context.arc(cx, cy, radius * ring, 0, Math.PI * 2); context.stroke(); }
+    if (!settings.reducedFlashing) {
+      const sweep = lastTime * 1.1;
+      for (let i = 0; i < 14; i++) {
+        context.fillStyle = `rgba(120,220,190,${0.05 * (1 - i / 14)})`;
+        context.beginPath();
+        context.moveTo(cx, cy);
+        context.arc(cx, cy, radius, sweep - (i + 1) * 0.05, sweep - i * 0.05);
+        context.closePath();
+        context.fill();
+      }
+    }
 
     // Zombies, and the things to go to.
     const place = (x: number, z: number): [number, number] => {
@@ -608,13 +635,16 @@ export function createHud(menu: Menu): Hud {
       if (zombie.dormant && Math.hypot(zombie.x - player.x, zombie.z - player.z) > UNAWARE_RADAR_RANGE) continue;
       const [x, y] = place(zombie.x, zombie.z);
       if (Math.hypot(x - cx, y - cy) > radius - 4 * unit) continue;
+      // One that has not noticed the crew is dimmer and does not glow.
+      context.globalAlpha = zombie.dormant ? 0.5 : 1;
       context.fillStyle = COLOR.danger;
       context.shadowColor = 'rgba(229,72,60,0.9)';
-      context.shadowBlur = 8 * unit;
+      context.shadowBlur = zombie.dormant ? 0 : 8 * unit;
       context.beginPath();
-      context.arc(x, y, 4.2 * unit, 0, Math.PI * 2);
+      context.arc(x, y, (zombie.dormant ? 3.4 : 4.2) * unit, 0, Math.PI * 2);
       context.fill();
     }
+    context.globalAlpha = 1;
     context.shadowBlur = 0;
 
     // You, in the middle, with a faint cone for where you are looking.
@@ -641,9 +671,20 @@ export function createHud(menu: Menu): Hud {
     // The ring, with north marked on it.
     context.beginPath();
     context.arc(cx, cy, radius, 0, Math.PI * 2);
-    context.strokeStyle = 'rgba(255,255,255,0.34)';
-    context.lineWidth = 2 * unit;
+    context.strokeStyle = 'rgba(255,255,255,0.4)';
+    context.lineWidth = 1.5 * unit;
     context.stroke();
+    // A bezel of ticks that turns with you, longer at the four points.
+    context.save();
+    context.translate(cx, cy);
+    context.rotate(player.yaw);
+    for (let i = 0; i < 24; i++) {
+      const main = i % 6 === 0;
+      context.fillStyle = main ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.22)';
+      context.fillRect(-0.75 * unit, -radius - (main ? 9 : 6) * unit, 1.5 * unit, (main ? 7 : 4) * unit);
+      context.rotate(Math.PI / 12);
+    }
+    context.restore();
     const northX = cx + Math.sin(player.yaw) * (radius - 14 * unit);
     const northY = cy - Math.cos(player.yaw) * (radius - 14 * unit);
     text(context, 'N', northX, northY + 6 * unit, { size: 17 * unit, weight: 800, align: 'center', color: COLOR.accent, shadow: false });
@@ -844,7 +885,11 @@ export function createHud(menu: Menu): Hud {
       context.rotate(0.35);
       context.fillRect(-1 * unit, -20 * unit, 2 * unit, 40 * unit);
       context.restore();
-      text(context, String(player.ammo), right - reserveWidth - 26 * unit, base - 24 * unit, { size: 80 * unit, weight: 800, align: 'right', color: low ? COLOR.danger : COLOR.text });
+      const kick = Math.max(0, 1 - (time - lastShotAt) / 0.14);
+      context.translate(right - reserveWidth - 26 * unit, base - 24 * unit);
+      context.scale(1 + kick * 0.09, 1 + kick * 0.09);
+      if (low) { context.shadowColor = 'rgba(229,72,60,0.8)'; context.shadowBlur = 18 * unit; }
+      text(context, String(player.ammo), 0, 0, { size: 80 * unit, weight: 800, align: 'right', color: low ? COLOR.danger : COLOR.text });
       context.restore();
     }
 
@@ -923,7 +968,12 @@ export function createHud(menu: Menu): Hud {
 
     // The score rolls up to its new value.
     const score = String(Math.round(rolledPoints));
-    text(context, score, right, top + 132 * unit, { size: 34 * unit, weight: 800, align: 'right' });
+    const gaining = Math.max(0, 1 - (time - gainAt) / 0.25);
+    context.save();
+    context.translate(right, top + 132 * unit);
+    context.scale(1 + gaining * 0.12, 1 + gaining * 0.12);
+    text(context, score, 0, 0, { size: 34 * unit, weight: 800, align: 'right', color: gaining > 0 ? COLOR.accent : COLOR.text });
+    context.restore();
     const scoreWidth = measure(context, score, 34 * unit, 800);
     text(context, 'PTS', right - scoreWidth - 10 * unit, top + 132 * unit, { size: 13 * unit, align: 'right', spacing: 3 * unit, color: COLOR.accent, weight: 700 });
     if (time - gainAt < 0.9) {
@@ -933,7 +983,20 @@ export function createHud(menu: Menu): Hud {
       text(context, `+${gainAmount}`, width / 2, height / 2 + (112 + age * 18) * unit, { size: 20 * unit, weight: 800, align: 'center', color: COLOR.accent, spacing: 2 * unit, alpha });
     }
     if (time - killAt < 1.3) {
-      text(context, killWasHead ? 'HEADSHOT' : 'KILL', width / 2, height / 2 + 80 * unit, { size: 15 * unit, weight: 800, align: 'center', color: killWasHead ? COLOR.danger : COLOR.text, spacing: 4 * unit, alpha: Math.min(1, (1.3 - time + killAt) * 3) });
+      const age = time - killAt;
+      const alpha = Math.min(1, (1.3 - age) * 3);
+      const snap = 1 + Math.max(0, 1 - age / 0.12) * 0.6;
+      const word = killWasHead ? 'HEADSHOT' : 'KILL';
+      const tone = killWasHead ? COLOR.danger : COLOR.text;
+      context.save();
+      context.translate(width / 2, height / 2 + 80 * unit);
+      context.scale(snap, snap);
+      text(context, word, 0, 0, { size: 15 * unit, weight: 800, align: 'center', color: tone, spacing: 4 * unit, alpha });
+      const rule = (measure(context, word, 15 * unit, 800, 4 * unit) / 2 + 10 * unit) * Math.min(1, age / 0.18);
+      context.globalAlpha = alpha * 0.8;
+      context.fillStyle = tone;
+      context.fillRect(-rule, 7 * unit, rule * 2, 1.5 * unit);
+      context.restore();
     }
   }
 
