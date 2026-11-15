@@ -238,6 +238,10 @@ High Ground (07-B, built, draft): the regional broadcast went quiet at a hilltop
 
 High Water (08-A, built, draft): after days of rain the river is over the bank at a survivor community's water intake. The flood channel fills in three stages, to a metre and a tenth, slowing anyone wading in it, the dead included. Two catwalks along the walls stay dry. The crew opens both sluice gates from the catwalks and the channel drains, protecting the clean water supply. The intake log mentions delivery manifests for the plant listing a contractor on no register, a lead to the waste transport records. Not built: 08-B and 08-C, hazard (energised) areas, and the pump station.
 
+### Act 9: Fault Lines (draft, first slice built)
+
+Doors Shut (09-B, built, draft): the Lincoln Road settlement has shut itself in behind a wall across a school yard and is not answering the radio. A group of evacuees the crew is looking for went in and has not come out. The main gate is locked from inside: the crew can force it for points, and every person inside hears it. Or the service door in the north corner is still unlocked (the cook uses it) and leads across a courtyard where some of the dead were shut in with the settlement. Inside, three frightened evacuees are hiding in the stores; nobody meant them harm, the doors were shut because everyone was afraid. The register in the east hall points east, and one of the rescued remembers the family being sent that way. Not built: negotiated entry (needs a dialogue or barter system), 09-A Split Claim and 09-C Shared Wall.
+
 ### After Act 6
 
 Not written yet. See **Places** for what's next.

@@ -200,6 +200,7 @@ Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the 
 - [x] Act 7 slice 07-B built (floor 25, highGround.ts, check-relay.mjs): storm relay, power then a held antenna alignment; it is the last floor built. The checks now find Act 5 floors through LAST_REFUGE and do not depend on LAST_FLOOR
 - [x] High Ground signature choice built: Level.lightsCall, a flashlight on calls the dead and speeds the held stand (check-relay proves it)
 - [x] Act 8 slice 08-A built (floor 26, highWater.ts, game/flood.ts, check-water.mjs): Level.flood rising water in authored stages, wading at half speed for players and the dead, two sluice gates on dry catwalks, drains when done. The water sheet's look is unverified on a real GPU
+- [x] Act 9 slice 09-B built (floor 27, doorsShut.ts, check-doors.mjs): forced gate (250 points) or the open service door, three frightened evacuees, a register. Negotiated entry needs a dialogue or barter system, which does not exist
 - [ ] Act 6 06-A and 06-C, Act 7 07-A and 07-C, then Acts, 8 Blackwater, 9 Fault Lines, 10 Ghost Signal, 11 Ground Zero, 12 First Light: outlined in the handoff, none built
 - [ ] Needs you: the survivor zip (re-download) and lore approval of the draft wording
 

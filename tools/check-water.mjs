@@ -13,12 +13,12 @@ const { step } = await import('../src/game/update.ts');
 const { idleInput } = await import('../src/game/inputs.ts');
 const { useObjective } = await import('../src/game/objectives.ts');
 const { floodHeight } = await import('../src/game/flood.ts');
-const { LAST_FLOOR, actOf } = await import('../src/game/tower.ts');
+const { LAST_DEAD_AIR, actOf } = await import('../src/game/tower.ts');
 
 const HZ = 120;
 const run = (s, seconds, input = idleInput(0)) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; step(s, [input], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_FLOOR);
+startOnFloor(s, LAST_DEAD_AIR + 1);
 assert.equal(s.level.name, 'High Water');
 assert.equal(actOf(s.floor), 8);
 assert.equal(s.level.objective.panels.length, 2);

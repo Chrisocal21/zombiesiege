@@ -37,6 +37,7 @@ const lights: LevelLight[] = [lamp(-18, -8), lamp(-4, 8, true), lamp(8, -8), lam
 export const highWater: Level = {
   name: 'High Water',
   theme: 'street',
+  exitGate: true,
   scenery: { north: 'trees', south: 'trees', east: 'trees', west: 'trees', skyline: false },
   atmosphere: { fog: '#2c3438', fogNear: 10, fogFar: 56, ambient: 1.2, sky: { horizon: '#5a6468', zenith: '#161c24', stars: 0.1 } },
   // The water: 0.5 m after 20 s, 0.9 after 55 s, 1.1 after 90 s. The catwalks are 1.2 m, so they stay dry.

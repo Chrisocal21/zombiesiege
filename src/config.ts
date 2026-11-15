@@ -208,6 +208,10 @@ export const config = {
     blackwater: [
       { number: 0, name: 'High Water', waves: 3 },
     ],
+    // Act 9, other people's needs.
+    faultLines: [
+      { number: 0, name: 'Doors Shut', waves: 3 },
+    ],
     refuge: [
       { number: 0, name: 'Inventory of the Living', waves: 1 },
       { number: 0, name: 'The Missing Delivery', waves: 3 },
