@@ -84,6 +84,9 @@ export const approach: Level = {
     { text: 'NORTHLINE GENERAL', sub: 'EMERGENCY  /  1 MILE', background: '#5b1b1b', position: { x: 33.96, y: 3.0, z: 3.8 }, rotation: -Math.PI / 2, width: 3.2, height: 0.7 },
     { text: 'ACCESS ROAD', sub: 'BARRIER DOWN', background: '#6b4a12', position: { x: 33.96, y: 2.2, z: -3.8 }, rotation: -Math.PI / 2, width: 2.6, height: 0.6 },
   ],
+  // A walk down the road: the dead already about it walk where they please until they see or hear the
+  // crew, every gunshot brings more out of the doorways, and once the job is done they come after the crew.
+  flow: { kind: 'sweep', loud: 4, first: 5, then: { every: 3, max: 14 } },
   // The control cabinets for the hospital's access barrier.
   objective: {
     kind: 'breakers',
@@ -97,10 +100,8 @@ export const approach: Level = {
   },
   navBounds: { minX: -39, maxX: 39, minZ: -15, maxZ: 15 },
   ramp: null,
-  barricadeBars: [
-    { x: -16, y: 0, z: 2 },
-    { x: 6, y: 0, z: -3 },
-  ],
+  // Out in the open there is nothing to board up: the crew walks the street and deals with what is on it.
+  barricadeBars: [],
   streetSpawns: [],
   playerSpawns: [{ x: -30, y: 0, z: 0 }],
   spawnYaw: -Math.PI / 2,

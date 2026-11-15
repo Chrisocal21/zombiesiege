@@ -18,7 +18,7 @@ Object.assign(s.players[0], { x: e.position.x - e.normal.x * 1.7, z: e.position.
 let sawArrive = false, firstOpen = -1;
 for (let i = 0; i < 120 * 30; i++) {
   step(s, [idleInput(0)], 1 / 120);
-  if (s.waves.phase === 'arrive') { sawArrive = true; assert.ok(inCab(s, s.players[0]), 'in cab on arrival'); assert.equal(s.lift.open, false); assert.equal(s.zombies.length, 0); }
+  if (s.waves.phase === 'arrive') { sawArrive = true; assert.ok(inCab(s, s.players[0]), 'in cab on arrival'); assert.equal(s.lift.open, false); assert.ok(s.zombies.every((z) => z.dormant), 'nothing awake on arrival'); }
   if (sawArrive && s.lift.open && firstOpen < 0) { firstOpen = i; console.log('floor', s.floor, 'phase', s.waves.phase, 'inCab', inCab(s, s.players[0])); break; }
 }
 assert.ok(sawArrive && firstOpen > 0);

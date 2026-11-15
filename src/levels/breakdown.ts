@@ -86,10 +86,8 @@ export const breakdown: Level = {
   objective: { kind: 'keycard', label: 'Police radio', part: 'Hospital call', position: { x: 2, y: 1.0, z: -7.2 } },
   navBounds: { minX: -33, maxX: 33, minZ: -15, maxZ: 15 },
   ramp: null,
-  barricadeBars: [
-    { x: -10, y: 0, z: 2 },
-    { x: 12, y: 0, z: 3 },
-  ],
+  // Out in the open there is nothing to board up: the crew walks the street and deals with what is on it.
+  barricadeBars: [],
   streetSpawns: [],
   playerSpawns: [{ x: -15, y: 0, z: 0.5 }],
   spawnYaw: -Math.PI / 2,

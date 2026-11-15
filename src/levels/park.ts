@@ -88,6 +88,9 @@ export const park: Level = {
     { text: 'PUBLIC PARK', sub: 'OPEN DAWN TO DUSK', background: '#1b5b4d', position: { x: -12, y: 2.0, z: 17.96 }, rotation: Math.PI, width: 2.6, height: 0.7 },
     { text: 'TRANSIT LIFT', sub: 'PAVILION  /  STAFF', background: '#1b5b4d', position: { x: -25.96, y: 3.0, z: 3.6 }, rotation: Math.PI / 2, width: 2.4, height: 0.5 },
   ],
+  // A walk down the road: the dead already about it walk where they please until they see or hear the
+  // crew, every gunshot brings more out of the doorways, and once the job is done they come after the crew.
+  flow: { kind: 'sweep', loud: 3, first: 5 },
   // The flare box on the shed's east wall. The air ambulance comes down on the landing zone.
   objective: {
     kind: 'signal',
@@ -120,10 +123,8 @@ export const park: Level = {
   },
   navBounds: { minX: -31, maxX: 31, minZ: -23, maxZ: 23 },
   ramp: null,
-  barricadeBars: [
-    { x: -14, y: 0, z: 3 },
-    { x: 8, y: 0, z: -5 },
-  ],
+  // Out in the open there is nothing to board up: the crew walks the street and deals with what is on it.
+  barricadeBars: [],
   streetSpawns: [],
   playerSpawns: [{ x: -22, y: 0, z: 0 }],
   spawnYaw: -Math.PI / 2,

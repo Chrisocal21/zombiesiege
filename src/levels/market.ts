@@ -110,10 +110,8 @@ export const market: Level = {
   ],
   navBounds: { minX: -27, maxX: 27, minZ: -21, maxZ: 21 },
   ramp: null,
-  barricadeBars: [
-    { x: -9, y: 0, z: 1 },
-    { x: 9, y: 0, z: -1 },
-  ],
+  // Out in the open there is nothing to board up: the crew walks the street and deals with what is on it.
+  barricadeBars: [],
   streetSpawns: [],
   playerSpawns: [{ x: -18, y: 0, z: 0 }],
   spawnYaw: -Math.PI / 2,

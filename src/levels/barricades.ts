@@ -125,10 +125,8 @@ export const barricades: Level = {
   ],
   navBounds: { minX: -35, maxX: 35, minZ: -14, maxZ: 14 },
   ramp: null,
-  barricadeBars: [
-    { x: -14, y: 0, z: 1 },
-    { x: 4, y: 0, z: -1 },
-  ],
+  // Out in the open there is nothing to board up: the crew walks the street and deals with what is on it.
+  barricadeBars: [],
   streetSpawns: [],
   playerSpawns: [{ x: -26, y: 0, z: 0 }],
   spawnYaw: -Math.PI / 2,

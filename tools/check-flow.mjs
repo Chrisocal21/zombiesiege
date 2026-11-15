@@ -99,12 +99,13 @@ const shoot = (s) => tick(s, { ...idleInput(0), fire: true });
   assert.equal(s.level.name, 'Service tunnel');
   assert.equal(s.waves.phase, 'search');
   run(s, 5);
-  assert.equal(living(s).length, 0, 'a quiet beat after arriving');
+  assert.equal(living(s).filter((z) => !z.dormant).length, 0, 'a quiet beat after arriving');
 
   // Walking east down the tunnel, the dead come from the west, behind.
   const player = s.players[0];
   const spawned = [];
-  let seen = 0;
+  // Those walking about the tunnel already are not the run.
+  let seen = s.zombies.length;
   for (let i = 0; i < 18 * HZ; i++) {
     player.x = Math.min(4, -19 + (i / HZ) * 2.2);
     player.z = 0;

@@ -74,7 +74,8 @@ const perDoor = config.waves.doorRushZombies;
   startOnFloor(state, 1);
   assert.equal(state.level.name, floor3.name);
   assert.equal(state.waves.phase, 'prep');
-  assert.equal(state.zombies.length, floor3.doors.length * perDoor);
+  // Besides the floor's own dead walking about it, unaware.
+  assert.equal(state.zombies.filter((zombie) => !zombie.dormant).length, floor3.doors.length * perDoor);
   assert.ok(!state.level.gate, 'upper floors have no street gate');
 }
 

@@ -13,7 +13,7 @@ import { floorTitle, goesDown, isDescent, stopAt, stops, wavesOnFloor } from '..
 import { CROSS_SECONDS, zombiesInWave } from '../game/waves';
 import { objectiveMarkers } from '../game/objectives';
 import { arrivalDetail, clearedDetail, objectiveBrief, objectiveProgress, objectivePrompt, partBanner } from './objectiveText';
-import { aliveZombies } from '../game/zombies';
+import { awakeZombies } from '../game/zombies';
 import type { Menu } from './menu';
 import { drawHotbar, drawItemUse, drawWheel } from './itemsHud';
 import type { WheelState } from '../client/wheel';
@@ -50,6 +50,8 @@ const KILL_MARKER_SECONDS = 0.4;
 const DAMAGE_MARK_SECONDS = 1.4;
 // How far the radar sees, in meters.
 const RADAR_RANGE = 24;
+// How near the dead walking about unaware have to be before the radar shows them.
+const UNAWARE_RADAR_RANGE = 14;
 
 function clock(seconds: number): string {
   const whole = Math.max(0, Math.ceil(seconds));
@@ -442,7 +444,7 @@ export function createHud(menu: Menu): Hud {
         if (boss) { title = boss.title; detail = boss.detail; break; }
         title = `Survive wave ${waves.number}`;
         const progress = objectiveProgress(state);
-        detail = `${waves.toSpawn + waves.reinforce + aliveZombies(state)} zombies left${progress ? `   ·   ${progress}` : ''}`;
+        detail = `${waves.toSpawn + waves.reinforce + awakeZombies(state)} zombies left${progress ? `   ·   ${progress}` : ''}`;
         break;
       }
       case 'cleared':
@@ -571,6 +573,8 @@ export function createHud(menu: Menu): Hud {
     }
     for (const zombie of state.zombies) {
       if (zombie.dead) continue;
+      // One of the dead not yet aware of the crew only shows once it is close enough to hear.
+      if (zombie.dormant && Math.hypot(zombie.x - player.x, zombie.z - player.z) > UNAWARE_RADAR_RANGE) continue;
       const [x, y] = place(zombie.x, zombie.z);
       if (Math.hypot(x - cx, y - cy) > radius - 4 * unit) continue;
       context.fillStyle = COLOR.danger;

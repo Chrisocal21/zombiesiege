@@ -10,7 +10,7 @@ import { FIRST_FLOOR, LAST_FLOOR, ROOF, maxAlive, storeysToNext, waveSize, waves
 import type { ZombieKind } from './state';
 import { guaranteeAmmo } from './weapons';
 import { raycastBoxes } from './hitscan';
-import { aliveOfKind, aliveZombies, placeResidents, spawnZombie, underAttack } from './zombies';
+import { aliveOfKind, awakeZombies, placeResidents, spawnZombie, underAttack } from './zombies';
 import { bringBack, nobodyStanding } from './downed';
 import { bossAfterWipe, placeScientist, startScene } from './story';
 
@@ -66,7 +66,7 @@ function callReinforcements(state: GameState, level: Level): void {
   if (!underAttack(state)) { waves.reinforce = 0; return; }
   waves.reinforce--;
   const flow = flowOf(level);
-  if (aliveZombies(state) < 28) spawnAtDoor(state, level, false, 'walker', flow.kind === 'sweep' ? flow.from : undefined);
+  if (awakeZombies(state) < 28) spawnAtDoor(state, level, false, 'walker', flow.kind === 'sweep' ? flow.from : undefined);
 }
 
 // While holding out, they keep coming, a few at a time.
@@ -75,7 +75,7 @@ function trickle(state: GameState, dt: number, level: Level): void {
   waves.spawnTimer -= dt;
   if (waves.spawnTimer > 0) return;
   waves.spawnTimer = config.objectives.holdSpawnSeconds / (1 + config.objectives.holdSpawnPerFloor * state.floor);
-  if (aliveZombies(state) < config.objectives.holdMaxZombies) spawnAtDoor(state, level);
+  if (awakeZombies(state) < config.objectives.holdMaxZombies) spawnAtDoor(state, level);
 }
 
 // On a sweep floor, how long after one loud moment before the next one brings more of them.
@@ -117,7 +117,7 @@ function pressure(state: GameState, dt: number, level: Level): void {
   const since = Math.max(waves.arrivedTick, waves.diedTick);
   const minutes = since >= 0 ? (state.tick - since) / config.ticksPerSecond / 60 : 0;
   waves.spawnTimer = flow.every / (1 + minutes);
-  if (aliveZombies(state) >= flow.max) return;
+  if (awakeZombies(state) >= flow.max) return;
   const door = doorBehind(state, level);
   if (door < 0) return;
   spawnAtDoor(state, level, false, undefined, [door]);
@@ -358,7 +358,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     if (waves.spawnTimer <= 0) {
       // Zombies only come through the doors that are still open. The first of the wave leads it.
       // Held back while the room is full, so a big wave comes in as the first of it fall.
-      if (aliveZombies(state) >= maxAlive(state.players.length)) return;
+      if (awakeZombies(state) >= maxAlive(state.players.length)) return;
       spawnAtDoor(state, level, waves.toSpawn === zombiesInWave(state));
       waves.toSpawn--;
       waves.spawnTimer = config.waves.secondsBetweenSpawns;
@@ -367,7 +367,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
   }
 
   // Taking too long brings more: the wave is all out and still standing, so a group comes in.
-  if (aliveZombies(state) > 0 && waves.phase === 'active') {
+  if (awakeZombies(state) > 0 && waves.phase === 'active') {
     waves.linger += dt;
     if (waves.linger >= config.waves.lingerSeconds && waves.lingered < config.waves.lingerMax) {
       waves.linger = 0;
@@ -376,7 +376,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     }
   }
 
-  if (aliveZombies(state) === 0) {
+  if (awakeZombies(state) === 0) {
     if (waves.number >= wavesOnFloor(state.floor)) {
       waves.phase = 'cleared';
       waves.timer = config.waves.levelClearedSeconds;

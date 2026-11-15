@@ -621,7 +621,9 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     }
     // One of the floor's own dead, not yet woken: chin on its chest, shoulders rolled forward, arms
     // hanging and knees gone soft, swaying a little where it stands. Waking, it lifts its head.
-    view.slump += ((zombie.dormant && !dead ? 1 : 0) - view.slump) * Math.min(1, dt * (zombie.dormant ? 2 : 5));
+    // One walking about the floor is only half slumped, head down and arms hanging as it shuffles.
+    const slumpTo = zombie.dormant && !dead ? (zombie.roam ? 0.5 : 1) : 0;
+    view.slump += (slumpTo - view.slump) * Math.min(1, dt * (zombie.dormant ? 2 : 5));
     if (view.slump > 0.01 && view.crawl < 0.5) {
       const slump = view.slump;
       const time = tick / ticksPerSecond;

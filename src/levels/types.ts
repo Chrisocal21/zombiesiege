@@ -225,6 +225,9 @@ export interface Resident {
   kind?: 'walker' | 'runner' | 'brute' | 'screamer';
   // Which way it faces. 0 faces -z.
   yaw?: number;
+  // It walks about, up to this many metres from where it was put, until it notices someone. Left
+  // out, it stands (or sits slumped) where it is.
+  roam?: number;
 }
 
 // A line of radio or crew talk, shown for a few seconds at a moment on the floor.
@@ -343,6 +346,9 @@ export interface Level {
   // Who leads the last wave of a siege floor, when it should not be left to the floor's number.
   leads?: 'brute' | 'screamer';
   residents?: Resident[];
+  // How many of the dead are walking about the floor when the crew arrives, besides the residents,
+  // placed by the game well away from the start (src/game/roam.ts). Left out, a number by theme.
+  roamers?: number;
   cues?: Cue[];
   notes?: Note[];
   rescue?: Rescue;

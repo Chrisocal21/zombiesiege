@@ -154,6 +154,11 @@ export interface Zombie {
   pushing: boolean;
   // One of the floor's own dead, standing where it was until it sees or hears someone.
   dormant: boolean;
+  // A dormant one that walks about: round where it was put (null if it stands), where it is walking
+  // to now (null while it stands a moment), and the tick it moves on again.
+  roam: { x: number; z: number; radius: number } | null;
+  roamTo: { x: number; z: number } | null;
+  roamWait: number;
   // The floor's boss (Patient O), a brute that cannot be killed. See GameState.boss.
   boss: boolean;
   // While still coming in through a doorway, the spot just inside it to walk to first.

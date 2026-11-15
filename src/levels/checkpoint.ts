@@ -80,6 +80,9 @@ export const checkpoint: Level = {
     { on: 'start', at: 1.5, speaker: CREW, text: 'The screening point. Whoever was checked in here never got out.' },
     { on: 'done', at: 0.6, speaker: CREW, text: 'The gate is moving. Go, before it shuts again.', seconds: 4 },
   ],
+  // A walk down the road: the dead already about it walk where they please until they see or hear the
+  // crew, every gunshot brings more out of the doorways, and once the job is done they come after the crew.
+  flow: { kind: 'sweep', loud: 3, first: 5, then: { every: 3, max: 12 } },
   objective: {
     kind: 'breakers',
     label: 'Gate controls',
@@ -92,10 +95,8 @@ export const checkpoint: Level = {
   },
   navBounds: { minX: -35, maxX: 35, minZ: -15, maxZ: 15 },
   ramp: null,
-  barricadeBars: [
-    { x: -20, y: 0, z: 2 },
-    { x: 8, y: 0, z: -3 },
-  ],
+  // Out in the open there is nothing to board up: the crew walks the street and deals with what is on it.
+  barricadeBars: [],
   streetSpawns: [],
   playerSpawns: [{ x: -26, y: 0, z: 0 }],
   spawnYaw: -Math.PI / 2,

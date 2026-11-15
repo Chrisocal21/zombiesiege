@@ -1,6 +1,7 @@
 import { config } from '../config';
 import type { Level, Resident, Vec3 } from '../levels/types';
 import { resolveCircle } from './collision';
+import { roam, roamersFor } from './roam';
 import { rayAabb, raycastBoxes } from './hitscan';
 import { dropSupply } from './items';
 import { nextStep, routeOf } from './navigation';
@@ -60,6 +61,9 @@ export function spawnZombie(
     lastHitTick: -1,
     pushing: false,
     dormant: false,
+    roam: null,
+    roamTo: null,
+    roamWait: -1,
     boss: false,
     entry,
     dead: false,
@@ -74,11 +78,18 @@ export function placeResident(state: GameState, resident: Resident): void {
   zombie.dormant = true;
   zombie.alertUntil = -1;
   zombie.yaw = resident.yaw ?? 0;
+  if (resident.roam) {
+    zombie.roam = { x: resident.x, z: resident.z, radius: resident.roam };
+    // Not all setting off at once.
+    zombie.roamWait = state.tick + ticks(((zombie.id * 0.381966) % 1) * 4);
+  }
 }
 
-// Every resident of the level, back where it started.
+// Every resident of the level, and the dead walking about it, back where they started.
 export function placeResidents(state: GameState, level: Level): void {
   for (const resident of level.residents ?? []) placeResident(state, resident);
+  // Placed on the floor as it stands, with its lift door and locked doors in it.
+  for (const roamer of roamersFor(state.level.name === level.name ? state.level : level)) placeResident(state, roamer);
 }
 
 // Whether a standing resident notices someone: anything that alerted it, a player close enough in
@@ -123,6 +134,14 @@ export function underAttack(state: GameState): boolean {
 export function aliveZombies(state: GameState): number {
   let count = 0;
   for (const zombie of state.zombies) if (!zombie.dead) count++;
+  return count;
+}
+
+// The living ones that know the crew is there: everything but the floor's own dead still standing or
+// walking about unaware. Waves, and how many more may come in, only count these.
+export function awakeZombies(state: GameState): number {
+  let count = 0;
+  for (const zombie of state.zombies) if (!zombie.dead && !zombie.dormant) count++;
   return count;
 }
 
@@ -194,9 +213,17 @@ export function updateZombies(state: GameState, dt: number, level: Level): void 
       continue;
     }
     // A resident stands still until it notices someone.
+    // A walker about the floor shuffles round where it was put meanwhile.
     if (zombie.dormant) {
-      if (!noticed(state, zombie, level)) continue;
+      if (!noticed(state, zombie, level)) {
+        if (zombie.roam) {
+          const { height } = zombieHeights(zombie);
+          roam(level, zombie, state.tick, dt, zombieRadius(zombie), height);
+        }
+        continue;
+      }
       wake(state, zombie);
+      zombie.roamTo = null;
     }
     const kind = kindOf(zombie);
     const radius = kind.radius;

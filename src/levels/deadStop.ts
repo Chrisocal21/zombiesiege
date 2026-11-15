@@ -77,6 +77,9 @@ export const deadStop: Level = {
     { text: 'FARM SHOP', sub: 'CLOSED', background: '#3a4a2a', position: { x: 8, y: 3.2, z: 9.96 }, rotation: Math.PI, width: 2.4, height: 0.7 },
     { text: 'FOOTPATH GATE', sub: 'ON FOOT FROM HERE', background: '#5b1b1b', position: { x: 27.96, y: 3.0, z: 3.6 }, rotation: -Math.PI / 2, width: 2.8, height: 0.6 },
   ],
+  // A walk down the road: the dead already about it walk where they please until they see or hear the
+  // crew, every gunshot brings more out of the doorways, and once the job is done they come after the crew.
+  flow: { kind: 'sweep', loud: 3, first: 4, then: { every: 3.4, max: 10 } },
   // Whatever the crew can carry from the dead ambulance to the gate: the gear that comes with them on foot.
   objective: {
     kind: 'charge',
@@ -89,10 +92,8 @@ export const deadStop: Level = {
   },
   navBounds: { minX: -33, maxX: 33, minZ: -15, maxZ: 15 },
   ramp: null,
-  barricadeBars: [
-    { x: -10, y: 0, z: 2 },
-    { x: 12, y: 0, z: -3 },
-  ],
+  // Out in the open there is nothing to board up: the crew walks the street and deals with what is on it.
+  barricadeBars: [],
   streetSpawns: [],
   playerSpawns: [{ x: -15, y: 0, z: 0.5 }],
   spawnYaw: -Math.PI / 2,

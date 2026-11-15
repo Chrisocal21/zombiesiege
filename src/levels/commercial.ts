@@ -113,6 +113,9 @@ export const commercial: Level = {
     { text: 'CASA ROSA', sub: 'RISTORANTE', background: '#6b2a2a', position: { x: 21, y: 3.4, z: 11.96 }, rotation: Math.PI, width: 2.6, height: 0.8 },
     { text: 'TO NORTHLINE GENERAL', sub: '3 MILES', background: '#5b1b1b', position: { x: 33.96, y: 3.0, z: 4.2 }, rotation: -Math.PI / 2, width: 3.4, height: 0.7 },
   ],
+  // A walk down the road: the dead already about it walk where they please until they see or hear the
+  // crew, every gunshot brings more out of the doorways, and once the job is done they come after the crew.
+  flow: { kind: 'sweep', loud: 3, first: 4, then: { every: 3.5, max: 12 } },
   // The kitchen's service key, on a hook by the back door: it opens the gate at the end of the street.
   objective: { kind: 'keycard', label: 'Service key', part: 'Back-alley key', position: { x: 29, y: 1.0, z: 9.4 } },
   // Voices from the restaurant's kitchen. Optional: the crew can leave without them.
@@ -139,10 +142,8 @@ export const commercial: Level = {
   ],
   navBounds: { minX: -39, maxX: 39, minZ: -17, maxZ: 25 },
   ramp: null,
-  barricadeBars: [
-    { x: -20, y: 0, z: -4 },
-    { x: 4, y: 0, z: 5 },
-  ],
+  // Out in the open there is nothing to board up: the crew walks the street and deals with what is on it.
+  barricadeBars: [],
   streetSpawns: [],
   playerSpawns: [{ x: -30, y: 0, z: 0 }],
   spawnYaw: -Math.PI / 2,

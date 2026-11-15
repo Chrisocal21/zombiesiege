@@ -268,6 +268,8 @@ export const config = {
     sightRange: 22,
     flashlightSightRange: 34,
     unawareSpeed: 0.75,
+    // One of the floor's own dead walking about before it knows anyone is there, times moveSpeed.
+    roamSpeed: 0.3,
     noiseRange: 32,
     meleeNoiseRange: 8,
     alertSeconds: 8,
