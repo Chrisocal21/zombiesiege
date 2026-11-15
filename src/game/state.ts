@@ -448,15 +448,18 @@ export function enterLevel(state: GameState, level: Level): void {
 }
 
 // How far apart players stand when a level has fewer spawns than players.
-const SPAWN_SPACING = 1.2;
+const SPAWN_SPACING = 1.6;
 
 // A player's own spawn. When the level has fewer spots than players, the extra players line up
 // a step apart in front of the last one, in the direction the spawn faces (yaw 0 faces -z).
 export function spawnPoint(spawns: Vec3[], id: number, yaw = 0): Vec3 {
   if (spawns[id]) return spawns[id];
   const last = spawns[spawns.length - 1];
-  const steps = (id - spawns.length + 1) * SPAWN_SPACING;
-  return { x: last.x - Math.sin(yaw) * steps, y: last.y, z: last.z - Math.cos(yaw) * steps };
+  // Beside the last spawn, alternating right and left, so nobody starts in front of or behind another and
+  // looks at their back from a metre away.
+  const k = id - spawns.length + 1;
+  const side = Math.ceil(k / 2) * SPAWN_SPACING * (k % 2 ? 1 : -1);
+  return { x: last.x + Math.cos(yaw) * side, y: last.y, z: last.z - Math.sin(yaw) * side };
 }
 
 export function createPlayer(id: number, spawn: Vec3): Player {
