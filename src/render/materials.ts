@@ -653,6 +653,31 @@ export function surfaceMaterial(surface: Surface, color: string): THREE.MeshStan
   return material;
 }
 
+// Open ground after rain: the same concrete, with a second picture saying where it is wet. Wet patches
+// are smooth, so lamps and the sky shine back off them; the rest stays dull. The wet picture is spread
+// over about nine metres so the patches read as pools, not a pattern.
+const wetGround = new Map<string, THREE.MeshStandardMaterial>();
+export function wetGroundMaterial(color: string, tile: number): THREE.MeshStandardMaterial {
+  const key = `${color}:${tile}`;
+  let material = wetGround.get(key);
+  if (!material) {
+    const map = paintTexture(1024, 16, (context, size, random) => {
+      concreteBase(context, size, random, '#9a9c9f');
+      cracks(context, size, random, 5);
+    });
+    const wet = paintTexture(512, 31, (context, size, random) => {
+      context.fillStyle = '#e6e6e6';
+      context.fillRect(0, 0, size, size);
+      blobs(context, size, random, 9, size * 0.08, size * 0.24, '40,40,40', 0.95);
+      blobs(context, size, random, 30, size * 0.01, size * 0.05, '90,90,90', 0.6);
+    }, false);
+    wet.repeat.setScalar(tile / 9);
+    material = new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: 0.012, roughness: 1, roughnessMap: wet, metalness: 0.02, envMapIntensity: 2.2, color });
+    wetGround.set(key, material);
+  }
+  return material;
+}
+
 const paintSkin: Painter = (context, size, random) => {
   context.fillStyle = '#9b968b';
   context.fillRect(0, 0, size, size);

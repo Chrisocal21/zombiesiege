@@ -16,6 +16,7 @@ import {
   glowTexture,
   puddleAlphaTexture,
   surfaceMaterial,
+  wetGroundMaterial,
   tileMeters,
 } from './materials';
 import { buildFurniture } from './furniture';
@@ -111,7 +112,9 @@ function buildBoxObject(box: LevelBox, index: number): THREE.Object3D | null {
   boxMapUVs(geometry, box, tile);
 
   let material: THREE.Material | THREE.Material[];
-  if (surface === 'slab') material = slabMaterials;
+  // Open ground laid by the street kit (half a metre thick, top at nothing): wet, so the lamps shine in it.
+  if ((surface === 'slab' || surface === 'plain') && box.size.y === 0.5 && box.position.y === -0.25 && box.size.x * box.size.z >= 60) material = wetGroundMaterial(box.color, tile);
+  else if (surface === 'slab') material = slabMaterials;
 
   else material = surfaceMaterial(surface, box.color);
 
@@ -167,6 +170,37 @@ interface Lamp {
   seed: number;
   circuit?: number;
   emergency?: boolean;
+  // The cone of lit air under a street lantern.
+  shaft?: THREE.ShaderMaterial;
+}
+
+// Lit air under a lantern: a cone, brightest seen through its middle and near the lamp, added to the view.
+function lightShaft(color: THREE.Color, height: number): THREE.Mesh<THREE.ConeGeometry, THREE.ShaderMaterial> {
+  const material = new THREE.ShaderMaterial({
+    uniforms: { tint: { value: color }, power: { value: 1 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vNormal; varying vec3 vView; varying float vUp;
+      void main() {
+        vec4 view = modelViewMatrix * vec4(position, 1.0);
+        vNormal = normalMatrix * normal; vView = -view.xyz; vUp = uv.y;
+        gl_Position = projectionMatrix * view;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 tint; uniform float power;
+      varying vec3 vNormal; varying vec3 vView; varying float vUp;
+      void main() {
+        float through = pow(abs(dot(normalize(vNormal), normalize(vView))), 2.5);
+        float along = smoothstep(0.0, 0.3, vUp) * mix(0.2, 1.0, vUp * vUp);
+        gl_FragColor = vec4(tint * through * along * power * 0.16, 1.0);
+      }`,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(new THREE.ConeGeometry(height * 0.72, height, 28, 1, true), material);
+  mesh.position.y = -height / 2;
+  return mesh;
 }
 
 function buildLamp(lightConfig: LevelLight, glowMap: THREE.Texture, parent: THREE.Group): Lamp {
@@ -263,7 +297,9 @@ function buildFitting(lightConfig: LevelLight, color: THREE.Color, glowMap: THRE
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.8 }));
     glow.scale.setScalar(1.6);
     group.add(glow);
-    return { light, glow, bulb, base: lightConfig.intensity, flicker: lightConfig.flicker === true, seed: x * 3.1 + z * 1.7 };
+    const shaft = lightShaft(color, y - 0.05);
+    group.add(shaft);
+    return { light, glow, bulb, base: lightConfig.intensity, flicker: lightConfig.flicker === true, seed: x * 3.1 + z * 1.7, shaft: shaft.material };
   }
 
   // The fitting hangs off whichever wall is closest, or stands on a pole if there is none near.
@@ -811,6 +847,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
         lamp.light.intensity = lamp.base * brightness;
         lamp.glow.material.opacity = 0.22 * brightness;
         lamp.bulb.color.copy(lamp.light.color).multiplyScalar(0.25 + 0.75 * brightness);
+        if (lamp.shaft) lamp.shaft.uniforms.power.value = brightness;
       }
     },
   };

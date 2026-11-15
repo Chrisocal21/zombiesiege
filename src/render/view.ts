@@ -4,11 +4,29 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { settings } from '../client/settings';
 import { config } from '../config';
 import type { GameState } from '../game/state';
+import { actOf } from '../game/tower';
 import type { Level } from '../levels/types';
 import { createPost } from './post';
 import { buildWorld, type World } from './world';
 
 const NIGHT = 0x0c1119;
+
+// The colour of each act: what the shadows and the highlights lean toward, how much colour, how much
+// contrast. Cool shadows under warm lights for the tower, colder and greyer as the story goes on, gold
+// at the end.
+interface Grade { shadows: [number, number, number]; highlights: [number, number, number]; saturation: number; contrast: number }
+const GRADE: Grade = { shadows: [0.93, 1.0, 1.08], highlights: [1.06, 1.0, 0.93], saturation: 1.06, contrast: 1.07 };
+const GRADES: Record<number, Grade> = {
+  4: { shadows: [0.98, 0.98, 1.04], highlights: [1.08, 1.01, 0.9], saturation: 1.1, contrast: 1.06 },
+  5: { shadows: [0.96, 1.0, 1.04], highlights: [1.06, 1.02, 0.94], saturation: 1.02, contrast: 1.06 },
+  6: { shadows: [0.97, 0.97, 1.03], highlights: [1.07, 1.0, 0.92], saturation: 0.98, contrast: 1.08 },
+  7: { shadows: [0.9, 0.97, 1.1], highlights: [1.0, 1.0, 1.0], saturation: 0.84, contrast: 1.1 },
+  8: { shadows: [0.9, 1.03, 1.05], highlights: [1.02, 1.03, 0.95], saturation: 0.92, contrast: 1.08 },
+  9: { shadows: [0.98, 0.96, 1.0], highlights: [1.08, 1.0, 0.9], saturation: 0.95, contrast: 1.1 },
+  10: { shadows: [0.92, 0.98, 1.1], highlights: [1.0, 1.01, 1.02], saturation: 0.8, contrast: 1.1 },
+  11: { shadows: [0.93, 1.05, 0.97], highlights: [1.02, 1.04, 0.92], saturation: 0.88, contrast: 1.12 },
+  12: { shadows: [1.0, 0.97, 1.02], highlights: [1.1, 1.02, 0.88], saturation: 1.08, contrast: 1.06 },
+};
 
 export interface View {
   scene: THREE.Scene;
@@ -46,6 +64,10 @@ const LENS_FRAGMENT = /* glsl */ `
   uniform float time;
   uniform float bodycam;
   uniform float reducedFlashing;
+  uniform vec3 shadows;
+  uniform vec3 highlights;
+  uniform float saturation;
+  uniform float contrast;
   varying vec2 vUv;
   void main() {
     vec2 offset = (vUv - 0.5) * vec2(aspect, 1.0);
@@ -64,6 +86,13 @@ const LENS_FRAGMENT = /* glsl */ `
     gl_FragColor = vec4(color, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
+    // The act's grade, on the finished picture.
+    vec3 graded = gl_FragColor.rgb;
+    float light = dot(graded, vec3(0.2126, 0.7152, 0.0722));
+    graded = mix(vec3(light), graded, saturation);
+    graded = (graded - 0.5) * contrast + 0.5;
+    graded *= mix(shadows, highlights, smoothstep(0.05, 0.7, light));
+    gl_FragColor.rgb = clamp(graded, 0.0, 1.0);
   }
 `;
 
@@ -207,6 +236,10 @@ export function createView(level: Level): View {
       time: { value: 0 },
       bodycam: { value: 0 },
       reducedFlashing: { value: 1 },
+      shadows: { value: new THREE.Vector3(1, 1, 1) },
+      highlights: { value: new THREE.Vector3(1, 1, 1) },
+      saturation: { value: 1 },
+      contrast: { value: 1 },
     },
     depthTest: false,
     depthWrite: false,
@@ -247,6 +280,11 @@ export function createView(level: Level): View {
       }
       current.world.update(time, state);
       lensMaterial.uniforms.time.value = time;
+      const grade = GRADES[actOf(state.floor)] ?? GRADE;
+      lensMaterial.uniforms.shadows.value.fromArray(grade.shadows);
+      lensMaterial.uniforms.highlights.value.fromArray(grade.highlights);
+      lensMaterial.uniforms.saturation.value = grade.saturation;
+      lensMaterial.uniforms.contrast.value = grade.contrast;
       // Each floor's air. A floor with its power out is murky and dark, clearing a circuit at a time.
       const air = state.level.atmosphere;
       let power = 1;
