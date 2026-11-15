@@ -37,11 +37,25 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
   const sparkGeometry = new THREE.CylinderGeometry(0.004, 0.001, 0.1, 4);
   const dustMaterial = new THREE.MeshStandardMaterial({ color: '#8d8881', roughness: 1 });
   const woodMaterial = new THREE.MeshStandardMaterial({ color: '#a48255', roughness: 1 });
-  const sparkMaterial = new THREE.MeshBasicMaterial({ color: '#ffd9a0' });
+  // Brighter than white, so the glow pass picks sparks and tracers out.
+  const sparkMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd9a0').multiplyScalar(5) });
   const bloodMaterial = new THREE.MeshStandardMaterial({ color: '#641d1b', roughness: 0.6 });
   const smokeMap = glowTexture();
   const tracerGeometry = new THREE.CylinderGeometry(0.003, 0.001, 0.24, 6);
-  const tracerMaterial = new THREE.MeshBasicMaterial({ color: '#ebca8b', transparent: true, opacity: 0.6, depthWrite: false });
+  const tracerMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ebca8b').multiplyScalar(3), transparent: true, opacity: 0.6, depthWrite: false });
+  // Blood on the floor under whatever was hit: a dark splash that stays.
+  const splatMap = paintTexture(128, 712, (ctx, size, random) => {
+    ctx.clearRect(0, 0, size, size);
+    ctx.translate(size / 2, size / 2);
+    for (let i = 0; i < 26; i++) {
+      const reach = random() * size * 0.36, angle = random() * Math.PI * 2;
+      ctx.fillStyle = `rgba(74,10,10,${0.5 + random() * 0.4})`;
+      ctx.beginPath(); ctx.arc(Math.cos(angle) * reach, Math.sin(angle) * reach, (1 - reach / size) * (3 + random() * 11), 0, Math.PI * 2); ctx.fill();
+    }
+  });
+  const splatMaterial = new THREE.MeshStandardMaterial({ map: splatMap, transparent: true, depthWrite: false, roughness: 0.25, polygonOffset: true, polygonOffsetFactor: -4 });
+  const splatGeometry = new THREE.PlaneGeometry(1, 1);
+  const splats: THREE.Mesh[] = [];
   const scarMap = paintTexture(128, 711, (ctx, size, random) => {
     ctx.clearRect(0, 0, size, size);
     ctx.translate(size / 2, size / 2);
@@ -87,7 +101,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
     sprite.userData.opacity = opacity; sprite.userData.size = scale;
     addParticle(sprite, at, new THREE.Vector3((Math.random() - 0.5) * 0.13, 0.16, 0), 0.65, -0.06);
   }
-  function impact(flight: Pick<Flight, 'blood' | 'surface' | 'normal' | 'end'>): void {
+  function impact(flight: Pick<Flight, 'blood' | 'surface' | 'normal' | 'end'>, level: Level): void {
     const metal = ['car', 'van', 'container', 'barrel', 'gate'].includes(flight.surface);
     const wood = ['crate', 'board', 'cartons'].includes(flight.surface);
     for (let i = 0; i < (flight.blood ? 9 : 11); i++) {
@@ -98,8 +112,21 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
         .add(new THREE.Vector3((Math.random() - 0.5) * 2.5, Math.random() * 2, (Math.random() - 0.5) * 2.5));
       addParticle(debris, flight.end, velocity, metal ? 0.2 : 0.45, 9);
     }
-    if (!flight.blood) {
+    if (flight.blood) {
+      // A red mist where the round went in, and a splash on the floor below it.
+      smoke(flight.end, 0.3, '#7a1512', 0.34);
+      const below = raycastBoxHit(level, flight.end, new THREE.Vector3(0, -1, 0), 3);
+      if (below) {
+        const splat = new THREE.Mesh(splatGeometry, splatMaterial);
+        splat.position.set(flight.end.x + (Math.random() - 0.5) * 0.5, flight.end.y - below.distance + 0.012, flight.end.z + (Math.random() - 0.5) * 0.5);
+        splat.rotation.set(-Math.PI / 2, 0, Math.random() * Math.PI * 2);
+        splat.scale.setScalar(0.35 + Math.random() * 0.5);
+        scene.add(splat); splats.push(splat);
+        if (splats.length > 48) scene.remove(splats.shift()!);
+      }
+    } else {
       smoke(flight.end, 0.26, wood ? '#a48b67' : '#b0aaa0', 0.22);
+      if (!metal) smoke(flight.end, 0.5, wood ? '#a48b67' : '#b0aaa0', 0.1);
       if (flight.normal.lengthSq() > 0.5) {
         const scar = new THREE.Mesh(scarGeometry, scarMaterial);
         scar.position.copy(flight.end).addScaledVector(flight.normal, 0.012);
@@ -115,7 +142,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
         seenMeleeHitTick = player.lastMeleeHitTick;
         const at = new THREE.Vector3(player.lastMeleeEnd.x, player.lastMeleeEnd.y, player.lastMeleeEnd.z);
         if (seenMeleeHitTick >= 0 && player.lastMeleeContact === 'zombie') {
-          impact({ blood: true, surface: 'wall', end: at, normal: new THREE.Vector3(player.x-at.x,0,player.z-at.z).normalize() });
+          impact({ blood: true, surface: 'wall', end: at, normal: new THREE.Vector3(player.x-at.x,0,player.z-at.z).normalize() }, level);
         } else if (seenMeleeHitTick >= 0 && player.lastMeleeContact === 'wall') smoke(at,.12,'#b0aaa0',.12);
       }
       tracerMaterial.opacity = settings.reducedFlashing ? 0 : 0.6;
@@ -125,6 +152,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
           while (particles.length) removeParticle(0);
           for (const f of flights) scene.remove(f.mesh); flights.length = 0;
           for (const scar of scars) scene.remove(scar); scars.length = 0;
+          for (const splat of splats) scene.remove(splat); splats.length = 0;
         } else {
           camera.updateMatrixWorld(); weaponToWorld(viewmodel.getMuzzle(muzzle));
           const end = new THREE.Vector3(player.lastShotEnd.x, player.lastShotEnd.y, player.lastShotEnd.z);
@@ -151,7 +179,7 @@ export function createEffects(scene: THREE.Scene, camera: THREE.PerspectiveCamer
       flashLeft = Math.max(0, flashLeft - dt); shotLight.intensity = settings.reducedFlashing ? 0 : flashLeft / 0.045 * 8;
       for (let i = flights.length - 1; i >= 0; i--) {
         const f = flights[i]; f.left -= dt;
-        if (f.left <= 0) { if (f.hit) impact(f); scene.remove(f.mesh); flights.splice(i, 1); }
+        if (f.left <= 0) { if (f.hit) impact(f, level); scene.remove(f.mesh); flights.splice(i, 1); }
         else f.mesh.position.addScaledVector(f.velocity, dt);
       }
       for (let i = particles.length - 1; i >= 0; i--) {

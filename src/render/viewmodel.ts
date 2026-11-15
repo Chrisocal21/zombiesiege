@@ -424,6 +424,8 @@ export function createViewmodel(viewScene: THREE.Scene): Viewmodel {
   // Muzzle flash: a soft glowing burst, shown for a moment after each shot.
   const flashMaterial = new THREE.SpriteMaterial({
     map: flashTexture(),
+    // Brighter than white, so the glow pass spreads it.
+    color: new THREE.Color(2.4, 2.0, 1.5),
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     transparent: true,
