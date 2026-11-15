@@ -244,6 +244,8 @@ Doors Shut (09-B, built, draft): the Lincoln Road settlement has shut itself in 
 
 Empty Houses (10-B, built, draft): Mill Street in the old town, the morning after an evacuation. Nobody is hunting the crew. A child's coat and a packed bag in one house; in the middle house a handwritten note says the street was sent by bus to the old school, and that the Ward family went with the second bus, Sam with a fever. The north-east house holds sleepers; going in there and firing wakes the street. Not built: 10-A and 10-C.
 
+The Original Site (11-A, built, draft): the company's first research complex, sealed by its own lockdown protocol when the mains failed. The security shutter will not open without authority; forcing it takes points and is loud, while the maintenance door in the south corner was left on the latch for the night shift. Two cabinets route what is left of the generator to the archive wing; the incident file there says a sample handling breach exposed eleven staff, and the site was kept quiet. It was an accident, and then it was a cover story. Not built: 11-B, 11-C.
+
 ### After Act 6
 
 Not written yet. See **Places** for what's next.

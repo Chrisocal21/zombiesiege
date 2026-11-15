@@ -216,6 +216,10 @@ export const config = {
     ghostSignal: [
       { number: 0, name: 'Empty Houses', waves: 3 },
     ],
+    // Act 11, where it began.
+    groundZero: [
+      { number: 0, name: 'The Original Site', waves: 3 },
+    ],
     refuge: [
       { number: 0, name: 'Inventory of the Living', waves: 1 },
       { number: 0, name: 'The Missing Delivery', waves: 3 },

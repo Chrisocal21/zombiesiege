@@ -11,13 +11,13 @@ const { startOnFloor } = await import('../src/game/waves.ts');
 const { step } = await import('../src/game/update.ts');
 const { idleInput } = await import('../src/game/inputs.ts');
 const { useObjective } = await import('../src/game/objectives.ts');
-const { LAST_FLOOR, LAST_FAULT_LINES, actOf } = await import('../src/game/tower.ts');
+const { LAST_GHOST_SIGNAL, LAST_FAULT_LINES, actOf } = await import('../src/game/tower.ts');
 
 const HZ = 120;
 const run = (s, seconds) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_FLOOR);
-assert.equal(LAST_FLOOR, LAST_FAULT_LINES + 1);
+startOnFloor(s, LAST_GHOST_SIGNAL);
+assert.equal(LAST_GHOST_SIGNAL, LAST_FAULT_LINES + 1);
 assert.equal(s.level.name, 'Empty Houses');
 assert.equal(actOf(s.floor), 10);
 assert.equal(flowOf(s.level).kind, 'sweep');
