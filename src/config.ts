@@ -202,6 +202,7 @@ export const config = {
     ],
     // Act 7, the silence on the air.
     deadAir: [
+      { number: 0, name: 'The Silence', waves: 3 },
       { number: 0, name: 'High Ground', waves: 3 },
     ],
     // Act 8, water and industry.

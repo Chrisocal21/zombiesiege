@@ -27,6 +27,7 @@ import { highWater } from './highWater';
 import { doorsShut } from './doorsShut';
 import { emptyHouses } from './emptyHouses';
 import { shelterZero } from './shelterZero';
+import { silence } from './silence';
 import { originalSite } from './originalSite';
 import { liftWindow } from './liftWindow';
 import { perimeterFall } from './perimeterFall';
@@ -41,7 +42,7 @@ import { towerRoof } from './towerRoof';
 import type { Level } from './types';
 
 // The level for each elevator stop, by stop index, with the roof one past the last stop.
-const FLOORS: Record<number, Level> = { [-5]: breakdown, [-4]: deadStop, [-3]: checkpoint, [-2]: commercial, [-1]: approach, 1: floor3, 2: floor6, 3: floor9, 4: floor12, 5: roof, 6: towerRoof, 7: office41, 8: records34, 9: exec27, 10: servers20, 11: lobby1, 12: garage, 13: tunnel, 14: pharmacy, 15: lab, 16: vaultLevel, 17: mainStreet, 18: market, 19: barricades, 20: park, 21: inventory, 22: delivery, 23: camp, 24: fuelYard, 25: highGround, 26: highWater, 27: doorsShut, 28: emptyHouses, 29: shelterZero, 30: originalSite, 31: containment, 32: lastRecord, 33: perimeterFall, 34: liftWindow };
+const FLOORS: Record<number, Level> = { [-5]: breakdown, [-4]: deadStop, [-3]: checkpoint, [-2]: commercial, [-1]: approach, 1: floor3, 2: floor6, 3: floor9, 4: floor12, 5: roof, 6: towerRoof, 7: office41, 8: records34, 9: exec27, 10: servers20, 11: lobby1, 12: garage, 13: tunnel, 14: pharmacy, 15: lab, 16: vaultLevel, 17: mainStreet, 18: market, 19: barricades, 20: park, 21: inventory, 22: delivery, 23: camp, 24: fuelYard, 25: silence, 26: highGround, 27: highWater, 28: doorsShut, 29: emptyHouses, 30: shelterZero, 31: originalSite, 32: containment, 33: lastRecord, 34: perimeterFall, 35: liftWindow };
 
 export function levelForFloor(floor: number): Level {
   return FLOORS[floor] ?? level0;
