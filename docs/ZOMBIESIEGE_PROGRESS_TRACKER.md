@@ -193,6 +193,7 @@ Open, in suggested order (one phase each, compact between):
 
 Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the optional features, then the acts.
 - [x] Act 5 slice 05-C built (floor 21, camp.ts, check-camp.mjs): siege through four fence gaps, dark floodlights until two generators are thrown, lift ends the run. Wave-3 fall-back call and the last-push call are radio cues (new cue kind wave); the inner fence gate is the chokepoint. Still to do: a real fence breach and assigning defenders
+- [x] Act 5 slice 05-B built (floor 21, delivery.ts, check-delivery.mjs): sweep road, three cases to carry to the gate drop-off, three bus survivors to bring out. The camp siege is now floor 22. Still to do: the cargo-versus-people choice has no consequence in the camp yet
 - [ ] Act 5, Last Refuge, built as three slices, each from existing mechanics: 05-C the camp siege first (reuses the park's siege waves, adds a generator to repair and a fall-back yard), then 05-B The Missing Delivery (a search run with a cargo-versus-people choice), then 05-A Inventory of the Living (the quiet camp: needs a small ledger screen, so it comes last)
 - [ ] Act 6 Broken Roads, 7 Dead Air, 8 Blackwater, 9 Fault Lines, 10 Ghost Signal, 11 Ground Zero, 12 First Light: outlined in the handoff, none built
 - [ ] Needs you: the survivor zip (re-download) and lore approval of the draft wording

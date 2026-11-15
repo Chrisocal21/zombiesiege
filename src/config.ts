@@ -197,6 +197,7 @@ export const config = {
     ],
     // Act 5, the outskirts camp: the first place worth defending.
     refuge: [
+      { number: 0, name: 'The Missing Delivery', waves: 3 },
       { number: 0, name: 'Last Refuge', waves: 4 },
     ],
   },
