@@ -78,7 +78,7 @@ const shoot = (s) => tick(s, { ...idleInput(0), fire: true });
   assert.ok(s.practice && s.players.every((p) => p.health > 0 && p.lives === 1), 'practice: everyone is back up, no life lost');
   assert.equal(s.waves.phase, 'search');
   assert.equal(asleep(s), living(s).length, 'the residents are back, asleep');
-  assert.ok(living(s).length >= residents && living(s).length <= residents + 2, 'and the crowd is gone');
+  assert.ok(living(s).length === residents, 'and the crowd is gone');
 
   // The card is the whole floor: once taken, the lift opens although the dead are still about.
   const card = s.level.objective.position;

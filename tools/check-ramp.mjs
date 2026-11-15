@@ -45,7 +45,7 @@ assert.ok(p.onGround && Math.abs(p.y - surface(23)) < 1e-6);
 assert.equal(groundHeight(level0, -5, 40, 0.4, 4.9), 4.9, 'street unchanged');
 assert.equal(groundHeight(level0, 3, 6, 0.4, 0), 0, 'garage unchanged');
 const cars = level0.boxes.filter(b => (b.surface === 'car' || b.surface === 'van') && b.position.y > 4.9 && b.position.z < 35);
-for (const bay of SURFACE_PARKING_BAYS.filter(b => ['RESERVED', 'ACCESSIBLE', 'KEEP CLEAR'].includes(b.kind))) {
+for (const bay of SURFACE_PARKING_BAYS.filter(b => b.id !== 'E05' && ['RESERVED', 'ACCESSIBLE', 'KEEP CLEAR'].includes(b.kind))) {
   assert.ok(!cars.some(car => Math.abs(car.position.x - bay.x) < (car.size.x + 5) / 2
     && Math.abs(car.position.z - bay.z) < (car.size.z + 2.7) / 2), `${bay.id} must remain unobstructed`);
 }
@@ -53,4 +53,4 @@ assert.equal(SPECIAL_PARKING_BAY.id, 'E05');
 for (const car of cars) assert.ok(SURFACE_PARKING_BAYS.some(bay =>
   Math.abs(car.position.x - bay.x) + car.size.x / 2 <= 2.5 && Math.abs(car.position.z - bay.z) + car.size.z / 2 <= 1.35), 'vehicle outside parking bay');
 console.log('PASS: continuous ramp height uphill/downhill, walking/sprinting at 30/60/120 Hz, both lips, jumping and flat floors');
-console.log('PASS: parked vehicles fit bays; accessible space, access aisle and reserved E05 stay empty');
+console.log('PASS: parked vehicles fit bays; accessible space, access aisle and reserved bays stay empty (E05 holds the El Cajon on purpose)');

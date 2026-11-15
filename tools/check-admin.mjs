@@ -27,7 +27,7 @@ const { level0 } = await import('../src/levels/level0.ts');
 
 const state = createGameState(level0);
 const player = state.players[0];
-assert.deepEqual(WEAPON_IDS.map((weapon) => weaponStats(weapon).name), ['P9 PISTOL', 'SAWED-OFF', 'MACHETE', 'SPIKED BAT']);
+assert.deepEqual(WEAPON_IDS.map((weapon) => weaponStats(weapon).name), ['P9 PISTOL', 'PUMP SHOTGUN', 'AK']);
 assert.throws(() => weaponStats('invalid'), /Unknown weapon/);
 
 assert.equal(changePoints(state, 0, 1200).ok, true);

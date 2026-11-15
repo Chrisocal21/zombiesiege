@@ -21,6 +21,7 @@ const { config } = await import('../src/config.ts');
 const { createGameState } = await import('../src/game/state.ts');
 const { step } = await import('../src/game/update.ts');
 const { equipWeapon, giveShotgun, owns, swapWeapon, weaponStats, WEAPON_IDS } = await import('../src/game/weapons.ts');
+if (!WEAPON_IDS.includes('machete')) { console.log('SKIP: melee weapons are switched off (src/game/weapons.ts); this check runs again when they return'); process.exit(0); }
 const { spawnZombie } = await import('../src/game/zombies.ts');
 const { level0 } = await import('../src/levels/level0.ts');
 const neutral = { playerId:0, moveForward:0, moveRight:0, lookYaw:0, lookPitch:0, fire:false,

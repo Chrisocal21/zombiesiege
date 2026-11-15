@@ -172,12 +172,12 @@ Open, in suggested order (one phase each, compact between):
 - [x] Roof upgrade: vents, pipes, lights, a better skyline; the roof is dark and bare (Sonnet, medium)
 - [x] Apartment streets: Final Push (Old Town) has four kerbed lawn islands with park benches and shrubs down the middle of the road, in the gaps between the barriers (the road stays open)
 - [ ] Garage ambulances (level0.ts): look at them in the game; they were never seen rendered
-- [ ] Check-flow: the Pharmacy has one extra walker after a team wipe with the lift open; the check was loosened, find the cause and restore the strict count
+- [x] Check-flow: the Pharmacy has one extra walker after a team wipe with the lift open; the check was loosened, find the cause and restore the strict count
 - [ ] Optional manual lift control: a button to open and close the doors by hand (the doors now only shut on the ride)
 - [ ] Play the roof finale and the loading screen on a real graphics card
 - [ ] Co-op: other players' shots and sounds are not drawn; admin tools act on player 0; balance tuning needs a playtest
 - [ ] Character phase: the survivor zip (re-download). Amber done (first rescued survivor); her walk and the hiding crouch are unseen. Ghillie soldier done: the crew wears it in co-op, a half-gear version is on a third of the infected at Checkpoint and the barricades; animation unseen, and the co-op teammate look is unseen. Mutant done: it is the brute's body (rigged by `tools/blender/rig_mutant.py`); still to see: how it walks and swings in play, and the boss Patient O wearing it
-- [ ] Already failing before this work: check-admin, check-melee, check-ramp
+- [x] The three failing checks fixed (admin list, melee skipped while melee is off, ramp excludes the El Cajon bay)
 - [ ] Lore: note texts, town names and the evacuation map text are draft wording awaiting approval
 
 ---

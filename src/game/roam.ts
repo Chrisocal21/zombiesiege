@@ -188,7 +188,16 @@ export function roamersOn(level: Level): number {
 
 // The floor's walkers: spread over the open ground, away from the crew's start, from the floor's own
 // dead, from the people hiding there, and from each other. The same every time for the same floor.
+const roamerCache = new WeakMap<Level, Resident[]>();
 export function roamersFor(level: Level): Resident[] {
+  // Worked out once, on the floor as it starts: doors and lifts opening later change what counts as open
+  // ground, and a team wipe must put back exactly the dead that were there.
+  let placed = roamerCache.get(level);
+  if (!placed) { placed = findRoamers(level); roamerCache.set(level, placed); }
+  return placed;
+}
+
+function findRoamers(level: Level): Resident[] {
   const count = roamersOn(level);
   const ground = groundOf(level);
   if (!ground || count <= 0) return [];
