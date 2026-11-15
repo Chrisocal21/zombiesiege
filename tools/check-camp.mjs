@@ -20,7 +20,7 @@ const run = (s, seconds, until) => { for (let i = 0; i < seconds * HZ; i++) { fo
 
 const s = createGameState(level0);
 startOnFloor(s, LAST_FLOOR);
-assert.equal(LAST_FLOOR, 22);
+assert.equal(LAST_FLOOR, 23);
 assert.equal(s.level.name, 'Last Refuge');
 assert.equal(actOf(s.floor), 5);
 assert.equal(flowOf(s.level).kind, 'siege');

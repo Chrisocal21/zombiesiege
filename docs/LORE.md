@@ -220,9 +220,11 @@ The extraction has no painted pad: five red flares are thrown onto the grass and
 
 The air ambulance sets the crew down at the outskirts camp at nightfall. It is the first place anyone wants to protect: tents and a garage shed inside a chain-and-timber fence, a supply stack in the middle, a medical yard behind an inner fence. The generators are down, so the floodlights are dark. The dead come for the noise through four gaps in the fence; the crew can plank two of them. When both generators are thrown the camp is lit, and the lift opens. The message at the end names fuel and a way out as the next priorities (leads to Act 6, Broken Roads).
 
+Inventory of the Living (05-A, built, draft): the first quiet hour, before anything attacks. The crew walks the camp and checks its four needs: medical, water, shelter and the generator. A ledger card at each says what it has and lacks (low bandages, one tank a third full, sixty-eight people in forty-one beds, three days of generator fuel). Each check lights that part of the camp. The road gate opens after all four.
+
 The Missing Delivery (05-B, built, draft): on the camp road before the siege, the camp's supply convoy lies wrecked along the road with its loads spilled, and three people from a stalled bus are hiding in it. A case takes both hands and the dead are about, so the crew chooses what to carry and whom to cover. Cases and people go to the camp gate.
 
-Not built yet in this act: a real fence breach in the siege, assigning defenders, and the camp ledger (05-A).
+Not built yet in this act: a real fence breach in the siege, assigning defenders, and a choice of first repair with consequences (the ledger is read-only cards for now).
 
 ### After Act 5
 

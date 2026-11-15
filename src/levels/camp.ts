@@ -34,7 +34,7 @@ const stations: Station[] = [
 ];
 
 // A tent: a low canvas block with a lifted front, drawn as a box.
-const tent = (x: number, z: number, long: number, wide: number, dark = false) => block(x, z, long, 2.2, wide, dark ? CANVAS_DARK : CANVAS, 'crate');
+const tent = (x: number, z: number, long: number, wide: number, dark = false) => block(x, z, long, 2.2, wide, dark ? CANVAS_DARK : CANVAS, 'plain');
 
 // Circuit 0 is the west camp (generator A), circuit 1 the medical yard (generator B). Until they are
 // thrown the floodlights are dark; the lanterns stay lit on their own.
