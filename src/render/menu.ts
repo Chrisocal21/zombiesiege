@@ -197,7 +197,7 @@ function drawGrain(context: CanvasRenderingContext2D, width: number, height: num
     for (let i = 0; i < image.data.length; i += 4) {
       const value = Math.random() < 0.5 ? 0 : 255;
       image.data[i] = image.data[i + 1] = image.data[i + 2] = value;
-      image.data[i + 3] = Math.random() * 26;
+      image.data[i + 3] = Math.random() * 15;
     }
     c.putImageData(image, 0, 0);
     grain = context.createPattern(noise, 'repeat');
@@ -680,6 +680,19 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         drawGrain(context, width, height, time);
 
         const appear = ease((time - startedAt - 0.3) / 1.4);
+        // A pool of dark behind the logo so it stands off the scene, and film bars closing in top and bottom.
+        const pool = context.createRadialGradient(width / 2, height * 0.3, 0, width / 2, height * 0.3, height * 0.42);
+        pool.addColorStop(0, `rgba(0,0,0,${0.5 * appear})`);
+        pool.addColorStop(1, 'rgba(0,0,0,0)');
+        context.fillStyle = pool;
+        context.fillRect(0, 0, width, height * 0.75);
+        const bar = height * 0.075 * ease((time - startedAt) / 1.1);
+        context.fillStyle = '#000000';
+        context.fillRect(0, 0, width, bar);
+        context.fillRect(0, height - bar, width, bar);
+        context.fillStyle = 'rgba(232,184,102,0.35)';
+        context.fillRect(0, bar, width, 1);
+        context.fillRect(0, height - bar - 1, width, 1);
         context.save();
         context.globalAlpha = appear;
         text(context, 'PROBABLY FINE STUDIOS PRESENTS', width / 2, height * 0.12, { size: 15 * unit, weight: 700, spacing: 8 * unit, color: COLOR.dim, align: 'center' });
