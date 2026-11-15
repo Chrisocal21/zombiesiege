@@ -1,5 +1,5 @@
 import type { GameState, Player } from './state';
-import { isMelee, owns, reserveOf, setReserve, weaponStats, type WeaponId } from './weapons';
+import { giveWeapon, isMelee, owns, reserveOf, setReserve, weaponStats, type WeaponId } from './weapons';
 
 export interface AdminResult {
   ok: boolean;
@@ -27,13 +27,19 @@ export function changePoints(state: GameState, playerId: number, amount: number)
   return { ok: true, message: `Removed ${removed.toLocaleString()} points.` };
 }
 
-export function spawnWeapon(player: Player, weapon: WeaponId): AdminResult {
+// Puts the weapon in hand exactly as a wall station would, for nothing: a full magazine and its
+// starting spare rounds, swapping out the other wall gun if one is carried.
+export function spawnWeapon(state: GameState, player: Player, weapon: WeaponId): AdminResult {
   const stats = weaponStats(weapon);
-  if (owns(player, weapon)) return { ok: false, message: `${stats.name} is already in your inventory.` };
-  if (player.stowed) return { ok: false, message: 'Your weapon inventory is full.' };
+  const had = owns(player, weapon);
+  giveWeapon(player, weapon, state.tick);
+  return { ok: true, message: had ? `${stats.name} in hand and topped up.` : `${stats.name} in hand.` };
+}
 
-  player.stowed = { weapon, ammo: stats.magazineSize, reserve: stats.reserveStart };
-  return { ok: true, message: `${stats.name} added to your inventory.` };
+export function spawnSilencer(player: Player): AdminResult {
+  if (player.silencer) return { ok: false, message: 'A silencer is already fitted.' };
+  player.silencer = true;
+  return { ok: true, message: 'Silencer fitted to the pistol and the AK.' };
 }
 
 export function spawnAmmo(player: Player, weapon: WeaponId, amount: number): AdminResult {

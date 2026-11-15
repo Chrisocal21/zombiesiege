@@ -18,8 +18,8 @@ registerHooks({
 });
 
 const { config } = await import('../src/config.ts');
-const { changePoints, spawnAmmo, spawnWeapon } = await import('../src/game/admin.ts');
-const { createGameState, createPlayer } = await import('../src/game/state.ts');
+const { changePoints, spawnAmmo, spawnSilencer, spawnWeapon } = await import('../src/game/admin.ts');
+const { createGameState } = await import('../src/game/state.ts');
 const { step } = await import('../src/game/update.ts');
 const { WEAPON_IDS, swapWeapon, weaponStats } = await import('../src/game/weapons.ts');
 const { spawnZombie } = await import('../src/game/zombies.ts');
@@ -49,52 +49,52 @@ state.points[0] = 0;
 assert.equal(spawnAmmo(player, 'shotgun', 1).ok, false);
 player.ammo = 7;
 player.reserve = 13;
-player.reloadLeft = 1;
-assert.equal(spawnWeapon(player, 'shotgun').ok, true);
-assert.equal(player.weapon, 'pistol');
-assert.equal(player.ammo, 7);
-assert.equal(player.reserve, 13);
-assert.equal(player.reloadLeft, 1);
-assert.deepEqual(player.stowed, { weapon: 'shotgun', ammo: 2, reserve: 12 });
-const beforeDuplicate = structuredClone(player);
-assert.equal(spawnWeapon(player, 'shotgun').ok, false);
-assert.deepEqual(player, beforeDuplicate);
+// Spawning is a free wall buy: the gun in hand, full, and the pistol put away.
+assert.equal(spawnWeapon(state, player, 'shotgun').ok, true);
+assert.equal(player.weapon, 'shotgun');
+assert.equal(player.ammo, 2);
+assert.equal(player.reserve, 12);
+assert.deepEqual(player.stowed, { weapon: 'pistol', ammo: 7, reserve: 13 });
+player.ammo = 0;
+player.reserve = 3;
+assert.equal(spawnWeapon(state, player, 'shotgun').ok, true, 'spawning one already held tops it up');
+assert.equal(player.ammo, 2);
+assert.equal(player.reserve, 12);
 
 for (const amount of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
   assert.equal(spawnAmmo(player, 'pistol', amount).ok, false);
-  assert.equal(player.reserve, 13);
+  assert.equal(player.stowed.reserve, 13);
 }
 assert.equal(spawnAmmo(player, 'pistol', 8).ok, true);
-assert.equal(player.reserve, 21);
+assert.equal(player.stowed.reserve, 21);
 assert.equal(spawnAmmo(player, 'shotgun', 5).ok, true);
-assert.equal(player.stowed.reserve, 17);
+assert.equal(player.reserve, 17);
 assert.match(spawnAmmo(player, 'shotgun', 100).message, /Added 7 rounds/);
-assert.equal(player.stowed.reserve, weaponStats('shotgun').reserveMax);
+assert.equal(player.reserve, weaponStats('shotgun').reserveMax);
 assert.equal(spawnAmmo(player, 'shotgun', 1).ok, false);
-assert.equal(state.points[0], 0);
+assert.equal(state.points[0], 0, 'nothing is charged');
 
 swapWeapon(player, state.tick);
-assert.equal(player.weapon, 'shotgun');
-assert.equal(player.reserve, weaponStats('shotgun').reserveMax);
-assert.equal(player.stowed.weapon, 'pistol');
-assert.equal(player.stowed.ammo, 7);
-assert.equal(player.stowed.reserve, 21);
-assert.equal(spawnAmmo(player, 'pistol', 4).ok, true);
-swapWeapon(player, state.tick, -1);
 assert.equal(player.weapon, 'pistol');
 assert.equal(player.ammo, 7);
+assert.equal(player.reserve, 21);
+assert.equal(spawnAmmo(player, 'pistol', 4).ok, true);
 assert.equal(player.reserve, 25);
-
-const full = createPlayer(0, { x: 0, y: 0, z: 0 });
-full.stowed = { weapon: 'pistol', ammo: 1, reserve: 2 };
-const beforeFull = structuredClone(full);
-assert.equal(spawnWeapon(full, 'shotgun').ok, false);
-assert.deepEqual(full, beforeFull);
+swapWeapon(player, state.tick, -1);
+assert.equal(player.weapon, 'shotgun');
+// A second wall gun takes the first one's place, as at a station; the pistol stays put away.
+assert.equal(spawnWeapon(state, player, 'ak').ok, true);
+assert.equal(player.weapon, 'ak');
+assert.equal(player.stowed.weapon, 'pistol');
+assert.equal(player.stowed.reserve, 25);
+assert.equal(spawnSilencer(player).ok, true);
+assert.equal(player.silencer, true);
+assert.equal(spawnSilencer(player).ok, false);
 
 const live = createGameState(level0);
 live.frozen = true;
 const gunner = live.players[0];
-assert.equal(spawnWeapon(gunner, 'shotgun').ok, true);
+assert.equal(spawnWeapon(live, gunner, 'shotgun').ok, true);
 assert.equal(spawnAmmo(gunner, 'shotgun', 9).ok, true);
 const neutral = {
   playerId: 0, moveForward: 0, moveRight: 0, lookYaw: 0, lookPitch: 0,
@@ -102,7 +102,6 @@ const neutral = {
   toggleCover: false, use: false, swap: false, toggleFreeze: false,
 };
 const tick = 1 / config.ticksPerSecond;
-step(live, [{ ...neutral, swap: true }], tick);
 for (let i = 0; i < config.ticksPerSecond; i++) step(live, [neutral], tick);
 step(live, [{ ...neutral, fire: true }], tick);
 assert.equal(gunner.weapon, 'shotgun');

@@ -25,6 +25,8 @@ export interface LocalInput {
   onUnlock(callback: () => void): void;
   // Opens the pause menu without waiting for the browser to release the mouse.
   onPause(callback: () => void): void;
+  // The next input carries STUCK. Kept through reset, since it is asked for from the pause menu.
+  requestUnstick(): void;
 }
 
 // Presses that are remembered until the next message goes out, even if released first.
@@ -45,6 +47,7 @@ export function createLocalInput(element: HTMLElement): LocalInput {
   let wheelY = 0;
   let wheelDirection: -1 | 1 = 1;
   const queued = new Set<Action>();
+  let unstickQueued = false;
   let unlockCallback: () => void = () => {};
   let pauseCallback: () => void = () => {};
 
@@ -155,6 +158,9 @@ export function createLocalInput(element: HTMLElement): LocalInput {
       }
       return isLocked();
     },
+    requestUnstick() {
+      unstickQueued = true;
+    },
     reset() {
       down.clear();
       queued.clear();
@@ -202,7 +208,9 @@ export function createLocalInput(element: HTMLElement): LocalInput {
         melee: queued.has('melee') || held('melee'),
         toggleFreeze: queued.has('freeze'),
         toggleLight: queued.has('light'),
+        unstick: unstickQueued,
       };
+      unstickQueued = false;
       yaw = 0;
       pitch = 0;
       clickQueued = false;

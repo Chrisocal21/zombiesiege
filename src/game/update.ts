@@ -1,3 +1,4 @@
+import { unstick } from './roster';
 import { chooseTalk, updateTalk } from './talk';
 import { config } from '../config';
 import type { Level } from '../levels/types';
@@ -43,6 +44,8 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
     }
 
     if (input.toggleFreeze) state.frozen = !state.frozen;
+    if (input.unstick) unstick(state, player);
+    player.loading = input.loading === true;
     if (input.toggleLight) player.flashlight = !player.flashlight;
     if (input.use && !startRevive(state, player)) useAction(state, player);
     if (input.useItem) startItem(player, input.useItem);

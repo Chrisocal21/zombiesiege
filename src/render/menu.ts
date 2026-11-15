@@ -2,7 +2,7 @@ import { GLOVES, OUTFITS, appearance, saveAppearance, selectedGloves, selectedOu
 import { ACTIONS, type Action, bindings, keyLabel, rebind, resetBindings } from '../client/bindings';
 import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } from '../client/settings';
 import { config } from '../config';
-import { changePoints, spawnAmmo, spawnWeapon, type AdminResult } from '../game/admin';
+import { changePoints, spawnAmmo, spawnSilencer, spawnWeapon, type AdminResult } from '../game/admin';
 import type { GameState } from '../game/state';
 import { FIRST_FLOOR, LAST_DAYBREAK, LAST_REFUGE, LAST_ROADS, LAST_DEAD_AIR, LAST_BLACKWATER, LAST_FAULT_LINES, LAST_GHOST_SIGNAL, LAST_GROUND_ZERO, LAST_DESCENT, LAST_FLOOR, LAST_VAULT, ROOF, floorTitle, stopAt, storeyLabel } from '../game/tower';
 import { WEAPON_IDS, isMelee, owns, weaponStats, type WeaponId } from '../game/weapons';
@@ -50,6 +50,8 @@ export interface MenuCallbacks {
   playFloor(floor: number): void;
   // Go back to the game from the pause menu.
   resume(): void;
+  // Back into the game at the start of this floor.
+  unstick(): void;
   gameState(): GameState;
   restart(): void;
   // Leave the game and go back to the title screen.
@@ -90,7 +92,7 @@ interface Entry {
 }
 
 type AdminAmount = 'points' | 'ammo';
-type AdminControl = AdminAmount | 'add' | 'remove' | `weapon:${WeaponId}` | 'spawnWeapon' | 'spawnAmmo' | 'back';
+type AdminControl = AdminAmount | 'add' | 'remove' | `weapon:${WeaponId}` | 'spawnWeapon' | 'spawnAmmo' | 'silencer' | 'back';
 
 interface Rect {
   x: number;
@@ -118,6 +120,7 @@ function adminHitboxes(width: number, height: number): AdminHitbox[] {
     { id: 'points', x, y: py + 265 * unit, w: columnWidth, h: fieldHeight },
     { id: 'add', x, y: py + 329 * unit, w: half, h: fieldHeight },
     { id: 'remove', x: x + half + 12 * unit, y: py + 329 * unit, w: half, h: fieldHeight },
+    { id: 'silencer', x, y: py + 393 * unit, w: columnWidth, h: fieldHeight },
     ...WEAPON_IDS.map((weapon, index): AdminHitbox => ({ id: `weapon:${weapon}`, x: rightX, y: py + (176 + index * 44) * unit, w: columnWidth, h: 40 * unit })),
     { id: 'spawnWeapon', x: rightX, y: py + 360 * unit, w: columnWidth, h: fieldHeight },
     { id: 'ammo', x: rightX, y: py + 465 * unit, w: half, h: fieldHeight },
@@ -304,7 +307,8 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
     const player = state.players[0];
     if (control === 'add') adminNotice = changePoints(state, player.id, Number(pointsAmount));
     else if (control === 'remove') adminNotice = changePoints(state, player.id, -Number(pointsAmount));
-    else if (control === 'spawnWeapon') adminNotice = spawnWeapon(player, adminWeapon);
+    else if (control === 'spawnWeapon') adminNotice = spawnWeapon(state, player, adminWeapon);
+    else if (control === 'silencer') adminNotice = spawnSilencer(player);
     else if (control === 'spawnAmmo') adminNotice = spawnAmmo(player, adminWeapon, Number(ammoAmount));
     else {
       const weapon = WEAPON_IDS.find((id) => control === `weapon:${id}`);
@@ -806,6 +810,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         } else if (current === 'pause') {
           const entries: Entry[] = [
             { label: 'RESUME', detail: 'Back into the fight.', action: () => callbacks.resume() },
+            { label: 'STUCK?', detail: 'Back to the start of this floor, and back into the fight.', action: () => callbacks.unstick() },
             { label: 'RESTART RUN', detail: 'Start again from the road with fresh lives.', action: () => callbacks.restart() },
             { label: 'CONTROLS', detail: 'See and rebind every key and mouse button.', action: () => (current = 'controls') },
             { label: 'SETTINGS', detail: 'Camera, sensitivity, field of view and display.', action: () => (current = 'settings') },
@@ -1008,6 +1013,7 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
           amountField('points', pointsAmount);
           adminButton('add', 'ADD POINTS', true);
           adminButton('remove', 'REMOVE POINTS');
+          adminButton('silencer', player.silencer ? 'SILENCER FITTED' : 'SPAWN SILENCER');
 
           text(context, 'INVENTORY', x, py + 458 * unit, { size: 19 * unit, color: COLOR.accent, spacing: 4 * unit });
           const guns = [

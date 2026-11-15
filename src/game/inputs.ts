@@ -36,6 +36,10 @@ export interface InputMessage {
   toggleFreeze: boolean;
   // True when the flashlight key was pressed since the last message.
   toggleLight?: boolean;
+  // The pause menu's STUCK: put this player back at the floor's start.
+  unstick?: boolean;
+  // Held while this player's screen is still loading the floor.
+  loading?: boolean;
 }
 
 // Standing still with nothing pressed.
@@ -64,6 +68,7 @@ export function mergeInputs(earlier: InputMessage, later: InputMessage): InputMe
     useItem: later.useItem ?? earlier.useItem,
     toggleFreeze: earlier.toggleFreeze || later.toggleFreeze,
     toggleLight: earlier.toggleLight || later.toggleLight,
+    unstick: earlier.unstick || later.unstick,
   };
 }
 
@@ -73,6 +78,6 @@ export function heldPart(input: InputMessage): InputMessage {
   return {
     ...input,
     lookYaw: 0, lookPitch: 0, toggleCover: false, use: false, swap: false, swapDirection: undefined,
-    selectWeapon: undefined, useItem: undefined, toggleFreeze: false, toggleLight: false,
+    selectWeapon: undefined, useItem: undefined, toggleFreeze: false, toggleLight: false, unstick: false,
   };
 }

@@ -1,5 +1,5 @@
 import { config } from '../config';
-import type { Ladder, Level } from '../levels/types';
+import type { Ladder, Level, LevelBox } from '../levels/types';
 import { boxTop, ceilingHeight, groundHeight, ledgeAt, resolveCircle } from './collision';
 import { raycastBoxHit } from './hitscan';
 import type { InputMessage } from './inputs';
@@ -102,7 +102,7 @@ function walk(player: Player, input: InputMessage, dt: number, level: Level, wat
   }
 
   if (player.vx === 0 && player.vz === 0) return;
-  const moved = resolveCircle(
+  const free = resolveCircle(
     level,
     player.x + player.vx * dt,
     player.z + player.vz * dt,
@@ -110,11 +110,34 @@ function walk(player: Player, input: InputMessage, dt: number, level: Level, wat
     player.y,
     config.player.height,
   );
+  // The doorways the dead come in by are shut to the living: past one is a hallway or the street
+  // outside the floor, where a player can end up caged in behind their own barricade.
+  const moved = resolveCircle(doorways(level), free.x, free.z, config.player.radius, player.y, config.player.height);
   // Whatever a wall stopped is taken out of the speed, so you slide along it.
   player.vx = (moved.x - player.x) / dt;
   player.vz = (moved.z - player.z) / dt;
   player.x = moved.x;
   player.z = moved.z;
+}
+
+// A thin wall across each of the level's zombie doorways, on the wall's centre line, for players only.
+const doorwayWalls = new WeakMap<Level['doors'], Level>();
+export function doorways(level: Level): Level {
+  let walls = doorwayWalls.get(level.doors);
+  if (!walls) {
+    const boxes: LevelBox[] = level.doors.map((door) => {
+      const across = Math.abs(door.normal.x) > 0.5;
+      return {
+        position: { x: door.position.x, y: door.position.y + door.height / 2, z: door.position.z },
+        size: across ? { x: 0.3, y: door.height, z: door.width } : { x: door.width, y: door.height, z: 0.3 },
+        color: '#000000',
+        surface: 'plain',
+      };
+    });
+    walls = { ...level, boxes };
+    doorwayWalls.set(level.doors, walls);
+  }
+  return walls;
 }
 
 function fall(player: Player, input: InputMessage, dt: number, level: Level): void {

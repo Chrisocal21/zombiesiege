@@ -404,7 +404,14 @@ function floorPace(floor: number): number {
   return floor < 0 ? floor : Math.min(depth(floor), config.elevator.speedDepthCap);
 }
 
+// Seconds after arriving on a floor in which nothing can hurt the crew: the loading screen fading, the
+// first look round, and time to see what is there before it bites.
+export const ARRIVAL_GRACE_SECONDS = 4;
+
 export function hurtPlayer(state: GameState, player: Player, damage: number): void {
+  if (player.loading) return;
+  const arrived = state.waves.arrivedTick;
+  if (arrived >= 0 && state.tick - arrived < ARRIVAL_GRACE_SECONDS * config.ticksPerSecond) return;
   player.health = Math.max(0, player.health - damage);
   player.lastHurtTick = state.tick;
 }

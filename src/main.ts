@@ -190,6 +190,10 @@ const menu = createMenu({
     enterGame(floor === 0);
   },
   resume: enterGame,
+  unstick() {
+    input.requestUnstick();
+    enterGame();
+  },
   gameState: () => session.state,
   restart() {
     // In co-op, from the end screen, someone else may already have started the next run: just go back in.
@@ -230,7 +234,7 @@ view.renderer.setAnimationLoop((now) => {
   loader.update(session.state.level.name, now / 1000);
   const loading = loader.waiting && !reviewing;
   if (!paused && !reviewing && !intro && !loading) session.advance(frameSeconds, input.poll);
-  else session.hold();
+  else session.hold(loading);
   const state = session.state;
   // Coming through the last gate of the prologue into the hospital garage plays the Nightfall opening.
   if (!coop && floorBefore === -1 && state.floor === 0 && !intro) startIntro(now);

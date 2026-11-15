@@ -97,6 +97,8 @@ export function readClientMessage(data: unknown, playerId: number): ReadMessage 
       useItem: item,
       toggleFreeze: flag('toggleFreeze'),
       toggleLight: flag('toggleLight'),
+      unstick: flag('unstick'),
+      loading: flag('loading'),
     },
   };
 }

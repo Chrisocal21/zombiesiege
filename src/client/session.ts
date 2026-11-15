@@ -22,8 +22,9 @@ export interface Session {
   player(): Player;
   // Moves the game on by a frame's worth of time, asking for this player's input once per tick.
   advance(frameSeconds: number, poll: (playerId: number) => InputMessage): void;
-  // The game is paused here: nothing is pressed until it carries on.
-  hold(): void;
+  // The game is paused here: nothing is pressed until it carries on. `loading` says it is the floor
+  // still loading, which in co-op keeps this player from being hurt meanwhile.
+  hold(loading?: boolean): void;
   // Turning this player has done that the state does not show yet, to add when drawing the view.
   pendingLook(): { yaw: number; pitch: number };
   // Swaps in a new game: a restart, a floor picked for testing, or the title screen.
@@ -75,7 +76,7 @@ const snapshotMs = (SNAPSHOT_TICKS / config.ticksPerSecond) * 1000;
 export function createRemoteSession(coop: Coop, waiting: GameState): Session {
   let unsent: InputMessage | null = null;
   let sinceSend = 0;
-  let holding = false;
+  let holding: false | 'loading' | 'paused' = false;
   const state = () => coop.latest()?.state ?? waiting;
   const find = (game: GameState) => game.players.find((each) => each.id === coop.playerId);
   const player = () => find(state()) ?? state().players[0] ?? waiting.players[0];
@@ -104,12 +105,13 @@ export function createRemoteSession(coop: Coop, waiting: GameState): Session {
         sinceSend = 0;
       }
     },
-    hold() {
-      // One idle input, so the server stops this player walking while the menu is open.
-      if (holding || coop.playerId < 0) return;
-      holding = true;
+    hold(loading = false) {
+      // One idle input, so the server stops this player walking while the menu is open, and again
+      // whenever the reason for holding changes.
+      if (holding === (loading ? 'loading' : 'paused') || coop.playerId < 0) return;
+      holding = loading ? 'loading' : 'paused';
       unsent = null;
-      coop.sendInput(idleInput(coop.playerId));
+      coop.sendInput({ ...idleInput(coop.playerId), loading });
     },
     pendingLook() {
       const look = coop.unappliedLook();

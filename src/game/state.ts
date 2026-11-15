@@ -53,6 +53,8 @@ export interface Player {
   health: number;
   // Tick of the last hit taken, or -1, and where the zombie that hit was standing.
   lastHurtTick: number;
+  // Still loading the floor on their own screen (co-op): nothing can hurt them until they can see.
+  loading: boolean;
   lastHurtX: number;
   lastHurtZ: number;
   // The weapon in hand. Its magazine and spare rounds are `ammo` and `reserve`.
@@ -487,6 +489,7 @@ export function createPlayer(id: number, spawn: Vec3): Player {
     mantle: null,
     health: config.player.maxHealth,
     lastHurtTick: -1,
+    loading: false,
     lastHurtX: 0,
     lastHurtZ: 0,
     weapon: 'pistol',

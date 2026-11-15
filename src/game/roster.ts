@@ -17,6 +17,17 @@ export function addPlayer(state: GameState, id: number): Player {
   return player;
 }
 
+// Stuck in the scenery: back to where this floor puts its players, standing, with nothing carried and
+// off any ladder, ledge or cover. Downed or out players are left to the usual rules.
+export function unstick(state: GameState, player: Player): void {
+  if (player.out || player.health <= 0) return;
+  const inStreet = state.waves.phase === 'entry' && state.level.streetSpawns.length > 0;
+  const yaw = inStreet ? 0 : state.level.spawnYaw ?? 0;
+  const at = spawnPoint(inStreet ? state.level.streetSpawns : state.level.playerSpawns, player.id, yaw);
+  dropCase(state, player);
+  Object.assign(player, { x: at.x, y: at.y, z: at.z, vx: 0, vy: 0, vz: 0, yaw, onGround: true, cover: false, ladder: null, mantle: null, revive: null });
+}
+
 // Someone leaving: whatever they carried drops where they stood, and their points stay on the board.
 export function removePlayer(state: GameState, id: number): void {
   const player = state.players.find((each) => each.id === id);
