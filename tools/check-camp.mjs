@@ -33,7 +33,7 @@ assert.ok(!s.level.boxes.some((b) => Math.abs(b.position.x - p.x) < b.size.x / 2
 assert.ok(run(s, 90, () => s.zombies.length > 0), 'the dead come through the fence');
 // The fall-back call is said when wave 3 begins, and the final push when wave 4 does.
 const { radioLine } = await import('../src/render/radio.ts');
-s.waves.phase = 'active'; s.waves.number = 3; s.waves.startedTick = s.tick - 3 * HZ;
+s.tick += 20 * HZ; s.waves.phase = 'active'; s.waves.number = 3; s.waves.startedTick = s.tick - 3 * HZ;
 assert.match(radioLine(s)?.text ?? '', /fall back to the medical yard/i, 'wave 3: fall back');
 s.waves.number = 4; s.waves.startedTick = s.tick - 3 * HZ;
 assert.match(radioLine(s)?.text ?? '', /last push/i, 'wave 4: the last push');
