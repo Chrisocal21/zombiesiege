@@ -360,6 +360,11 @@ export interface GameState {
   log: LogEntry[];
   // The note being read now: its words, who is reading it, and when they began.
   card: { tick: number; player: number; title: string; lines: string[] } | null;
+  // For each of the level's talks, whether it is settled and which answers have been given.
+  talks: { done: boolean; chosen: number[] }[];
+  // The talk going on now: which, who is in it, when it (or its reply) began, the answer given or -1,
+  // and the tick an answer was last refused for want of points, or -1.
+  talk: { index: number; player: number; tick: number; reply: number; poorTick: number } | null;
   // The scientist, from the moment he steps out of the vault, or null.
   scientist: Companion | null;
   // The floor's hidden survivors, if it has any (Level.rescue), and the tick the last of them got away, or -1.
@@ -420,6 +425,8 @@ export function enterLevel(state: GameState, level: Level): void {
   state.heard = (level.cues ?? []).map(() => -1);
   state.read = (level.notes ?? []).map(() => -1);
   state.card = null;
+  state.talks = (level.talks ?? []).map(() => ({ done: false, chosen: [] }));
+  state.talk = null;
   state.survivors = (level.rescue?.people ?? []).map((person) => ({ x: person.x, z: person.z, yaw: person.yaw ?? 0, speed: 0, lostTicks: 0, mode: 'hiding', look: person.look }));
   state.rescueTick = -1;
   state.boss = null;
@@ -532,6 +539,8 @@ export function createGameState(level: Level): GameState {
     read: [],
     log: [],
     card: null,
+    talks: [],
+    talk: null,
     scientist: null,
     survivors: [],
     rescueTick: -1,

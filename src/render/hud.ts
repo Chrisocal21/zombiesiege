@@ -5,6 +5,7 @@ import { config } from '../config';
 import { interactionTarget, lockOffer, stationOffer } from '../game/doors';
 import { ITEMS, type SupplyKind } from '../game/items';
 import { CARD_SECONDS, cardFor } from '../game/notes';
+import { CHOOSE_SECONDS, REPLY_SECONDS } from '../game/talk';
 import { bleedLeft, canGetUp, isDown, reviveProgress, reviveTarget, revivedBy } from '../game/downed';
 import { isMelee, nextWeapon, weaponStats } from '../game/weapons';
 import { ladderInReach } from '../game/movement';
@@ -265,6 +266,7 @@ export function createHud(menu: Menu): Hud {
     drawRadio(width, height, unit, state);
     drawFeed(width, unit, state, time);
     drawCard(width, height, unit, state, player);
+    drawTalk(width, height, unit, state, player);
     drawBoss(width, unit, state);
     drawFade(width, height, state);
 
@@ -1003,6 +1005,8 @@ export function createHud(menu: Menu): Hud {
   // What pressing use does here: a pill low in the middle of the screen with the key, what it
   // does, and what it costs.
   function drawPrompt(width: number, height: number, unit: number, state: GameState, player: Player): void {
+    // The radio panel has the middle of the view while someone is on it.
+    if (state.talk?.player === player.id) return;
     let prompt: { keys: string[]; label: string; cost?: number; short?: boolean } | null = null;
     const interaction = interactionTarget(state, player);
     const patient = player.revive ? null : reviveTarget(state, player);
@@ -1021,6 +1025,8 @@ export function createHud(menu: Menu): Hud {
         : { keys: [], label: `Open ${offer.label.toLowerCase()}`, cost: offer.cost, short: true };
     } else if (interaction?.kind === 'survivor') {
       prompt = { keys: [bindings.use], label: 'Tell them to stay close and follow' };
+    } else if (interaction?.kind === 'talk') {
+      prompt = { keys: [bindings.use], label: `Answer the ${state.level.talks![interaction.index].what}` };
     } else if (interaction?.kind === 'note') {
       prompt = { keys: [bindings.use], label: `Read the ${state.level.notes![interaction.index].what}` };
     } else if (interaction && objectivePrompt(state, interaction.kind)) prompt = { keys: [bindings.use], label: objectivePrompt(state, interaction.kind)! };
@@ -1182,6 +1188,70 @@ export function createHud(menu: Menu): Hud {
     context.fillRect(x, y, 3 * unit, 66 * unit);
     text(context, line.speaker, x + 22 * unit, y + 24 * unit, { size: 12 * unit, weight: 800, spacing: 3 * unit, color: tone, shadow: false });
     text(context, line.text, x + 22 * unit, y + 50 * unit, { size, weight: 600, spacing: 0.3 * unit, shadow: false });
+    context.restore();
+  }
+
+  // Someone on the radio: a dark panel low in the view with who it is, what they said, and either the
+  // answers on the weapon keys with what each costs, or what they said back. A thin bar runs down the time left.
+  function drawTalk(width: number, height: number, unit: number, state: GameState, player: Player): void {
+    const current = state.talk;
+    if (!current || current.player !== player.id) return;
+    const talk = state.level.talks?.[current.index];
+    if (!talk) return;
+    const replying = current.reply >= 0;
+    const limit = replying ? REPLY_SECONDS : CHOOSE_SECONDS;
+    const age = (state.tick - current.tick) / config.ticksPerSecond;
+    const alpha = Math.min(1, age / 0.2, (limit - age) / 0.4);
+    const lineSize = 20 * unit, lineGap = 28 * unit, rowGap = 44 * unit;
+    const w = Math.min(width * 0.72, 780 * unit);
+    const wrap = (lines: string[], room: number): string[] => {
+      const out: string[] = [];
+      for (const line of lines) {
+        let row = '';
+        for (const word of line.split(' ')) {
+          const next = row ? `${row} ${word}` : word;
+          if (row && measure(context, next, lineSize, 500, 0.2 * unit) > room) { out.push(row); row = word; } else row = next;
+        }
+        out.push(row);
+      }
+      return out;
+    };
+    const said = wrap(replying ? talk.choices[current.reply].reply : talk.lines, w - 80 * unit);
+    const rows = replying ? 0 : talk.choices.length;
+    const h = 84 * unit + said.length * lineGap + (rows ? 18 * unit + rows * rowGap : 0);
+    const x = (width - w) / 2, y = height - 210 * unit - h;
+    context.save();
+    context.globalAlpha = Math.max(0, alpha);
+    roundedRect(context, x, y, w, h, 5 * unit);
+    const glass = context.createLinearGradient(0, y, 0, y + h);
+    glass.addColorStop(0, 'rgba(18,24,30,0.94)');
+    glass.addColorStop(1, 'rgba(6,8,11,0.94)');
+    context.fillStyle = glass;
+    context.fill();
+    context.strokeStyle = 'rgba(255,255,255,0.14)';
+    context.lineWidth = 1 * unit;
+    context.stroke();
+    context.fillStyle = COLOR.accent;
+    context.fillRect(x, y, 4 * unit, h);
+    context.fillStyle = 'rgba(232,184,102,0.5)';
+    context.fillRect(x + 4 * unit, y + h - 2 * unit, (w - 4 * unit) * clamp(1 - age / limit, 0, 1), 2 * unit);
+    text(context, talk.who.toUpperCase(), x + 40 * unit, y + 40 * unit, { size: 14 * unit, weight: 800, spacing: 5 * unit, color: COLOR.accent });
+    text(context, replying ? 'REPLY' : 'ON THE RADIO', x + w - 30 * unit, y + 40 * unit, { size: 11 * unit, weight: 700, spacing: 4 * unit, color: COLOR.faint, align: 'right' });
+    said.forEach((line, i) => text(context, line, x + 40 * unit, y + 78 * unit + i * lineGap, { size: lineSize, weight: 500, spacing: 0.2 * unit }));
+    if (!replying) {
+      const points = state.points[player.id] ?? 0;
+      const refused = current.poorTick >= 0 && state.tick - current.poorTick < config.ticksPerSecond * 0.6;
+      const keys = [bindings.weapon1, bindings.weapon2, bindings.weapon3];
+      talk.choices.forEach((choice, i) => {
+        const cy = y + 84 * unit + said.length * lineGap + 22 * unit + i * rowGap;
+        const used = state.talks[current.index].chosen.includes(i);
+        const short = (choice.cost ?? 0) > points;
+        context.globalAlpha = Math.max(0, alpha) * (used ? 0.35 : 1);
+        const keyW = keycap(context, keyLabel(keys[i]), x + 40 * unit, cy, 26 * unit);
+        text(context, choice.label, x + 54 * unit + keyW, cy, { size: 19 * unit, weight: 700, color: used ? COLOR.dim : COLOR.text, spacing: 0.3 * unit });
+        if (choice.cost) text(context, `${choice.cost} PTS`, x + w - 30 * unit, cy, { size: 15 * unit, weight: 800, align: 'right', spacing: 2 * unit, color: short ? (refused ? '#ffffff' : COLOR.danger) : COLOR.accent });
+      });
+    }
     context.restore();
   }
 

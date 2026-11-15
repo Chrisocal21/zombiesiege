@@ -26,6 +26,7 @@ import { buildLocks, buildWardDressing } from './ward';
 import { buildObjectiveSteps } from './objectives';
 import { buildVaultDoor } from './vaultDoor';
 import { buildNotes } from './notes';
+import { buildTalks } from './talks';
 import { buildCity } from './city';
 import { circuitLive } from '../game/state';
 import { config } from '../config';
@@ -810,6 +811,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const syncObjective = buildObjectiveSteps(scene, level, glowMap, environment);
   const syncVaultDoor = buildVaultDoor(scene, level);
   const syncNotes = buildNotes(scene, level);
+  const syncTalks = buildTalks(scene, level, glowMap);
   let lastTime = 0;
 
   // Floodwater (Level.flood): one dark sheet across the floor, raised by the game's water level. Kept
@@ -848,6 +850,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
       syncObjective(state, time, dt);
       syncVaultDoor(state);
       syncNotes(state, time);
+      syncTalks(state, time);
       const breakers = state.level.objective?.kind === 'breakers';
       const blackout = breakers && !state.objective.done;
       for (const lamp of lamps) {

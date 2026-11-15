@@ -55,6 +55,8 @@ export const falseInstructions: Level = {
     block(0, 10.9, 2.4, 2.2, 1.4, '#4a5a3a', 'crate'),
     // The desk with the relay log, and cover round the yard.
     block(-22, 2, 1.8, 0.9, 1.4, DESK, 'crate'), block(-6, -6, 2.0, 0.9, 1.4, STEEL, 'plain'), block(8, 5, 2.0, 1.0, 1.6, DESK, 'crate'),
+    // A crate by the cars with a field radio on it: the regional desk calls it once the loop is cut.
+    block(10, -9, 1.2, 0.8, 0.9, DESK, 'crate'),
     // The transmitter rack at the east end, with its send device on the face.
     block(18, -8, 5, 2.8, 2.4, STEEL, 'plain'), block(18, 8, 4, 1.2, 1.4, STEEL, 'plain'),
     parkedCar(-12, 4, '#4a4f55'), parkedCar(4, -4, '#7a3030', true),
@@ -110,11 +112,55 @@ export const falseInstructions: Level = {
       ],
     },
   ],
+  // Once the loop is cut the regional desk comes up on the field radio. They can be asked why, paid to
+  // send the correction themselves on every relay (which is the last step done without the stand), or told
+  // to listen to the stadium, which they do, and which gets the crew what the desk had put by.
+  talks: [
+    {
+      position: { x: 10, y: 0.8, z: -9 },
+      who: 'Regional desk',
+      what: 'field radio',
+      step: 2,
+      lines: [
+        'Relay 7, this is the regional desk. You have cut an authorised broadcast. Put it back.',
+        'People are moving on that instruction. Without it they stop where they are.',
+      ],
+      choices: [
+        {
+          label: 'Ask who authorised it',
+          stay: true,
+          reply: [
+            'It came down signed, from the site. The stadium was listed safe and we were told to say so until told otherwise.',
+            'Nobody has told us otherwise. Nobody has told us anything for four days.',
+          ],
+        },
+        {
+          label: 'Pay them to send the correction on every relay',
+          cost: 250,
+          skip: true,
+          reply: [
+            'Fuel and rounds, then. That is what a relay key costs now.',
+            'Sending on all seven. You will not need your rack. Get off my frequency.',
+          ],
+        },
+        {
+          label: 'Tell them to listen to the stadium frequency',
+          ammo: 24,
+          alarm: true,
+          reply: [
+            'Wait. ... There is nobody on it. There is something on it, but it is not anybody.',
+            'Send your correction. There are rounds in the crate under this set. The siren is me. I am sorry. It is the only way I can tell the others.',
+          ],
+        },
+      ],
+    },
+  ],
   cues: [
     { on: 'start', at: 1.5, speaker: CREW, text: 'Relay 7. It is repeating an instruction to every radio in the region, and the instruction is wrong.' },
     { on: 'start', at: 8, speaker: CREW, text: 'Read the log, cut the loop at both cabinets, then send the right one from the rack. It is loud.', seconds: 7 },
     { on: 'step', step: 0, at: 0.6, speaker: CREW, text: 'The loop came from the regional desk, not here. Cut it at the cabinets.' },
     { on: 'step', step: 1, at: 0.6, speaker: CREW, text: 'The false loop is dead. Get to the rack and send the true instruction. They will come.' },
+    { on: 'step', step: 1, at: 6, speaker: CREW, text: 'The field radio by the cars is lit. Somebody wants a word about that loop.' },
     { on: 'done', at: 0.6, speaker: CREW, text: 'The correction is out. Whoever was walking to the stadium has been told to turn round.' },
   ],
   navBounds: { minX: -31, maxX: 31, minZ: -17, maxZ: 17 },

@@ -2,6 +2,7 @@ import { config } from '../config';
 import type { Door, LevelBox } from '../levels/types';
 import { nearestSupply, takeSupply } from './items';
 import { nearestNote, readNote } from './notes';
+import { nearestTalk, openTalk } from './talk';
 import { callSurvivors, nearestSurvivor } from './story';
 import { objectiveTarget, useObjective, type ObjectiveTarget } from './objectives';
 import type { GameState, Player } from './state';
@@ -16,6 +17,7 @@ export type Interaction =
   | { kind: 'lock'; index: number }
   | { kind: 'supply'; index: number }
   | { kind: 'note'; index: number }
+  | { kind: 'talk'; index: number }
   | { kind: 'survivor'; index: number }
   | ObjectiveTarget
   | null;
@@ -52,6 +54,8 @@ export function interactionTarget(state: GameState, player: Player): Interaction
     }
     const objective = objectiveTarget(state, player);
     if (objective) return objective;
+    const talk = nearestTalk(state, player);
+    if (talk >= 0) return { kind: 'talk', index: talk };
     const note = nearestNote(state, player);
     if (note >= 0) return { kind: 'note', index: note };
     const survivor = nearestSurvivor(state, player);
@@ -139,6 +143,11 @@ export function useAction(state: GameState, player: Player): void {
 
   if (target.kind === 'note') {
     readNote(state, player, target.index);
+    return;
+  }
+
+  if (target.kind === 'talk') {
+    openTalk(state, player, target.index);
     return;
   }
 

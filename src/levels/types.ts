@@ -280,6 +280,38 @@ export interface Note {
   wall?: { x: number; z: number };
 }
 
+// One thing to say back to a voice on the radio, and what comes of saying it.
+export interface TalkChoice {
+  label: string;
+  // Points it costs to say. It cannot be said without them.
+  cost?: number;
+  // What the voice says back.
+  reply: string[];
+  // Points and spare rounds handed over.
+  points?: number;
+  ammo?: number;
+  // The floor's current step is done from the other end.
+  skip?: boolean;
+  // The dead are brought down on the crew, as a gunshot would on a quiet floor.
+  alarm?: boolean;
+  // A lock on the floor (by its place in Level.locks) is opened.
+  opens?: number;
+  // Only a question: the talk stays open for another answer later.
+  stay?: boolean;
+}
+
+// Someone to talk to: a radio on a desk, with a voice on it and up to three things to say back.
+export interface Talk {
+  position: Vec3;
+  // Who is on the other end, and what the thing is, for the prompt ("Answer the field radio").
+  who: string;
+  what: string;
+  lines: string[];
+  choices: TalkChoice[];
+  // The step of the floor's objective it belongs to. Left out, it can be had at any time.
+  step?: number;
+}
+
 // A buying point on a wall. Walk up, press use, and pay points.
 export interface Station {
   kind: 'ammo' | 'shotgun';
@@ -365,6 +397,7 @@ export interface Level {
   flood?: { stages: { at: number; height: number }[] };
   cues?: Cue[];
   notes?: Note[];
+  talks?: Talk[];
   rescue?: Rescue;
   boss?: Boss;
   scene?: Scene;

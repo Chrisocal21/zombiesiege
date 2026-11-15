@@ -1,3 +1,4 @@
+import { chooseTalk, updateTalk } from './talk';
 import { config } from '../config';
 import type { Level } from '../levels/types';
 import { useAction } from './doors';
@@ -24,9 +25,12 @@ export function step(state: GameState, inputs: InputMessage[], dt: number): void
   const scene = state.scene !== null || state.waves.phase === 'flight' || state.waves.phase === 'cross';
   // Who moved or fired this tick, which stops a revive they are giving.
   const moved = new Set<number>();
-  for (const input of inputs) {
-    const player = state.players.find((each) => each.id === input.playerId);
+  updateTalk(state);
+  for (const given of inputs) {
+    const player = state.players.find((each) => each.id === given.playerId);
     if (!player || player.out || scene) continue;
+    // A weapon key pressed by whoever is on the radio is an answer, and does not change the gun in hand.
+    const input = given.selectWeapon && chooseTalk(state, player, given.selectWeapon) ? { ...given, selectWeapon: undefined } : given;
     if (input.moveForward !== 0 || input.moveRight !== 0 || input.fire || input.jump) moved.add(player.id);
     if (player.health <= 0) {
       crawl(state, player, input, dt, level);
