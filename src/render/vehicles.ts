@@ -81,10 +81,11 @@ export function buildVehicle(box: LevelBox): THREE.Group {
   const width = alongX ? box.size.z : box.size.x;
   const height = box.size.y;
   const ambulance = box.vehicleRole === 'ambulance';
-  const key = [van ? 'van' : estate ? 'estate' : 'saloon', ambulance, box.color, length, width, height].join('|');
+  const rescue = ambulance && box.livery === 'rescue';
+  const key = [van ? 'van' : estate ? 'estate' : 'saloon', ambulance, rescue, box.color, length, width, height].join('|');
   let template = templates.get(key);
   if (!template) {
-    template = van ? createVan({ length, width, height, color: box.color, ambulance }) : createSedan({ length, width, height, color: box.color, estate });
+    template = van ? createVan({ length, width, height, color: box.color, ambulance, rescue }) : createSedan({ length, width, height, color: box.color, estate });
     templates.set(key, template);
   }
   const model = new THREE.Group();

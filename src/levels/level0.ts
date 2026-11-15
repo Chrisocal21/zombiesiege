@@ -198,8 +198,10 @@ export const level0: Level = {
 
     // Cars in the bays.
     inGarage(-8.7, 0.5, 1.9, 1.45, 4.4, '#7a1f1f', 'car'),
-    inGarage(-8.7, 5.6, 1.9, 1.45, 4.4, '#d6d6d2', 'car'),
-    inGarage(8.7, -1, 2, 2.35, 5, '#cbd0cc', 'van'),
+    // Two of the hospital's ambulances parked down here, in the fire and rescue service's red and white,
+    // not the teal of the one in the lot above.
+    { ...inGarage(-8.7, 5.5, 2.2, 2.35, 4.8, '#a82424', 'van'), vehicleRole: 'ambulance', livery: 'rescue' },
+    { ...inGarage(8.7, -1, 2.2, 2.35, 5, '#a82424', 'van'), vehicleRole: 'ambulance', livery: 'rescue' },
     inGarage(-3.2, 8.4, 4.4, 1.45, 1.9, '#27415e', 'car'),
 
     inGarage(7.2, -5.6, 0.9, 1.1, 0.9, BARREL, 'barrel'),

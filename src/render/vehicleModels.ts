@@ -7,7 +7,7 @@ import { labelTexture } from './streetTextures';
 // lenses, bumpers that wrap the ends, and an interior that shows through the glass. Every model
 // faces +z with the ground at y 0 and is sized to its level box.
 export interface SedanSpec { length: number; width: number; height: number; color: string; estate: boolean }
-export interface VanSpec { length: number; width: number; height: number; color: string; ambulance: boolean }
+export interface VanSpec { length: number; width: number; height: number; color: string; ambulance: boolean; rescue?: boolean }
 
 // Where the wheels go: the axle positions and radius, for the caller to fit tyres.
 export interface Fit { axles: [number, number]; radius: number; track: number }
@@ -197,10 +197,10 @@ export function createSedan(spec: SedanSpec): { body: THREE.Group; fit: Fit } {
 }
 
 export function createVan(spec: VanSpec): { body: THREE.Group; fit: Fit } {
-  const { length: L, width: W, height: H, ambulance } = spec;
+  const { length: L, width: W, height: H, ambulance, rescue } = spec;
   const m = matsFor(spec.color);
   const body = new THREE.Group();
-  body.name = ambulance ? 'Hospital ambulance' : 'Cargo van';
+  body.name = ambulance ? (rescue ? 'Rescue ambulance' : 'Hospital ambulance') : 'Cargo van';
   const k = kit(body, m);
   const hw = W / 2;
   const R = 0.35;
@@ -336,9 +336,11 @@ export function createVan(spec: VanSpec): { body: THREE.Group; fit: Fit } {
   k.box(m.dash, [W * 0.9, 0.04, 0.9], [0, 0.55, zB - 0.6], 0.01);
 
   if (ambulance) {
-    const teal = new THREE.MeshStandardMaterial({ color: '#287b79', roughness: 0.5, metalness: 0.15 });
-    const red = new THREE.MeshStandardMaterial({ color: '#b8232a', roughness: 0.5, metalness: 0.15 });
-    const lettering = new THREE.MeshStandardMaterial({ map: labelTexture([{ text: 'AMBULANCE', size: 86, color: '#edf2df' }, { text: 'NORTHLINE GENERAL HOSPITAL', size: 30, color: '#dce5d5' }], '#245f61', 1024, 256), roughness: 0.6 });
+    const teal = new THREE.MeshStandardMaterial({ color: rescue ? '#f0efe8' : '#287b79', roughness: 0.5, metalness: 0.15 });
+    const red = new THREE.MeshStandardMaterial({ color: rescue ? '#e0b030' : '#b8232a', roughness: 0.5, metalness: 0.15 });
+    const lettering = new THREE.MeshStandardMaterial({ map: (rescue
+      ? labelTexture([{ text: 'RESCUE', size: 90, color: '#f5f2e6' }, { text: 'NORTHLINE FIRE & EMS', size: 30, color: '#f0e3b8' }], '#8f1d1d', 1024, 256)
+      : labelTexture([{ text: 'AMBULANCE', size: 86, color: '#edf2df' }, { text: 'NORTHLINE GENERAL HOSPITAL', size: 30, color: '#dce5d5' }], '#245f61', 1024, 256)), roughness: 0.6 });
     const blue = new THREE.MeshPhysicalMaterial({ color: '#2a76b0', emissive: '#16507c', emissiveIntensity: 0.5, roughness: 0.2, clearcoat: 1 });
     for (const s of [-1, 1]) {
       // A broad stripe along the side, and a band lower down, following the curve of the panel.

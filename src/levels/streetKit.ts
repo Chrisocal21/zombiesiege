@@ -50,12 +50,30 @@ export function frontage(axis: 'x' | 'z', fixed: number, from: number, to: numbe
   ];
 }
 
-// A parked car, long side along x, or a van.
-export function parkedCar(x: number, z: number, color: string, van = false): LevelBox {
+// The cars and vans that line the streets. Each one parked takes the next from these, so the same
+// car does not stand twice in a row as you walk down a street: the paint changes every time, and the
+// body goes saloon, estate, compact in turn. An ambulance is never one of them.
+const CAR_PAINT = ['#6b2a2a', '#2f4a5c', '#4a4f55', '#344e41', '#a8782f', '#8d8f8a', '#7a5a3a', '#d8d4c4', '#5d3b55', '#2a2c30', '#b5b09c', '#3f6a63', '#8c3b2b', '#354e67'];
+const CAR_BODY = [{ x: 4.55, y: 1.48, z: 1.86 }, { x: 4.8, y: 1.7, z: 1.9 }, { x: 4.15, y: 1.4, z: 1.76 }];
+const VAN_PAINT = ['#c5c8c5', '#3a4a5c', '#344e41', '#a8782f', '#6b2a2a', '#d8d4c4'];
+const VAN_BODY = [{ x: 5.45, y: 2.4, z: 2.04 }, { x: 4.9, y: 2.2, z: 1.95 }];
+// Stepping by 5 through the list, so neighbours are never alike; now and then (every seventh) one repeats
+// a car from a few back, so a street is not a catalogue.
+function paintIndex(n: number): number {
+  return n % 7 === 6 ? paintIndex(n - 3) : n * 5;
+}
+let carsParked = 0;
+let vansParked = 0;
+
+// A parked car, long side along x, or a van. The colour given is ignored for the fleet's own; see above.
+export function parkedCar(x: number, z: number, _first: string, van = false): LevelBox {
+  const n = van ? vansParked++ : carsParked++;
+  const paint = van ? VAN_PAINT : CAR_PAINT;
+  const size = van ? VAN_BODY[n % VAN_BODY.length] : CAR_BODY[n % CAR_BODY.length];
   return {
-    position: { x, y: van ? 1.2 : 0.74, z },
-    size: van ? { x: 5.45, y: 2.4, z: 2.04 } : { x: 4.55, y: 1.48, z: 1.86 },
-    color,
+    position: { x, y: size.y / 2, z },
+    size: { ...size },
+    color: paint[paintIndex(n) % paint.length],
     surface: van ? 'van' : 'car',
   };
 }

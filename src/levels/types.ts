@@ -73,6 +73,8 @@ export interface LevelBox {
   // Ramp backing for shots/solids; feet follow Level.ramp's continuous surface instead.
   rampStep?: boolean;
   vehicleRole?: 'ambulance' | 'elCajon' | 'police';
+  // Which ambulance paint: the hospital's own teal and red when left out, or the fire and rescue service's red and white.
+  livery?: 'rescue';
   // The vault's door: solid until the time lock opens it, drawn from the game state, and shut again
   // once what was driven back in is sealed behind it.
   vaultDoor?: boolean;
