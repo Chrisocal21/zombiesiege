@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
+import { CREW } from './voices';
 import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, stationBoxes } from './wardKit';
 
@@ -71,7 +72,13 @@ export const checkpoint: Level = {
     { text: 'LANE CLOSED', sub: 'TURN BACK', background: '#6b4a12', position: { x: 4, y: 3.2, z: 9.96 }, rotation: Math.PI, width: 2.6, height: 0.7 },
     { text: 'EXIT GATE', sub: 'CLEARED VEHICLES ONLY', background: '#5b1b1b', position: { x: 29.96, y: 3.0, z: 3.6 }, rotation: -Math.PI / 2, width: 3, height: 0.6 },
   ],
-  // The gate controls, on the booths along the lanes.
+  // The gate controls, on the booths along the lanes. Once the last is thrown the exit is only open a while:
+  // a convoy is leaving, and the gate shuts again behind it.
+  exitTimer: 45,
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'The screening point. Whoever was checked in here never got out.' },
+    { on: 'done', at: 0.6, speaker: CREW, text: 'The gate is moving. Go, before it shuts again.', seconds: 4 },
+  ],
   objective: {
     kind: 'breakers',
     label: 'Gate controls',

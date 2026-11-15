@@ -14,12 +14,13 @@ startOnFloor(s, -5);
 assert.equal(radioLine(s), null, 'nothing at the very start');
 s.tick += 3 * HZ;
 assert.match(radioLine(s).text, /Dry/);
-s.tick += 10 * HZ;
+s.tick += 13 * HZ;
 assert.equal(radioLine(s), null, 'quiet between lines');
 s.objective.done = true; s.objective.doneTick = s.tick;
 s.tick += 1 * HZ;
 assert.equal(radioLine(s).speaker, 'NORTHLINE GENERAL', 'the hospital call after the radio');
-s.floor = 0;
-assert.equal(radioLine(s), null, 'no lines out of the prologue');
+const garage = createGameState(level0);
+garage.tick += 3 * HZ;
+assert.equal(radioLine(garage), null, 'no lines out of the prologue');
 for (let f = -5; f <= -1; f++) { const t = createGameState(level0); startOnFloor(t, f); t.tick += 2 * HZ; /* start lines exist or later */ }
 console.log('ok');

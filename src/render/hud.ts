@@ -459,10 +459,17 @@ export function createHud(menu: Menu): Hud {
         detail = 'You made it out';
         break;
       case 'lift': {
-        title = 'Get in the elevator';
         const lift = state.level.elevator;
         const distance = Math.hypot(lift.position.x - player.x, lift.position.z - player.z);
-        detail = distance > 3 ? `${Math.round(distance)} m to the elevator` : 'Everyone inside to go up';
+        if (state.level.exitTimer) {
+          title = 'The gate is open. Go';
+          detail = distance > 3 ? `${Math.round(distance)} m to the gate` : 'Everyone through before it shuts';
+          timer = waves.timer;
+          total = state.level.exitTimer;
+          break;
+        }
+        title = state.level.exitGate ? 'Get through the gate' : 'Get in the elevator';
+        detail = distance > 3 ? `${Math.round(distance)} m to the ${state.level.exitGate ? 'gate' : 'elevator'}` : state.level.exitGate ? 'Everyone through to go on' : 'Everyone inside to go up';
         break;
       }
       case 'ride':

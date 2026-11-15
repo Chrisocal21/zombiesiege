@@ -389,3 +389,19 @@ Each phase ends with a stop for you to compact, as usual.
 - The garage battery is drawn as the steel case.
 - Floor 20's camera is a HUD overlay.
 - `check-admin`, `check-melee` and `check-ramp` still fail as they did before Phase 3a.
+
+---
+
+## 12. Playtest round and the prologue pass (Nov 14)
+
+- **Waves.** Size grows with depth, 60% per extra player, a `difficulty` dial and a higher base table (4/7/10/13/17). A wave that drags on brings an extra group every 30 s, up to four times. The HUD count includes screamer reinforcements.
+- **Heads.** A head shot is now 2.2× damage (1.4× for a brute) on a smaller head box, so a walker takes two pistol head shots.
+- **Held zombies** reach both arms out and claw at the cage.
+- **Transitions.** A `cross` phase fades the view to black through a gate or onto the air ambulance, and the next floor fades in. The garage is entered from the street with its gate open.
+- **Checkpoints.** The gate floors now end in a road checkpoint (6 m wide, two swing gates, gantry sign, lamp, walled lane beyond) with an open entry checkpoint behind the crew (`Level.entry`). P01 has no entry gate because the crew came by ambulance.
+- **Supply drops.** Duffle bag, ammo box and weapon crate on the floor replace the wall lockers. They have no collision.
+- **Teammates** are drawn holding their weapon.
+- **P01 Breakdown** is a sweep that turns into a run (`Flow.sweep.then`). Seven of the dead stand asleep on the road. Finding the police radio brings the hospital's call and the horde from the farm tracks.
+- **P03 Checkpoint** has a timed exit (`Level.exitTimer`, 45 s). After the last control the gate is open for 45 s. If the crew is too slow it shuts, the controls come back off, and 6 more are called in.
+- **Not built:** P04's optional restaurant rescue. It needs survivor NPCs, which don't exist yet. The prologue's P02 (defend, van) and P05 are unchanged.
+

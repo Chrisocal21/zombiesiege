@@ -1,4 +1,5 @@
 import type { Elevator, Level, LevelLight, Station } from './types';
+import { CREW, HOSPITAL } from './voices';
 import { block, FRONT_HEIGHT, frontage, ground, parkedCar, streetDoor, checkpointBoxes } from './streetKit';
 import { DOOR_HEIGHT, stationBoxes } from './wardKit';
 
@@ -19,7 +20,6 @@ const FENCE = '#5a4f40';
 const doors = [streetDoor(-6, -10.25, 0, 1), streetDoor(14, -10.25, 0, 1), streetDoor(4, 10.25, 0, -1)];
 
 const elevator: Elevator = { position: { x: 28.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
-const entry: Elevator = { position: { x: -28.25, y: 0, z: 0 }, normal: { x: 1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [{ kind: 'ammo', position: { x: -20, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } }];
 
@@ -39,8 +39,7 @@ export const breakdown: Level = {
     ...frontage('x', 10.25, -28.5, 28.5, doors, FRONT_HEIGHT, FENCE, 'wall'),
     ...frontage('z', 28.25, -10, 10, [elevator], FRONT_HEIGHT, HEDGE, 'wall', [elevator]),
     ...checkpointBoxes(elevator, HEDGE),
-    ...frontage('z', -28.25, -10, 10, [entry], FRONT_HEIGHT, HEDGE, 'wall', [entry]),
-    ...checkpointBoxes(entry, HEDGE),
+    ...frontage('z', -28.25, -10, 10, [], FRONT_HEIGHT, HEDGE, 'wall'),
     ...stationBoxes(stations),
 
     // The crew's ambulance, dry, and what is left on the road: a police car with its door open, wrecks, hay bales.
@@ -60,13 +59,26 @@ export const breakdown: Level = {
   doors,
   gate: null,
   elevator,
-  entry,
   stations,
   locks: [],
   signs: [
     { text: 'NORTHLINE', sub: '9 MILES  /  GENERAL HOSPITAL', background: '#2c3a4d', position: { x: -12, y: 4.2, z: -9.96 }, rotation: 0, width: 3.4, height: 0.9 },
     { text: 'FARM TRACK', sub: 'PRIVATE', background: '#3a4a2a', position: { x: 8, y: 3.2, z: 9.96 }, rotation: Math.PI, width: 2.4, height: 0.7 },
     { text: 'FIELD GATE', sub: 'ON FOOT FROM HERE', background: '#5b1b1b', position: { x: 27.96, y: 3.0, z: 3.6 }, rotation: -Math.PI / 2, width: 2.8, height: 0.6 },
+  ],
+  // At first it is quiet: a few of the dead stand about the road, asleep on their feet, and the crew picks a
+  // way between them to the police car. Once the radio is found the hospital's call is heard, and with it the
+  // farm tracks empty onto the road behind them. From then on the crew has to run for the gate.
+  flow: { kind: 'sweep', loud: 3, first: 4, from: [0, 1, 2], then: { every: 3, max: 10 } },
+  residents: [
+    { x: -4, z: -3, yaw: 0.6 }, { x: 1, z: 2.5, yaw: 2.4 }, { x: 7, z: 2, yaw: -1 }, { x: 12, z: -2.2, yaw: 3 },
+    { x: 17, z: 0.4, yaw: 1.2 }, { x: 21, z: 2.6, yaw: -2.2 }, { x: 25, z: -1.2, yaw: 0.2 },
+  ],
+  cues: [
+    { on: 'start', at: 1.5, speaker: CREW, text: 'Dry. Not a drop. The police car up the road might still have a radio.' },
+    { on: 'start', at: 9, speaker: CREW, text: 'Slowly. Some of them are standing out there. They have not noticed us.', seconds: 5.5 },
+    { on: 'done', at: 0.5, speaker: HOSPITAL, text: 'All units, all units. Northline General is still receiving. Come in on foot if you have to.', seconds: 6 },
+    { on: 'done', at: 7, speaker: CREW, text: 'Hear that? And they heard it too. The gate. Run.', seconds: 4.5 },
   ],
   // The radio in the police car: the hospital's call is what sends them on.
   objective: { kind: 'keycard', label: 'Police radio', part: 'Hospital call', position: { x: 2, y: 1.0, z: -7.2 } },

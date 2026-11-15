@@ -212,7 +212,7 @@ export interface Scene {
 //   than `max` alive. A charge step becomes a short stand.
 export type Flow =
   | { kind: 'siege' }
-  | { kind: 'sweep'; loud: number; first?: number; from?: number[] }
+  | { kind: 'sweep'; loud: number; first?: number; from?: number[]; then?: { every: number; max: number } }
   | { kind: 'run'; every: number; max: number };
 
 // One of a floor's own dead, standing somewhere before the crew arrives. It does not move until it
@@ -348,6 +348,9 @@ export interface Level {
   kit?: Vec3;
   // The way on is a steel gate on foot, as in the prologue, and not a lift.
   exitGate?: boolean;
+  // How long the way on stays open once it opens, in seconds, on a floor where it is a race: when it runs
+  // out the gate shuts again, the controls come back off and more of the dead are called in.
+  exitTimer?: number;
   // On a gate floor, the checkpoint the crew has just come through, behind where they start: open.
   entry?: Elevator;
 }

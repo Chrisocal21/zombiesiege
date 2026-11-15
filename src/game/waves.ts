@@ -5,7 +5,7 @@ import { dropCache } from './items';
 import { beginPrep, closeGate, doorwaySpawn } from './doors';
 import { levelForFloor } from '../levels';
 import { charging, completeStep, dropCase, everyoneAboard, inArea, lastStep } from './objectives';
-import { createPlayer, enterLevel, flowOf, spawnPoint, type GameState, type Player } from './state';
+import { createPlayer, enterLevel, flowOf, freshObjective, spawnPoint, stepsOf, type GameState, type Player } from './state';
 import { FIRST_FLOOR, LAST_FLOOR, ROOF, maxAlive, storeysToNext, waveSize, wavesOnFloor } from './tower';
 import type { ZombieKind } from './state';
 import { guaranteeAmmo } from './weapons';
@@ -92,8 +92,10 @@ const RUN_MOVING = 2;
 // in through the doors. On a run floor they keep coming through the doors behind the crew, on the
 // side it came from, and faster the longer it takes.
 function pressure(state: GameState, dt: number, level: Level): void {
-  const flow = flowOf(level);
+  let flow = flowOf(level);
   const waves = state.waves;
+  // A quiet floor that turns on the crew once its job is done: from then on it is a run.
+  if (flow.kind === 'sweep' && flow.then && state.objective.done) flow = { kind: 'run', ...flow.then };
   if (flow.kind === 'sweep') {
     const loud = state.players.some((player) => player.health > 0 && player.lastShotTick >= 0 && state.tick - player.lastShotTick <= 1);
     if (loud && (waves.loudTick < 0 || state.tick - waves.loudTick >= ticks(LOUD_GAP_SECONDS))) {
@@ -234,6 +236,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
         // The floor is clear: the elevator opens and waits for everyone to step in.
         openLift(state);
         waves.phase = 'lift';
+        waves.timer = level.exitTimer ?? 0;
       }
     }
     return;
@@ -246,6 +249,7 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
     if (state.objective.done) {
       openLift(state);
       waves.phase = 'lift';
+      waves.timer = level.exitTimer ?? 0;
       return;
     }
     if (!siege) pressure(state, dt, level);
@@ -298,6 +302,20 @@ export function updateWaves(state: GameState, dt: number, level: Level): void {
 
   if (waves.phase === 'lift') {
     if (!siege) pressure(state, dt, level);
+    // A way on that does not stay open: once the time is up the gate shuts, the controls come back off, and
+    // more of them are called in.
+    if (level.exitTimer && waves.timer > 0 && !everyoneInCab(state)) {
+      waves.timer -= dt;
+      if (waves.timer <= 0) {
+        closeLift(state);
+        state.objective = freshObjective(level);
+        state.level = { ...state.level, objective: stepsOf(level)[0] ?? null };
+        waves.phase = 'search';
+        waves.reinforce += 6;
+        waves.timer = 0;
+        return;
+      }
+    }
     if (everyoneInCab(state)) {
       closeLift(state);
       // In the prologue the way on is a gate, not a lift: everyone goes straight through to the next floor.
