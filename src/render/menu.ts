@@ -628,6 +628,13 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
             wash.addColorStop(0, 'rgba(232,184,102,0.32)');
             wash.addColorStop(0.6, 'rgba(232,184,102,0.08)');
             wash.addColorStop(1, 'rgba(232,184,102,0)');
+            // A soft glow round the bar, so the choice looks lit and not drawn.
+            context.save();
+            context.shadowColor = 'rgba(232,184,102,0.45)';
+            context.shadowBlur = 26 * unit;
+            context.fillStyle = 'rgba(232,184,102,0.05)';
+            context.fillRect(bx, by, w * 0.5, h);
+            context.restore();
             context.fillStyle = wash;
             context.beginPath();
             context.moveTo(bx, by);
@@ -733,6 +740,14 @@ export function createMenu(callbacks: MenuCallbacks): Menu {
         context.fillRect(0, 0, width, height);
         drawVignette(context, width, height, 0.7);
         drawGrain(context, width, height, time);
+        // The same film bars as the title, thinner, closing in as the menu opens.
+        const edge = height * 0.04 * ease(since / 0.6);
+        context.fillStyle = '#000000';
+        context.fillRect(0, 0, width, edge);
+        context.fillRect(0, height - edge, width, edge);
+        context.fillStyle = 'rgba(232,184,102,0.3)';
+        context.fillRect(0, edge, width, 1);
+        context.fillRect(0, height - edge - 1, width, 1);
 
         const headAppear = ease(since / 0.5);
         context.save();
