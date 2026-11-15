@@ -248,6 +248,8 @@ The Original Site (11-A, built, draft): the company's first research complex, se
 
 Lift Window (12-C, built, draft): the staging apron at first light, one aircraft and a window from 06:10 to 06:40. The floodlights are on their own circuit and dark; the bowser has to be hooked up and held while it fills, and the noise calls the dead. The sample and the records ride with the people. Scientists and families wait in the hangar and follow the crew to the ramp. The schedule on the table says people first, everything else is left on the apron. Not built: 12-A, 12-B, and consequences from the earlier choices.
 
+Perimeter Fall (12-B, built, draft): Perimeter 3 is overrun and the fighting is audible to the north. The last defenders in the west bunker have orders to hold until the column clears the checkpoint, and the crew covers them while they pull back. The checkpoint in the middle is wrecks and barriers. The emergency gate opens only from its own cabinet on the south wall, and nobody has been able to reach it.
+
 ### After Act 6
 
 Not written yet. See **Places** for what's next.

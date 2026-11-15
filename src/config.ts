@@ -222,6 +222,7 @@ export const config = {
     ],
     // Act 12, first light.
     firstLight: [
+      { number: 0, name: 'Perimeter Fall', waves: 3 },
       { number: 0, name: 'Lift Window', waves: 3 },
     ],
     refuge: [
