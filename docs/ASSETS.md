@@ -60,8 +60,12 @@ The flesh colour is set when it loads.
   150 welded vertices, the leaf clutter, pouches and straps, then `rig_ghillie.py`). Worn by about a third of the
   walkers and runners on the army levels (Checkpoint, The barricades; `ARMY_LEVELS` in `zombies.ts`). Cosmetic only.
   Both fall back to the survivor and ordinary bodies if a file is missing.
-- Amber (Character Creator, about 1.7 million triangles, CC skeleton): needs her hair and clothes
-  reduced and her bones renamed to Mixamo names before the rig can drive her.
+- Amber (Character Creator, `amber.glb`, 7 MB): the 1.6M-triangle model cut down by `tools/blender/amber.py` (tear
+  lines, teeth, underwear dropped; every mesh decimated to a budget; shape keys removed; the root bone taken out so
+  the hips hang off the armature; 22 bones renamed to Mixamo names; textures to 1024 or less). She is the first
+  rescued survivor on the Commercial District floor (`survivors.ts`, loaded when a level has survivors), wearing her
+  own clothes. Her materials are re-set at load: cloth and skin solid, hair and lashes as cut-outs (the export
+  marked them alpha-blended, which broke the headless render). Source: Amber_Blender.rar on the Desktop.
 - `post-apocalyptic-survivor-*.zip` is a saved web page, not a model: download it again.
 - The rest of the building packs (glass apartment and brick tower meshes tear when reduced and are
   too heavy whole), the rooftop HVAC sets, the other plants and the big trees (millions of triangles).

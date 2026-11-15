@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { GameState, Survivor } from '../game/state';
-import { SURVIVOR_MODEL, createJoints, rig, type Joints, type RiggedBody } from './characterRig';
+import { AMBER_MODEL, SURVIVOR_MODEL, createJoints, rig, type Joints, type RiggedBody } from './characterRig';
 import { loadModel } from './models';
 
 // The people hiding on a floor (P04's restaurant): the survivor's body in their own clothes, no gun.
@@ -37,9 +37,28 @@ function apron(colour: string): THREE.Object3D {
 
 interface Figure { group: THREE.Group; joints: Joints; body: RiggedBody; phase: number; gait: number; crouch: number }
 
+// The export marks her clothes as alpha-blended and every surface as double sided: draw cloth and skin solid,
+// and hair, brows and lashes as cut-outs, so nothing sorts wrongly or costs a blend pass.
+function solidify(scene: THREE.Object3D): void {
+  scene.traverse((child) => {
+    if (!(child instanceof THREE.SkinnedMesh)) return;
+    for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+      if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+      const cutout = /hair|brow|lash|scalp/i.test(material.name);
+      const glass = /cornea/i.test(material.name);
+      material.side = cutout ? THREE.DoubleSide : THREE.FrontSide;
+      material.transparent = glass;
+      material.alphaTest = cutout ? 0.4 : 0;
+      material.depthWrite = !glass;
+    }
+  });
+}
+
 export function createSurvivorViews(scene: THREE.Object3D): SurvivorViews {
   let template: THREE.Object3D | null = null;
   void loadModel(SURVIVOR_MODEL).then((model) => { template = model.scene; });
+  // Amber is fetched when a level first has survivors (it is a big file), and the first of them wears her.
+  let amber: THREE.Object3D | null = null, amberAsked = false, amberDone = false;
   let figures: Figure[] = [];
   let built: GameState['survivors'] | null = null;
 
@@ -48,11 +67,14 @@ export function createSurvivorViews(scene: THREE.Object3D): SurvivorViews {
     figures = state.survivors.map((survivor, index) => {
       const group = new THREE.Group();
       group.name = `Survivor ${index}`;
-      const body = rig(template!);
+      const herself = index === 0 ? amber : null;
+      const body = herself ? rig(herself) : rig(template!);
       group.add(body.object);
-      dress(body.object, survivor.look, index);
-      const colours = LOOKS[survivor.look];
-      if (colours.apron) body.attach('Hips', apron(colours.apron));
+      if (!herself) {
+        dress(body.object, survivor.look, index);
+        const colours = LOOKS[survivor.look];
+        if (colours.apron) body.attach('Hips', apron(colours.apron));
+      }
       group.position.set(survivor.x, 0, survivor.z);
       group.rotation.y = survivor.yaw;
       scene.add(group);
@@ -89,7 +111,11 @@ export function createSurvivorViews(scene: THREE.Object3D): SurvivorViews {
 
   return {
     update(state, dt) {
-      if (!template) return;
+      if (state.survivors.length && !amberAsked) {
+        amberAsked = true;
+        void loadModel(AMBER_MODEL).then((model) => { amber = model.scene; solidify(amber); }).catch(() => { amber = null; }).finally(() => { amberDone = true; });
+      }
+      if (!template || (state.survivors.length && !amberDone)) return;
       if (built !== state.survivors && (state.survivors.length !== figures.length || state.survivors.some((each, i) => each.look !== built?.[i]?.look))) build(state);
       built = state.survivors;
       const time = performance.now() / 1000;

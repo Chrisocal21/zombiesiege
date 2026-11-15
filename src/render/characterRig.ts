@@ -19,6 +19,8 @@ export const MUTANT_MODEL = '/models/characters/mutant.glb';
 // Without the files the crew keeps the survivor body and the infected the ordinary ones.
 export const GHILLIE_MODEL = '/models/characters/ghillie.glb';
 export const GHILLIE_LITE_MODEL = '/models/characters/ghillie-lite.glb';
+// Amber, a punk in a leather jacket (Character Creator, cut down by tools/blender/amber.py): the first survivor to rescue.
+export const AMBER_MODEL = '/models/characters/amber.glb';
 export const SURVIVOR_MODEL = '/models/characters/survivor.glb';
 
 export interface Joints {

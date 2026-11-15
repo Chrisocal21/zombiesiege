@@ -176,7 +176,7 @@ Open, in suggested order (one phase each, compact between):
 - [ ] Optional manual lift control: a button to open and close the doors by hand (the doors now only shut on the ride)
 - [ ] Play the roof finale and the loading screen on a real graphics card
 - [ ] Co-op: other players' shots and sounds are not drawn; admin tools act on player 0; balance tuning needs a playtest
-- [ ] Character phase: Amber and the survivor zip (re-download). Ghillie soldier done: the crew wears it in co-op, a half-gear version is on a third of the infected at Checkpoint and the barricades; animation unseen, and the co-op teammate look is unseen. Mutant done: it is the brute's body (rigged by `tools/blender/rig_mutant.py`); still to see: how it walks and swings in play, and the boss Patient O wearing it
+- [ ] Character phase: the survivor zip (re-download). Amber done (first rescued survivor); her walk and the hiding crouch are unseen. Ghillie soldier done: the crew wears it in co-op, a half-gear version is on a third of the infected at Checkpoint and the barricades; animation unseen, and the co-op teammate look is unseen. Mutant done: it is the brute's body (rigged by `tools/blender/rig_mutant.py`); still to see: how it walks and swings in play, and the boss Patient O wearing it
 - [ ] Already failing before this work: check-admin, check-melee, check-ramp
 - [ ] Lore: note texts, town names and the evacuation map text are draft wording awaiting approval
 
