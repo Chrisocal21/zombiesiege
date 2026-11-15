@@ -39,6 +39,8 @@ const lights: LevelLight[] = [work(-18, -6), work(-6, 5, true), work(14, -4), wo
 export const highGround: Level = {
   name: 'High Ground',
   theme: 'street',
+  // Light gives them away here: the flashlight is the choice between seeing and being seen.
+  lightsCall: true,
   scenery: { north: 'trees', south: 'trees', east: 'trees', west: 'trees', skyline: false },
   atmosphere: { fog: '#272b32', fogNear: 8, fogFar: 46, ambient: 1.0, sky: { horizon: '#3a3f4a', zenith: '#0c1018', stars: 0.05 } },
   boxes: [
@@ -121,7 +123,7 @@ export const highGround: Level = {
   ],
   cues: [
     { on: 'start', at: 1.5, speaker: CREW, text: 'The relay. Weather is closing in. The broadcast stopped here.' },
-    { on: 'start', at: 8, speaker: CREW, text: 'Generator shed, battery cabinet, then the dish. The lights we need are the lights they will see.', seconds: 6 },
+    { on: 'start', at: 8, speaker: CREW, text: 'Generator shed, battery cabinet, then the dish. Flashlights call them in. Dark is safe, but you cannot see.', seconds: 6 },
     { on: 'step', step: 0, at: 0.6, speaker: CREW, text: 'Power is back. Get to the dish hut. It is going to be bright and loud.' },
     { on: 'done', at: 0.6, speaker: CREW, text: 'We are on the air. Other relays are answering. The pilot is out there.' },
   ],

@@ -74,8 +74,17 @@ function trickle(state: GameState, dt: number, level: Level): void {
   const waves = state.waves;
   waves.spawnTimer -= dt;
   if (waves.spawnTimer > 0) return;
-  waves.spawnTimer = config.objectives.holdSpawnSeconds / (1 + config.objectives.holdSpawnPerFloor * state.floor);
+  waves.spawnTimer = config.objectives.holdSpawnSeconds / (1 + config.objectives.holdSpawnPerFloor * state.floor) * (lightOn(state) ? LIGHT_TRICKLE : 1);
   if (awakeZombies(state) < config.objectives.holdMaxZombies) spawnAtDoor(state, level);
+}
+
+// On a floor where light gives the crew away: seconds between one more called in while a flashlight is on.
+const LIGHT_CALL_SECONDS = 7;
+// How much sooner the held stand sends them while a flashlight is on.
+const LIGHT_TRICKLE = 0.55;
+
+function lightOn(state: GameState): boolean {
+  return state.level.lightsCall === true && state.players.some((player) => player.health > 0 && !player.out && player.flashlight);
 }
 
 // On a sweep floor, how long after one loud moment before the next one brings more of them.
@@ -103,6 +112,7 @@ function pressure(state: GameState, dt: number, level: Level): void {
       waves.alarms++;
       waves.loudTick = state.tick;
     }
+    if (lightOn(state) && state.tick % ticks(LIGHT_CALL_SECONDS) === 0 && waves.reinforce < 3) waves.reinforce++;
     return;
   }
   if (flow.kind !== 'run') return;

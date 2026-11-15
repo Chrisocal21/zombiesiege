@@ -357,6 +357,9 @@ export interface Level {
   // How many of the dead are walking about the floor when the crew arrives, besides the residents,
   // placed by the game well away from the start (src/game/roam.ts). Left out, a number by theme.
   roamers?: number;
+  // A dark floor where a light gives the crew away: while any living player has their flashlight on, one
+  // more of the dead is called in every few seconds, and the held stand sends them faster.
+  lightsCall?: boolean;
   cues?: Cue[];
   notes?: Note[];
   rescue?: Rescue;

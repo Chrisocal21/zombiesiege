@@ -36,4 +36,10 @@ useObjective(s, p, { kind: 'device' });
 s.zombies = [];
 run(s, 58, { x: d.x, z: d.z + 2 });
 assert.ok(s.objective.done, 'the antenna is aligned');
+// The choice: a flashlight calls the dead, the dark does not.
+const quiet = createGameState(level0); startOnFloor(quiet, LAST_FLOOR);
+const lit = createGameState(level0); startOnFloor(lit, LAST_FLOOR);
+for (const g of [quiet, lit]) { g.zombies = []; g.players[0].flashlight = g === lit; }
+run(quiet, 60); run(lit, 60);
+assert.ok(lit.zombies.length > quiet.zombies.length, `flashlight on calls more (${lit.zombies.length} against ${quiet.zombies.length})`);
 console.log('ok', s.level.name);

@@ -198,6 +198,7 @@ Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the 
 - [ ] Act 5, Last Refuge, built as three slices, each from existing mechanics: 05-C the camp siege first (reuses the park's siege waves, adds a generator to repair and a fall-back yard), then 05-B The Missing Delivery (a search run with a cargo-versus-people choice), then 05-A Inventory of the Living (the quiet camp: needs a small ledger screen, so it comes last)
 - [x] Act 6 slice 06-B built (floor 24, fuelYard.ts, check-fuel.mjs): two power cabinets then a held fuel transfer; it is the last floor built. 06-A and 06-C need a vehicle controller (the biggest open item)
 - [x] Act 7 slice 07-B built (floor 25, highGround.ts, check-relay.mjs): storm relay, power then a held antenna alignment; it is the last floor built. The checks now find Act 5 floors through LAST_REFUGE and do not depend on LAST_FLOOR
+- [x] High Ground signature choice built: Level.lightsCall, a flashlight on calls the dead and speeds the held stand (check-relay proves it)
 - [ ] Act 6 06-A and 06-C, Act 7 07-A and 07-C, then Acts, 8 Blackwater, 9 Fault Lines, 10 Ghost Signal, 11 Ground Zero, 12 First Light: outlined in the handoff, none built
 - [ ] Needs you: the survivor zip (re-download) and lore approval of the draft wording
 
