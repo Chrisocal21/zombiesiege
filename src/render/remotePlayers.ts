@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { config } from '../config';
 import type { Player } from '../game/state';
-import { SURVIVOR_MODEL, createJoints, rig, type Joints, type RiggedBody } from './characterRig';
+import { SURVIVOR_MODEL, createJoints, rig, riggedGhillie, suitsReady, type Joints, type RiggedBody } from './characterRig';
 import { loadModel, placeModel } from './models';
 import type { WeaponId } from '../game/weapons';
 
@@ -64,7 +64,8 @@ export function createRemotePlayers(scene: THREE.Object3D): RemotePlayers {
   function build(player: Player): Figure {
     const group = new THREE.Group();
     group.name = `Player ${player.id}`;
-    const body = rig(template!);
+    // The crew wears the ghillie suit; the survivor body stands in until it has loaded.
+    const body = riggedGhillie() ?? rig(template!);
     group.add(body.object);
     const tag = new THREE.Mesh(marker, new THREE.MeshBasicMaterial({ color: COLORS[player.id % COLORS.length] }));
     tag.position.y = config.player.height + 0.25;
@@ -125,7 +126,7 @@ export function createRemotePlayers(scene: THREE.Object3D): RemotePlayers {
           figures.delete(id);
         }
       }
-      if (!template) return;
+      if (!template || !suitsReady()) return;
       for (const player of others) {
         let figure = figures.get(player.id);
         if (!figure) {

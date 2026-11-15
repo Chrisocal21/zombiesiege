@@ -5,7 +5,7 @@ import { config } from '../config';
 import type { GameState, Zombie } from '../game/state';
 import { paintTexture } from './materials';
 import { eyeGlow, gradedBody } from './zombieSkin';
-import { createJoints, riggedBody, riggedGhillie, riggedMutant, whenZombieModelsLoad, zombieModelsReady, type RiggedBody } from './characterRig';
+import { createJoints, riggedBody, riggedGhillieLite, riggedMutant, whenZombieModelsLoad, zombieModelsReady, type RiggedBody } from './characterRig';
 
 // How each kind of infected is built: its body scale (width, height, depth) and a tint on its skin and
 // clothes. The brute is broad and dark, the runner lean, the screamer pale.
@@ -80,6 +80,9 @@ function surfaceHeight(level: GameState['level'], x: number, z: number): number 
   if (Math.abs(x - ramp.x) > ramp.width / 2) return 0;
   return ramp.rise * (z - ramp.zBottom) / (ramp.zTop - ramp.zBottom);
 }
+
+// The levels held by the army, where some of the infected are its soldiers.
+const ARMY_LEVELS = new Set(['Checkpoint', 'The barricades']);
 
 export interface ZombieViews { update(state: GameState, frameSeconds: number): void; }
 
@@ -315,14 +318,14 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     }
     return group;
   }
-  function buildRigged(zombie: Zombie): ZombieView {
+  function buildRigged(zombie: Zombie, army: boolean): ZombieView {
     const group = new THREE.Group(); group.name = `Infected ${zombie.id}`;
     group.rotation.order = 'YXZ';
     const joints = createJoints();
     // A brute is the hunched mutant, when its model has loaded; it wears no clothes to dress.
     const mutant = zombie.kind === 'brute' ? riggedMutant() : null;
-    // Now and then a walker or runner is a soldier in a ghillie suit, whose own clothes stay on.
-    const soldier = !mutant && !zombie.boss && (zombie.kind === 'walker' || zombie.kind === 'runner') && zombie.id % 9 === 4 ? riggedGhillie() : null;
+    // On the army levels some walkers and runners are soldiers in a half-geared ghillie suit, whose clothes stay on.
+    const soldier = army && !mutant && !zombie.boss && (zombie.kind === 'walker' || zombie.kind === 'runner') && zombie.id % 3 === 1 ? riggedGhillieLite() : null;
     const rig = mutant ?? soldier ?? riggedBody(zombie.id);
     group.add(rig.object);
     if (!mutant && !soldier) dress(rig, zombie);
@@ -334,8 +337,8 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
     return { group, ...joints, material: null, geometries: [], rig,
       phase: zombie.id * 1.77, gait: 0, initialised: false, crawl: 0, stagger: 0, slump: zombie.dormant ? 1 : 0 };
   }
-  function build(zombie: Zombie): ZombieView {
-    if (zombieModelsReady()) return buildRigged(zombie);
+  function build(zombie: Zombie, army = false): ZombieView {
+    if (zombieModelsReady()) return buildRigged(zombie, army);
     const group = new THREE.Group(); group.name = `Infected ${zombie.id}`;
     // Turn to face first, then fall about the body's own axes.
     group.rotation.order = 'YXZ';
@@ -662,7 +665,7 @@ export function createZombieViews(scene: THREE.Scene): ZombieViews {
       for (const zombie of state.zombies) {
         live.add(zombie.id);
         let view = views.get(zombie.id);
-        if (!view) { view = build(zombie); views.set(zombie.id, view); }
+        if (!view) { view = build(zombie, ARMY_LEVELS.has(state.level.name)); views.set(zombie.id, view); }
         if (!view.initialised) {
           view.group.position.set(zombie.x, 0, zombie.z); view.group.rotation.y = zombie.yaw; view.initialised = true;
         }
