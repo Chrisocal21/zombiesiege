@@ -88,8 +88,9 @@ export const liftWindow: Level = {
     },
     {
       kind: 'charge',
-      label: 'Aircraft fuel',
+      label: 'Fuel the aircraft',
       part: 'Fuel for the lift',
+      stand: 'Start it at the bowser. They will come to the noise',
       device: { position: { x: 9.5, y: 1.35, z: 5 }, normal: { x: -1, z: 0 } },
       room: { minX: 4, maxX: 12, minZ: 1, maxZ: 9 },
       roomName: 'Bowser',

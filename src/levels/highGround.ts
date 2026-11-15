@@ -95,8 +95,9 @@ export const highGround: Level = {
     },
     {
       kind: 'charge',
-      label: 'Antenna alignment',
+      label: 'Align the antenna',
       part: 'Regional broadcast',
+      stand: 'Start it at the dish controls. The lamps give you away',
       device: { position: { x: 10, y: 1.35, z: -4.28 }, normal: { x: 0, z: 1 } },
       room: { minX: 5, maxX: 15.5, minZ: -4.2, maxZ: 3 },
       roomName: 'Dish hut',

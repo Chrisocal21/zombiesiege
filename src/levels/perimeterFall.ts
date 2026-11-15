@@ -79,8 +79,9 @@ export const perimeterFall: Level = {
   steps: [
     {
       kind: 'charge',
-      label: 'West flank',
+      label: 'Cover the west flank',
       part: 'Cover the defenders',
+      stand: 'Start it at the bunker board. They will come',
       device: { position: { x: -14, y: 1.35, z: -7.78 }, normal: { x: 0, z: 1 } },
       room: { minX: -19, maxX: -9, minZ: -7.7, maxZ: -1 },
       roomName: 'West bunker',

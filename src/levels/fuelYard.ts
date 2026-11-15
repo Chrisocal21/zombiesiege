@@ -95,8 +95,9 @@ export const fuelYard: Level = {
     },
     {
       kind: 'charge',
-      label: 'Fuel transfer',
+      label: 'Start the fuel transfer',
       part: 'Fuel for the camp',
+      stand: 'Start it at the pump. The noise calls them',
       device: { position: { x: 14, y: 1.35, z: -5.98 }, normal: { x: 0, z: 1 } },
       room: { minX: 8, maxX: 21, minZ: -5.6, maxZ: 3 },
       roomName: 'Tanker bay',

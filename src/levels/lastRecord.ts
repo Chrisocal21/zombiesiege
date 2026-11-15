@@ -78,8 +78,9 @@ export const lastRecord: Level = {
     { kind: 'keycard', label: 'Final log', part: 'The last incident record', position: { x: 0, y: 0.95, z: 0 } },
     {
       kind: 'charge',
-      label: 'Record upload',
+      label: 'Send the record',
       part: 'Out over the last link',
+      stand: 'Start it at the rack. They will come to the noise',
       device: { position: { x: 18, y: 1.35, z: -6.58 }, normal: { x: 0, z: 1 } },
       room: { minX: 13, maxX: 23, minZ: -6.5, maxZ: 0 },
       roomName: 'Upload rack',
