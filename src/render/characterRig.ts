@@ -14,6 +14,9 @@ export const ZOMBIE_MODELS = ['/models/characters/zombie-a.glb', '/models/charac
 // The brute's own body: a hunched mutant with one huge arm, rigged by tools/blender/rig_mutant.py. Its arms
 // already hang at rest, so they take no drop. Without the file the brutes use the ordinary bodies.
 export const MUTANT_MODEL = '/models/characters/mutant.glb';
+// An infected soldier in a ghillie suit, rigged by tools/blender/rig_ghillie.py from an A-pose model, so its arms
+// take no drop either. Some walkers and runners wear it; without the file they keep the ordinary bodies.
+export const GHILLIE_MODEL = '/models/characters/ghillie.glb';
 export const SURVIVOR_MODEL = '/models/characters/survivor.glb';
 
 export interface Joints {
@@ -71,6 +74,7 @@ interface BoneInfo {
 
 let templates: THREE.Object3D[] | null = null;
 let mutantTemplate: THREE.Object3D | null = null;
+let ghillieTemplate: THREE.Object3D | null = null;
 
 // The zombie files carry a normal map for every texture, but the materials were exported without them.
 // This finds each (the image just before the diffuse one) and puts it back, so skin and cloth have grain.
@@ -110,6 +114,17 @@ const loading = track(Promise.all(ZOMBIE_MODELS.map(loadModel)).then(async (mode
     });
     mutantTemplate = mutant;
   } catch { mutantTemplate = null; }
+  try {
+    const ghillie = (await loadModel(GHILLIE_MODEL)).scene;
+    // Dirty it, so the suit looks long worn.
+    ghillie.traverse((child) => {
+      if (!(child instanceof THREE.SkinnedMesh)) return;
+      for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+        if (material instanceof THREE.MeshStandardMaterial) { material.color.set('#b4aa9c'); material.roughness = Math.max(material.roughness, 0.85); material.metalness = 0; }
+      }
+    });
+    ghillieTemplate = ghillie;
+  } catch { ghillieTemplate = null; }
   return templates;
 }));
 
@@ -143,6 +158,11 @@ export function createJoints(): Joints {
 // One of the zombie models, by variant. Only once they have loaded.
 export function riggedBody(variant: number): RiggedBody {
   return rig(templates![variant % templates!.length]);
+}
+
+// The infected soldier's body, or null when its file is missing.
+export function riggedGhillie(): RiggedBody | null {
+  return ghillieTemplate ? rig(ghillieTemplate, true) : null;
 }
 
 // The brute's mutant body, or null when its file is missing.

@@ -53,10 +53,12 @@ The flesh colour is set when it loads.
 
 ## Waiting to be used
 
+- Ghillie soldier (tripo, `ghillie.glb`, 884 KB): exported with `pack.py ... turn=-90 tris=14000 tex=1024` (it
+  faced +x), then rigged by `tools/blender/rig_ghillie.py` (A pose, Mixamo-named bones, auto weights). In play
+  about one walker or runner in nine (id % 9 == 4) is this soldier, dirtied with a grey tint; no clothes are
+  added. Cosmetic only: the sim and server know nothing of it. Falls back to the ordinary bodies if the file is missing.
 - Amber (Character Creator, about 1.7 million triangles, CC skeleton): needs her hair and clothes
   reduced and her bones renamed to Mixamo names before the rig can drive her.
-- The ghillie soldier (tripo): not rigged; it needs automatic weights onto a Mixamo-named skeleton,
-  as the mutant got from `tools/blender/rig_mutant.py`.
 - `post-apocalyptic-survivor-*.zip` is a saved web page, not a model: download it again.
 - The rest of the building packs (glass apartment and brick tower meshes tear when reduced and are
   too heavy whole), the rooftop HVAC sets, the other plants and the big trees (millions of triangles).
