@@ -246,6 +246,8 @@ Empty Houses (10-B, built, draft): Mill Street in the old town, the morning afte
 
 The Original Site (11-A, built, draft): the company's first research complex, sealed by its own lockdown protocol when the mains failed. The security shutter will not open without authority; forcing it takes points and is loud, while the maintenance door in the south corner was left on the latch for the night shift. Two cabinets route what is left of the generator to the archive wing; the incident file there says a sample handling breach exposed eleven staff, and the site was kept quiet. It was an accident, and then it was a cover story. Not built: 11-B, 11-C.
 
+Lift Window (12-C, built, draft): the staging apron at first light, one aircraft and a window from 06:10 to 06:40. The floodlights are on their own circuit and dark; the bowser has to be hooked up and held while it fills, and the noise calls the dead. The sample and the records ride with the people. Scientists and families wait in the hangar and follow the crew to the ramp. The schedule on the table says people first, everything else is left on the apron. Not built: 12-A, 12-B, and consequences from the earlier choices.
+
 ### After Act 6
 
 Not written yet. See **Places** for what's next.

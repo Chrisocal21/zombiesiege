@@ -4,7 +4,7 @@ import { SETTING_RANGES, type Settings, resetSettings, saveSettings, settings } 
 import { config } from '../config';
 import { changePoints, spawnAmmo, spawnWeapon, type AdminResult } from '../game/admin';
 import type { GameState } from '../game/state';
-import { FIRST_FLOOR, LAST_DAYBREAK, LAST_REFUGE, LAST_ROADS, LAST_DEAD_AIR, LAST_BLACKWATER, LAST_FAULT_LINES, LAST_GHOST_SIGNAL, LAST_DESCENT, LAST_FLOOR, LAST_VAULT, ROOF, floorTitle, stopAt, storeyLabel } from '../game/tower';
+import { FIRST_FLOOR, LAST_DAYBREAK, LAST_REFUGE, LAST_ROADS, LAST_DEAD_AIR, LAST_BLACKWATER, LAST_FAULT_LINES, LAST_GHOST_SIGNAL, LAST_GROUND_ZERO, LAST_DESCENT, LAST_FLOOR, LAST_VAULT, ROOF, floorTitle, stopAt, storeyLabel } from '../game/tower';
 import { WEAPON_IDS, isMelee, owns, weaponStats, type WeaponId } from '../game/weapons';
 import { outfitTexture } from './gearTextures';
 import { COLOR, FONT, clamp, keycap, measure, outfitPreviewRect, panel, roundedRect, text } from './ui';
@@ -23,7 +23,8 @@ const ACTS = [
   { kicker: 'OPERATION 008', name: 'BLACKWATER', blurb: 'Rising floodwater, catwalks and the water the survivors drink.', floors: Array.from({ length: LAST_BLACKWATER - LAST_DEAD_AIR }, (_, k) => LAST_DEAD_AIR + 1 + k) },
   { kicker: 'OPERATION 009', name: 'FAULT LINES', blurb: 'Other people have their own needs. Not every door is a fight.', floors: Array.from({ length: LAST_FAULT_LINES - LAST_BLACKWATER }, (_, k) => LAST_BLACKWATER + 1 + k) },
   { kicker: 'OPERATION 010', name: 'GHOST SIGNAL', blurb: 'The old town, the morning after. Choose which houses to enter.', floors: Array.from({ length: LAST_GHOST_SIGNAL - LAST_FAULT_LINES }, (_, k) => LAST_FAULT_LINES + 1 + k) },
-  { kicker: 'OPERATION 011', name: 'GROUND ZERO', blurb: 'The company\'s first site. Two ways in, and the records.', floors: Array.from({ length: LAST_FLOOR - LAST_GHOST_SIGNAL }, (_, k) => LAST_GHOST_SIGNAL + 1 + k) },
+  { kicker: 'OPERATION 011', name: 'GROUND ZERO', blurb: 'The company\'s first site. Two ways in, and the records.', floors: Array.from({ length: LAST_GROUND_ZERO - LAST_GHOST_SIGNAL }, (_, k) => LAST_GHOST_SIGNAL + 1 + k) },
+  { kicker: 'OPERATION 012', name: 'FIRST LIGHT', blurb: 'One aircraft, one window. People first.', floors: Array.from({ length: LAST_FLOOR - LAST_GROUND_ZERO }, (_, k) => LAST_GROUND_ZERO + 1 + k) },
 ];
 
 export type Screen = 'title' | 'main' | 'pause' | 'controls' | 'settings' | 'admin' | 'character' | 'victory' | 'floors' | 'log';

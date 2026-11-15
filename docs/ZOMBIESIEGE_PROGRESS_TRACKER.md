@@ -203,6 +203,7 @@ Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the 
 - [x] Act 9 slice 09-B built (floor 27, doorsShut.ts, check-doors.mjs): forced gate (250 points) or the open service door, three frightened evacuees, a register. Negotiated entry needs a dialogue or barter system, which does not exist
 - [x] Act 10 slice 10-B built (floor 28, emptyHouses.ts, check-houses.mjs): a quiet street of three houses, a route note that names the shelter, sleeping dead in the north-east house. Unbuilt: 10-A Names on the Frequency, 10-C Shelter Zero (cargo/passenger tradeoff), alarms as a stealth mechanic (only the sweep rule: gunfire calls them)
 - [x] Act 11 slice 11-A built (floor 29, originalSite.ts, check-site.mjs): security shutter (300 points) or open maintenance door, power to the archive (two cabinets, circuit lights), then the incident file. Unbuilt: reactor hazard, 11-B Containment Protocol, 11-C The Last Record
+- [x] Act 12 slice 12-C built (floor 30, liftWindow.ts, check-lift.mjs, the last floor): apron lights (two cabinets), a held fuel transfer, three cases carried to the ramp, three people from the hangar queue led out. Unbuilt: 12-A Three Calls (needs allies and a resource ledger), 12-B Perimeter Fall, terminal power failure, earlier choices changing optional support
 - [ ] Act 6 06-A and 06-C, Act 7 07-A and 07-C, then Acts, 8 Blackwater, 9 Fault Lines, 10 Ghost Signal, 11 Ground Zero, 12 First Light: outlined in the handoff, none built
 - [ ] Needs you: the survivor zip (re-download) and lore approval of the draft wording
 

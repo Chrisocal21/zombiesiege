@@ -220,6 +220,10 @@ export const config = {
     groundZero: [
       { number: 0, name: 'The Original Site', waves: 3 },
     ],
+    // Act 12, first light.
+    firstLight: [
+      { number: 0, name: 'Lift Window', waves: 3 },
+    ],
     refuge: [
       { number: 0, name: 'Inventory of the Living', waves: 1 },
       { number: 0, name: 'The Missing Delivery', waves: 3 },

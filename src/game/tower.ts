@@ -19,7 +19,8 @@ export const blackwater = config.tower.blackwater;
 export const faultLines = config.tower.faultLines;
 export const ghostSignal = config.tower.ghostSignal;
 export const groundZero = config.tower.groundZero;
-const sequel = [...descent, ...vault, ...daybreak, ...refuge, ...roads, ...deadAir, ...blackwater, ...faultLines, ...ghostSignal, ...groundZero];
+export const firstLight = config.tower.firstLight;
+const sequel = [...descent, ...vault, ...daybreak, ...refuge, ...roads, ...deadAir, ...blackwater, ...faultLines, ...ghostSignal, ...groundZero, ...firstLight];
 
 // The prologue: the floors before the garage, with negative indexes, the first at -prelude.length.
 export const prelude = config.tower.prelude;
@@ -38,6 +39,7 @@ export const LAST_DEAD_AIR = LAST_ROADS + deadAir.length;
 export const LAST_BLACKWATER = LAST_DEAD_AIR + blackwater.length;
 export const LAST_FAULT_LINES = LAST_BLACKWATER + faultLines.length;
 export const LAST_GHOST_SIGNAL = LAST_FAULT_LINES + ghostSignal.length;
+export const LAST_GROUND_ZERO = LAST_GHOST_SIGNAL + groundZero.length;
 export const LAST_FLOOR = ROOF + sequel.length;
 
 // True from Act 2 on: the floors after the hospital's roof.
@@ -45,10 +47,10 @@ export function isDescent(floor: number): boolean {
   return floor > ROOF;
 }
 
-// Which act a floor belongs to: 0 for the prologue, then 1 to 11.
-export function actOf(floor: number): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 {
+// Which act a floor belongs to: 0 for the prologue, then 1 to 12.
+export function actOf(floor: number): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 {
   if (floor < 0) return 0;
-  return floor <= ROOF ? 1 : floor <= LAST_DESCENT ? 2 : floor <= LAST_VAULT ? 3 : floor <= LAST_DAYBREAK ? 4 : floor <= LAST_REFUGE ? 5 : floor <= LAST_ROADS ? 6 : floor <= LAST_DEAD_AIR ? 7 : floor <= LAST_BLACKWATER ? 8 : floor <= LAST_FAULT_LINES ? 9 : floor <= LAST_GHOST_SIGNAL ? 10 : 11;
+  return floor <= ROOF ? 1 : floor <= LAST_DESCENT ? 2 : floor <= LAST_VAULT ? 3 : floor <= LAST_DAYBREAK ? 4 : floor <= LAST_REFUGE ? 5 : floor <= LAST_ROADS ? 6 : floor <= LAST_DEAD_AIR ? 7 : floor <= LAST_BLACKWATER ? 8 : floor <= LAST_FAULT_LINES ? 9 : floor <= LAST_GHOST_SIGNAL ? 10 : floor <= LAST_GROUND_ZERO ? 11 : 12;
 }
 
 export function stopAt(floor: number): { number: number; name: string; waves: number } {

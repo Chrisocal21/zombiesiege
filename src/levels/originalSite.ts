@@ -44,6 +44,7 @@ const lights: LevelLight[] = [lamp(-20, 0), lamp(-14, 8, undefined, true), lamp(
 export const originalSite: Level = {
   name: 'The Original Site',
   theme: 'street',
+  exitGate: true,
   scenery: { north: 'trees', south: 'trees', east: 'trees', west: 'trees', skyline: false },
   atmosphere: { fog: '#30353c', fogNear: 10, fogFar: 54, ambient: 1.0, sky: { horizon: '#5a6068', zenith: '#12161e', stars: 0.2 } },
   boxes: [
