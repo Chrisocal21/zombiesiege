@@ -177,7 +177,7 @@ Open, in suggested order (one phase each, compact between):
 - [ ] Play the roof finale and the loading screen on a real graphics card
 - [x] Co-op: teammates' shots are heard (panned, falling off with distance) and drawn as tracers; admin tools act on the player who opens the menu
 - [ ] Co-op: balance tuning needs a playtest
-- [ ] Character phase: the survivor zip (re-download). Amber done (first rescued survivor); her walk and the hiding crouch are unseen. Ghillie soldier done: the crew wears it in co-op, a half-gear version is on a third of the infected at Checkpoint and the barricades; animation unseen, and the co-op teammate look is unseen. Mutant done: it is the brute's body (rigged by `tools/blender/rig_mutant.py`); still to see: how it walks and swings in play, and the boss Patient O wearing it
+- [x] Survivor pack checked (rigged FBX, 115k-213k triangles, no textures): parked, not used. Character phase: Amber done (first rescued survivor); her walk and the hiding crouch are unseen. Ghillie soldier done: the crew wears it in co-op, a half-gear version is on a third of the infected at Checkpoint and the barricades; animation unseen, and the co-op teammate look is unseen. Mutant done: it is the brute's body (rigged by `tools/blender/rig_mutant.py`); still to see: how it walks and swings in play, and the boss Patient O wearing it
 - [x] The three failing checks fixed (admin list, melee skipped while melee is off, ramp excludes the El Cajon bay)
 - [ ] Lore: note texts, town names and the evacuation map text are draft wording awaiting approval
 
@@ -211,5 +211,5 @@ Order of work chosen Nov 14, 2026: bugs first (done), then co-op gaps, then the 
 - [x] Act 12 slice 12-B built (floor 30, perimeterFall.ts, check-perimeter.mjs; Lift Window is now floor 31): hold the west bunker while the defenders withdraw, cross the broken checkpoint, throw the emergency gate cabinet. Distant battles are lighting and noise only; no allied soldiers or retreat mechanic
 - [x] Act 7 slice 07-C built as a cut-down (floor 26, falseInstructions.ts, check-instructions.mjs; High Ground and later floors moved up one, Lift Window is now 36): read the relay log, cut the loop at two cabinets, send the correction held at the rack. No dialogue or negotiation system
 - [ ] Act 6 06-A and 06-C, then Acts, 8 Blackwater, 9 Fault Lines, 10 Ghost Signal, 11 Ground Zero, 12 First Light: outlined in the handoff, none built
-- [ ] Needs you: the survivor zip (re-download) and lore approval of the draft wording
+- [ ] Needs you: lore approval of the draft wording
 

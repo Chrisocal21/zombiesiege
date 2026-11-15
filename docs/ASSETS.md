@@ -66,7 +66,7 @@ The flesh colour is set when it loads.
   rescued survivor on the Commercial District floor (`survivors.ts`, loaded when a level has survivors), wearing her
   own clothes. Her materials are re-set at load: cloth and skin solid, hair and lashes as cut-outs (the export
   marked them alpha-blended, which broke the headless render). Source: Amber_Blender.rar on the Desktop.
-- `post-apocalyptic-survivor-*.zip` is a saved web page, not a model: download it again.
+- `post-apocalyptic-survivor-*.zip` was a saved web page. The real pack (`FBX For Blender.rar`, binary FBX, rigged) imports fine but is 115k to 213k triangles with no textures in the FBX (they are in the 987 MB Textures_UE pack). Decided not to use it for now: too heavy and the game has Amber, the ghillie and the mutant. Revisit only if a survivor look is wanted: a, b at about 8k triangles, flat colours, retarget like the ghillie.
 - The rest of the building packs (glass apartment and brick tower meshes tear when reduced and are
   too heavy whole), the rooftop HVAC sets, the other plants and the big trees (millions of triangles).
 
