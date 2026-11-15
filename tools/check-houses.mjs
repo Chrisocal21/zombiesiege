@@ -16,8 +16,8 @@ const { LAST_GHOST_SIGNAL, LAST_FAULT_LINES, actOf } = await import('../src/game
 const HZ = 120;
 const run = (s, seconds) => { for (let i = 0; i < seconds * HZ; i++) { for (const p of s.players) p.health = 100; step(s, [idleInput(0)], 1 / HZ); } };
 const s = createGameState(level0);
-startOnFloor(s, LAST_GHOST_SIGNAL);
-assert.equal(LAST_GHOST_SIGNAL, LAST_FAULT_LINES + 1);
+startOnFloor(s, LAST_FAULT_LINES + 1);
+assert.equal(LAST_GHOST_SIGNAL, LAST_FAULT_LINES + 2);
 assert.equal(s.level.name, 'Empty Houses');
 assert.equal(actOf(s.floor), 10);
 assert.equal(flowOf(s.level).kind, 'sweep');

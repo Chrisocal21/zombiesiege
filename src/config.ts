@@ -215,6 +215,7 @@ export const config = {
     // Act 10, the old town.
     ghostSignal: [
       { number: 0, name: 'Empty Houses', waves: 3 },
+      { number: 0, name: 'Shelter Zero', waves: 3 },
     ],
     // Act 11, where it began.
     groundZero: [
