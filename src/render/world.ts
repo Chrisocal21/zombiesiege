@@ -4,6 +4,7 @@ import { settings } from '../client/settings';
 import { buildArchitecture } from './architecture';
 import { buildHospital } from './hospital';
 import { buildHospitalParking } from './parking';
+import { buildPark } from './park';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { GameState } from '../game/state';
@@ -225,6 +226,44 @@ function buildFitting(lightConfig: LevelLight, color: THREE.Color, glowMap: THRE
     return { light: lamp, glow: halo, bulb: tubes, base: lightConfig.intensity, flicker: lightConfig.flicker === true, seed: x * 3.1 + z * 1.7 };
   }
 
+  if (lightConfig.post) {
+    // A lantern on a cast iron post: a plinth, a fluted post with a collar, and a four-paned glass
+    // lantern under a cap. The group sits at the lantern.
+    const iron = new THREE.MeshStandardMaterial({ color: 0x1b211e, roughness: 0.5, metalness: 0.7 });
+    const part = (geometry: THREE.BufferGeometry, py: number) => {
+      const mesh = new THREE.Mesh(geometry, iron);
+      mesh.position.y = py;
+      mesh.castShadow = true;
+      group.add(mesh);
+      return mesh;
+    };
+    part(new THREE.CylinderGeometry(0.16, 0.2, 0.5, 8), -y + 0.25);
+    part(new THREE.CylinderGeometry(0.05, 0.075, y - 0.85, 8), -y + 0.5 + (y - 0.85) / 2);
+    part(new THREE.CylinderGeometry(0.1, 0.07, 0.12, 8), -0.35);
+    part(new THREE.CylinderGeometry(0.11, 0.15, 0.06, 4), -0.26).rotation.y = Math.PI / 4;
+    const bulb = new THREE.MeshBasicMaterial({ color });
+    const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.12, 0.42, 4, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    glass.rotation.y = Math.PI / 4;
+    glass.position.y = -0.02;
+    group.add(glass);
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), bulb);
+    group.add(core);
+    for (let k = 0; k < 4; k++) {
+      const a = Math.PI / 4 + (k * Math.PI) / 2;
+      const bar = part(new THREE.BoxGeometry(0.025, 0.44, 0.025), -0.02);
+      bar.position.set(Math.cos(a) * 0.145, -0.02, Math.sin(a) * 0.145);
+    }
+    part(new THREE.ConeGeometry(0.26, 0.2, 4), 0.29).rotation.y = Math.PI / 4;
+    part(new THREE.SphereGeometry(0.04, 8, 6), 0.42);
+    const light = new THREE.PointLight(color, lightConfig.intensity, 24, 2);
+    light.position.y = -0.1;
+    group.add(light);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.8 }));
+    glow.scale.setScalar(1.6);
+    group.add(glow);
+    return { light, glow, bulb, base: lightConfig.intensity, flicker: lightConfig.flicker === true, seed: x * 3.1 + z * 1.7 };
+  }
+
   // The fitting hangs off whichever wall is closest, or stands on a pole if there is none near.
   const wallX = Math.abs(x) > 9 ? -Math.sign(x) : 0;
   const wallZ = Math.abs(z) > 9 ? -Math.sign(z) : 0;
@@ -299,21 +338,36 @@ function buildDoors(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture,
     scene.add(group);
 
     if (rustic.has(door)) {
-      // A gap in a hedge or fence: two old gateposts, and the gate itself swung back into the field.
+      // A gap in a hedge or fence: two old gateposts standing just in front of it, and the gate hung on
+      // one of them, swung open into the field and clear of the hedge. (The hedge stands 0.35 m proud
+      // of the wall's centre line; the group is 0.25 m in front of it.)
+      const front = 0.2;
       for (const side of [-1, 1]) {
         const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.6, 0.16), postMaterial);
-        post.position.set(side * (door.width / 2 + 0.08), 0.8, -0.2);
+        post.position.set(side * (door.width / 2 + 0.08), 0.8, front);
         post.castShadow = true;
         group.add(post);
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.2), postMaterial);
+        cap.position.set(side * (door.width / 2 + 0.08), 1.625, front);
+        group.add(cap);
       }
       const gate = new THREE.Group();
-      gate.position.set(door.width / 2, 0, -0.2);
-      gate.rotation.y = 1.9;
-      for (const y of [0.35, 0.75, 1.15]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(door.width - 0.2, 0.08, 0.05), postMaterial);
-        rail.position.set(-(door.width - 0.2) / 2, y, 0);
-        gate.add(rail);
-      }
+      const span = door.width - 0.05;
+      gate.position.set(door.width / 2, 0, front);
+      gate.rotation.y = 1.2;
+      const piece = (w: number, h: number, px: number, py: number) => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.05), postMaterial);
+        mesh.position.set(px, py, 0);
+        mesh.castShadow = true;
+        gate.add(mesh);
+        return mesh;
+      };
+      for (const y of [0.3, 0.72, 1.14]) piece(span, 0.08, -span / 2, y);
+      // The stiles at each end, and a brace across.
+      piece(0.08, 1.0, -0.04, 0.72);
+      piece(0.08, 1.0, -span + 0.04, 0.72);
+      const brace = piece(Math.hypot(span - 0.1, 0.84), 0.07, -span / 2, 0.72);
+      brace.rotation.z = -Math.atan2(0.84, span - 0.1);
       group.add(gate);
     } else {
       for (const side of [-1, 1]) {
@@ -664,6 +718,7 @@ export function buildWorld(scene: THREE.Object3D, level: Level, environment: THR
   const detailProps = new THREE.Group(); scene.add(detailProps);
   const animateDressing = buildDressing(detailProps, level);
   if (garage) buildHospitalParking(detailProps, level);
+  buildPark(detailProps, level);
   bakeStaticMeshes(detailProps);
 
   const lampGroup = new THREE.Group();

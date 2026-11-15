@@ -78,6 +78,8 @@ export interface LevelBox {
   // The vault's door: solid until the time lock opens it, drawn from the game state, and shut again
   // once what was driven back in is sealed behind it.
   vaultDoor?: boolean;
+  // Part of the park, drawn by render/park.ts in place of the box (which is hidden).
+  parkPiece?: 'lawn' | 'path' | 'bench' | 'shed' | 'planter' | 'fountain' | 'bandstand';
 }
 
 // A ladder runs up the face of a box. The player climbs it from the side the normal points to.
@@ -299,6 +301,8 @@ export interface LevelLight {
   circuit?: number;
   // A battery-backed emergency lamp: a small red fitting on the wall, lit only while the power is out.
   emergency?: boolean;
+  // A lantern on a cast iron post standing on the ground, as along a park path.
+  post?: boolean;
 }
 
 // How the air looks on a floor: the fog colour and range, and how strong the ambient sky light is.

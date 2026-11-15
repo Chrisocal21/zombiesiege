@@ -1,10 +1,11 @@
 import type { Elevator, Level, LevelBox, LevelLight, Station } from './types';
 import { BROADCAST, CREW, PILOT } from './voices';
 import { block, frontage, ground, streetDoor } from './streetKit';
-import { DOOR_HEIGHT, furniture, stationBoxes } from './wardKit';
+import { DOOR_HEIGHT, stationBoxes } from './wardKit';
 
 // Act 4, the finish: the park. A wide field of grass with paths across it, trees along the edges and
-// the hedge round it broken at five gates. The sun is nearly up. The transit lift comes up in a
+// the hedge round it broken at five gates, a fountain in a plaza on the main path, flower beds, benches
+// and a bandstand. The sun is nearly up. The transit lift comes up in a
 // stone pavilion at the west edge. The extraction is a ring of red signal flares: the flare box is
 // on the side of the groundskeeper's shed in the north-west. Throw them out onto the field and hold
 // it while the smoke goes up, until the air ambulance comes down in the middle of the grass, then
@@ -44,8 +45,19 @@ function tree(x: number, z: number): LevelBox[] {
   ];
 }
 
-const lamp = (x: number, z: number, flicker = false): LevelLight => ({ position: { x, y: 3.8, z }, color: '#ffe0b0', intensity: 22, flicker });
-const lights: LevelLight[] = [lamp(-20, -10), lamp(-20, 10), lamp(0, -14), lamp(0, 14, true), lamp(18, -10), lamp(18, 10)];
+// Lanterns on iron posts along the paths.
+const lamp = (x: number, z: number, flicker = false): LevelLight => ({ position: { x, y: 3.6, z }, color: '#ffe0b0', intensity: 22, flicker, post: true });
+const lights: LevelLight[] = [lamp(-19, 2.3), lamp(-7, -2.3), lamp(-2.3, -11), lamp(2.3, 11, true), lamp(11, -2.3), lamp(16, 3.5)];
+
+// A box drawn by the park's own dressing (render/park.ts) instead of as a box.
+const piece = (box: LevelBox, parkPiece: NonNullable<LevelBox['parkPiece']>, facing?: number): LevelBox => ({ ...box, hidden: true, parkPiece, facing });
+// A park bench, long along x or z, with its front (the seat side) facing `facing` (0 is +z).
+const bench = (x: number, z: number, alongX: boolean, facing: number): LevelBox =>
+  piece(block(x, z, alongX ? 2 : 0.62, 0.5, alongX ? 0.62 : 2, '#5a4a3a'), 'bench', facing);
+
+// The fountain in the plaza on the main path, and the bandstand at the east end.
+const FOUNTAIN = { x: -13, z: 0 };
+const BAND = { x: 20, z: 0, size: 5, height: 0.9 };
 
 export const park: Level = {
   name: 'The park',
@@ -53,10 +65,10 @@ export const park: Level = {
   scenery: { north: 'trees', south: 'trees', east: 'trees', skyline: true },
   atmosphere: { fog: '#8a7a80', fogNear: 25, fogFar: 110, ambient: 1.9, sky: { horizon: '#d98a62', zenith: '#27324e', stars: 0.15 } },
   boxes: [
-    ground(-26, 26, -18, 18, GRASS, 'plain'),
-    // The paths: one east to west across the field, one north to south.
-    ground(-26, 26, -1.5, 1.5, '#9a958a'),
-    ground(-1.5, 1.5, -18, 18, '#9a958a'),
+    piece(ground(-26, 26, -18, 18, GRASS, 'plain'), 'lawn'),
+    // The paths: one east to west across the field, one north to south (drawn with the plaza).
+    piece(ground(-26, 26, -1.5, 1.5, '#9a958a'), 'path'),
+    piece(ground(-1.5, 1.5, -18, 18, '#9a958a'), 'path'),
     ...frontage('x', -18.25, -26.5, 26.5, doors, 2.6, HEDGE, 'wall'),
     ...frontage('x', 18.25, -26.5, 26.5, doors, 2.6, HEDGE, 'wall'),
     ...frontage('z', -26.25, -18, 18, [elevator], 4.6, STONE, 'wall'),
@@ -64,18 +76,29 @@ export const park: Level = {
     ...stationBoxes(stations),
 
     // The groundskeeper's shed, with the flare box on its east wall.
-    block(-20, -14, 5, 3.2, 4, '#7a6a58', 'crate'),
+    piece(block(-20, -14, 5, 3.2, 4, '#7a6a58'), 'shed'),
     // Trees along the edges, well clear of the landing zone.
-    ...[[-20, -4], [-18, 5], [-12, -12], [-11, 12], [10, -13], [12, 13], [20, -12], [21, 6], [22, 13]].flatMap(([x, z]) => tree(x, z)),
-    // Benches along the paths, a fountain and planters.
-    furniture(-6, -2.6, 2.2, 0.5, 0.7, '#5a4a3a', 'bench', 'south'),
-    furniture(6, 2.6, 2.2, 0.5, 0.7, '#5a4a3a', 'bench', 'south'),
-    furniture(-3, -9, 0.7, 0.5, 2.2, '#5a4a3a', 'bench', 'south'),
-    furniture(3, 9, 0.7, 0.5, 2.2, '#5a4a3a', 'bench', 'south'),
-    block(-10, 4, 1.6, 0.8, 1.6, '#4a5a3a'),
-    block(15, -4, 1.6, 0.8, 1.6, '#4a5a3a'),
-    // A bandstand at the east side: a raised stage to fight from.
-    block(20, 0, 5, 0.9, 5, '#8a8d90'),
+    ...[[-20, -4.5], [-19, 6.5], [-12, -12], [-11, 12], [10, -13], [12, 13], [20, -12], [21, 6.5], [22, 13]].flatMap(([x, z]) => tree(x, z)),
+    // Benches facing the paths and the fountain.
+    bench(-6, -2.55, true, 0), bench(6, 2.55, true, Math.PI),
+    bench(-2.55, -9, false, Math.PI / 2), bench(2.55, 9, false, -Math.PI / 2),
+    bench(FOUNTAIN.x, FOUNTAIN.z - 3.7, true, 0), bench(FOUNTAIN.x, FOUNTAIN.z + 3.7, true, Math.PI),
+    // The fountain: a stone basin with a column in the middle (the column stops shots).
+    piece(block(FOUNTAIN.x, FOUNTAIN.z, 2.7, 0.55, 2.7, STONE), 'fountain'),
+    { position: { x: FOUNTAIN.x, y: 1.3, z: FOUNTAIN.z }, size: { x: 0.6, y: 1.5, z: 0.6 }, color: STONE, hidden: true },
+    // Stone planters by the crossing and the bandstand.
+    piece(block(-3.6, 3.6, 1.6, 0.8, 1.6, STONE), 'planter'),
+    piece(block(15, -4, 1.6, 0.8, 1.6, STONE), 'planter'),
+    // A bandstand at the east side: a raised stage to fight from, up two steps on its west side, under
+    // a roof on four posts.
+    piece(block(BAND.x, BAND.z, BAND.size, BAND.height, BAND.size, STONE), 'bandstand'),
+    { position: { x: BAND.x - BAND.size / 2 - 0.2, y: 0.3, z: BAND.z }, size: { x: 0.4, y: 0.6, z: 2 }, color: STONE, surface: 'step' },
+    { position: { x: BAND.x - BAND.size / 2 - 0.6, y: 0.15, z: BAND.z }, size: { x: 0.4, y: 0.3, z: 2 }, color: STONE, surface: 'step' },
+    ...[[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([sx, sz]): LevelBox => ({
+      position: { x: BAND.x + sx * (BAND.size / 2 - 0.2), y: BAND.height + 1.55, z: BAND.z + sz * (BAND.size / 2 - 0.2) },
+      size: { x: 0.2, y: 3.1, z: 0.2 }, color: '#e8e2d4', hidden: true,
+    })),
+    { position: { x: BAND.x, y: BAND.height + 3.35, z: BAND.z }, size: { x: BAND.size + 0.6, y: 0.5, z: BAND.size + 0.6 }, color: '#4a3a34', hidden: true },
   ],
   ladders: [],
   lights,

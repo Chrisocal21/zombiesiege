@@ -168,7 +168,7 @@ Open, in suggested order (one phase each, compact between):
 
 - [x] Zombie clothing (done, not yet seen in game): the surgical mask floats under the chin and shirts read as paper panels (Sonnet, medium)
 - [x] Pharmacy and medical supplies (done: med-loose.glb items restock shelf gaps and cart tops, spill on counters and desks; no boxes on shelving above 1.9 m; crash cart oxygen bottle moved to the side): place health items (bandages, IV bags, syringes, first-aid kits) individually on shelves, counters and carts; fix ceiling boxes sitting on shelves and signs (Opus, high)
-- [ ] Park upgrade: paths, flower beds, benches, lamps; fence rails float through the hedge; slabs are blank blocks (Opus, high)
+- [x] Park upgrade: textured lawn and gravel paths with stone kerbs (no more flicker where they overlapped), a fountain plaza, park benches facing the paths, flower beds along the hedges, iron lantern posts (were wall brackets in mid-air), a plank shed with a pitched roof (was a crate stack), a bandstand with steps, posts and a roof, gates hung open in front of the hedge (Nov 14)
 - [ ] Roof upgrade: vents, pipes, lights, a better skyline; the roof is dark and bare (Sonnet, medium)
 - [ ] Apartment streets: a green median with park benches down the middle of the road
 - [ ] Garage ambulances (level0.ts): look at them in the game; they were never seen rendered
