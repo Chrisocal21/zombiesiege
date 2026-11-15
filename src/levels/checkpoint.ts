@@ -19,6 +19,7 @@ const TENT = '#58634e';
 const doors = [streetDoor(-18, -10.25, 0, 1), streetDoor(2, -10.25, 0, 1), streetDoor(-6, 10.25, 0, -1), streetDoor(16, 10.25, 0, -1)];
 
 const elevator: Elevator = { position: { x: 30.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
+const entry: Elevator = { position: { x: -30.25, y: 0, z: 0 }, normal: { x: 1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -26, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } },
@@ -41,7 +42,8 @@ export const checkpoint: Level = {
     ...frontage('x', 10.25, -30.5, 30.5, doors, FRONT_HEIGHT, TENT, 'wall'),
     ...frontage('z', 30.25, -10, 10, [elevator], FRONT_HEIGHT, CONCRETE, 'building', [elevator]),
     ...checkpointBoxes(elevator, CONCRETE),
-    ...frontage('z', -30.25, -10, 10, [], FRONT_HEIGHT, CONCRETE),
+    ...frontage('z', -30.25, -10, 10, [entry], FRONT_HEIGHT, CONCRETE, 'building', [entry]),
+    ...checkpointBoxes(entry, CONCRETE),
     ...stationBoxes(stations),
 
     // Shut lanes: buses and a truck across the road, jersey barriers, screening tables.
@@ -61,6 +63,7 @@ export const checkpoint: Level = {
   doors,
   gate: null,
   elevator,
+  entry,
   stations,
   locks: [],
   signs: [

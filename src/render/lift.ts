@@ -42,8 +42,7 @@ const HAZARD = new THREE.MeshStandardMaterial({ color: 0xd9a82a, roughness: 0.5,
 // A road checkpoint's gate: two steel swing gates across the road between posts, under a gantry with the
 // sign and a lamp that is red while it is shut and green once it is open. Once the way is open the gates
 // swing out into the lane beyond, against its walls.
-function buildCheckpointGate(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
-  const lift = level.elevator;
+function buildCheckpointGate(scene: THREE.Object3D, lift: Level['elevator'], glowMap: THREE.Texture, always = false): (state: GameState, time: number) => void {
   const group = new THREE.Group();
   group.position.set(lift.position.x + lift.normal.x * 0.25, 0, lift.position.z + lift.normal.z * 0.25);
   group.rotation.y = Math.atan2(lift.normal.x, lift.normal.z);
@@ -111,22 +110,28 @@ function buildCheckpointGate(scene: THREE.Object3D, level: Level, glowMap: THREE
   glow.position.copy(lamp.position);
   group.add(glow);
 
+  // A lamp in the lane beyond, so the road is seen to go on into the dusk.
+  const laneLight = new THREE.PointLight(0xffd9a0, 7, 13, 2);
+  laneLight.position.set(0, 3.2, -4.5);
+  group.add(laneLight);
+
   let shownOpen: boolean | null = null;
   return (state, time) => {
+    const open = always || state.lift.open;
     const doorTicks = config.elevator.doorSeconds * 1.6 * config.ticksPerSecond;
-    const since = state.lift.changedTick < 0 ? Infinity : (state.tick - state.lift.changedTick) / doorTicks;
-    const progress = state.lift.open ? Math.min(1, since) : Math.max(0, 1 - since);
+    const since = always || state.lift.changedTick < 0 ? Infinity : (state.tick - state.lift.changedTick) / doorTicks;
+    const progress = open ? Math.min(1, since) : Math.max(0, 1 - since);
     const eased = progress * progress * (3 - 2 * progress);
     for (const { pivot, side } of leaves) pivot.rotation.y = -side * eased * Math.PI * 0.47;
-    if (state.lift.open !== shownOpen) {
-      shownOpen = state.lift.open;
-      display.draw('', state.lift.open);
-      const colour = state.lift.open ? 0x38e070 : 0xff5a4a;
+    if (open !== shownOpen) {
+      shownOpen = open;
+      display.draw('', open);
+      const colour = open ? 0x38e070 : 0xff5a4a;
       (lamp.material as THREE.MeshBasicMaterial).color.setHex(colour);
       (glow.material as THREE.SpriteMaterial).color.setHex(colour);
       light.color.setHex(colour);
     }
-    const blink = settings.reducedFlashing || state.lift.open ? 1 : 0.55 + 0.45 * Math.sin(time * 5);
+    const blink = settings.reducedFlashing || open ? 1 : 0.55 + 0.45 * Math.sin(time * 5);
     light.intensity = 4 * blink;
     glow.material.opacity = 0.5 * blink;
   };
@@ -135,7 +140,11 @@ function buildCheckpointGate(scene: THREE.Object3D, level: Level, glowMap: THREE
 // The elevator: a steel frame, two sliding doors, a sign that says which floor is next, and a lit
 // cab behind the wall. The doors are solid in the rules while shut and drawn from the game state.
 export function buildLift(scene: THREE.Object3D, level: Level, glowMap: THREE.Texture): (state: GameState, time: number) => void {
-  if (level.exitGate) return buildCheckpointGate(scene, level, glowMap);
+  if (level.exitGate) {
+    const ahead = buildCheckpointGate(scene, level.elevator, glowMap);
+    const behind = level.entry ? buildCheckpointGate(scene, level.entry, glowMap, true) : null;
+    return (state, time) => { ahead(state, time); behind?.(state, time); };
+  }
   const lift = level.elevator;
   const facing = Math.atan2(lift.normal.x, lift.normal.z);
   const group = new THREE.Group();

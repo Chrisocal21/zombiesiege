@@ -19,6 +19,7 @@ const HEDGE = '#2c4426';
 const doors = [streetDoor(-8, -10.25, 0, 1), streetDoor(10, -10.25, 0, 1), streetDoor(-2, 10.25, 0, -1), streetDoor(18, 10.25, 0, -1)];
 
 const elevator: Elevator = { position: { x: 28.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
+const entry: Elevator = { position: { x: -28.25, y: 0, z: 0 }, normal: { x: 1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -22, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } },
@@ -41,7 +42,8 @@ export const deadStop: Level = {
     ...frontage('x', 10.25, -28.5, 28.5, doors, FRONT_HEIGHT, HEDGE, 'wall'),
     ...frontage('z', 28.25, -10, 10, [elevator], FRONT_HEIGHT, HEDGE, 'wall', [elevator]),
     ...checkpointBoxes(elevator, HEDGE),
-    ...frontage('z', -28.25, -10, 10, [], FRONT_HEIGHT, HEDGE, 'wall'),
+    ...frontage('z', -28.25, -10, 10, [entry], FRONT_HEIGHT, HEDGE, 'wall', [entry]),
+    ...checkpointBoxes(entry, HEDGE),
     ...stationBoxes(stations),
 
     // The crew's ambulance, dead in the road, and the cars left on the road around it.
@@ -65,6 +67,7 @@ export const deadStop: Level = {
   doors,
   gate: null,
   elevator,
+  entry,
   stations,
   locks: [],
   signs: [

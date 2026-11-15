@@ -348,4 +348,6 @@ export interface Level {
   kit?: Vec3;
   // The way on is a steel gate on foot, as in the prologue, and not a lift.
   exitGate?: boolean;
+  // On a gate floor, the checkpoint the crew has just come through, behind where they start: open.
+  entry?: Elevator;
 }

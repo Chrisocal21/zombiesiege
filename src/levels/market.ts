@@ -26,6 +26,7 @@ const doors = [
 ];
 
 const elevator: Elevator = { position: { x: 22.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
+const entry: Elevator = { position: { x: -22.25, y: 0, z: 0 }, normal: { x: 1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -21.95, y: 1.25, z: 8 }, normal: { x: 1, z: 0 } },
@@ -51,7 +52,8 @@ export const market: Level = {
     ground(-22, 22, -3, 3, '#2a2d32', 'slab'),
     ...frontage('x', -16.25, -22.5, 22.5, doors, FRONT_HEIGHT, SANDSTONE),
     ...frontage('x', 16.25, -22.5, 22.5, doors, FRONT_HEIGHT, BRICK),
-    ...frontage('z', -22.25, -16, 16, [], FRONT_HEIGHT, STONE),
+    ...frontage('z', -22.25, -16, 16, [entry], FRONT_HEIGHT, STONE, 'building', [entry]),
+    ...checkpointBoxes(entry, STONE),
     ...frontage('z', 22.25, -16, 16, [...doors, elevator], FRONT_HEIGHT, STONE, 'building', [elevator]),
     ...checkpointBoxes(elevator, STONE),
     ...stationBoxes(stations),
@@ -79,6 +81,7 @@ export const market: Level = {
   doors,
   gate: null,
   elevator,
+  entry,
   stations,
   locks: [],
   signs: [

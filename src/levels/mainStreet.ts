@@ -26,6 +26,7 @@ const BARRIER = '#8a8d90';
 const doors = [streetDoor(-12, -10.25, 0, 1), streetDoor(14, -10.25, 0, 1), streetDoor(-4, 10.25, 0, -1), streetDoor(20, 10.25, 0, -1)];
 
 const elevator: Elevator = { position: { x: 28.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
+const entry: Elevator = { position: { x: -28.25, y: 0, z: 0 }, normal: { x: 1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -20, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } },
@@ -67,7 +68,8 @@ export const mainStreet: Level = {
     block(-4, -2, 1.2, 2.2, 17, BARRIER),
     block(4, 2, 1.2, 2.2, 17, BARRIER),
     ...frontage('x', 10.25, -28.5, 28.5, doors, FRONT_HEIGHT, STONE),
-    ...frontage('z', -28.25, -10, 10, [], FRONT_HEIGHT, STONE),
+    ...frontage('z', -28.25, -10, 10, [entry], FRONT_HEIGHT, STONE, 'building', [entry]),
+    ...checkpointBoxes(entry, STONE),
     ...frontage('z', 28.25, -10, 10, [elevator], FRONT_HEIGHT, BRICK, 'building', [elevator]),
     ...checkpointBoxes(elevator, BRICK),
     ...stationBoxes(stations),
@@ -99,6 +101,7 @@ export const mainStreet: Level = {
   doors,
   gate: null,
   elevator,
+  entry,
   stations,
   locks: [],
   signs: [

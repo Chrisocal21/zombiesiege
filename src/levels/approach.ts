@@ -23,6 +23,7 @@ const doors = [
 ];
 
 const elevator: Elevator = { position: { x: 34.25, y: 0, z: 0 }, normal: { x: -1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
+const entry: Elevator = { position: { x: -34.25, y: 0, z: 0 }, normal: { x: 1, z: 0 }, width: 6, height: DOOR_HEIGHT, cabDepth: 4, cabWidth: 6 };
 
 const stations: Station[] = [
   { kind: 'ammo', position: { x: -30, y: 1.25, z: -9.95 }, normal: { x: 0, z: 1 } },
@@ -45,7 +46,8 @@ export const approach: Level = {
     ...frontage('x', 10.25, -34.5, 34.5, doors, FRONT_HEIGHT, STONE),
     ...frontage('z', 34.25, -10, 10, [elevator], FRONT_HEIGHT, STONE, 'building', [elevator]),
     ...checkpointBoxes(elevator, STONE),
-    ...frontage('z', -34.25, -10, 10, [], FRONT_HEIGHT, BRICK),
+    ...frontage('z', -34.25, -10, 10, [entry], FRONT_HEIGHT, BRICK, 'building', [entry]),
+    ...checkpointBoxes(entry, BRICK),
     ...stationBoxes(stations),
 
     // Abandoned cars at both kerbs, a bus across the road, barriers.
@@ -72,6 +74,7 @@ export const approach: Level = {
   doors,
   gate: null,
   elevator,
+  entry,
   stations,
   locks: [],
   signs: [
